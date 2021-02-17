@@ -75,9 +75,9 @@ class Controller():
         self.csv = self.model.csv_data
         self.plotter = self.model.plotter
 
-        monthly_spending = self.csv.spending_breakdown(self.csv.months)
-        monthly_spending_plot = self.plotter(monthly_spending, ALL_CATEGORIES)
-        monthly_spending_plot.plot_all_categories()
+        # monthly_spending = self.csv.spending_breakdown(self.csv.months)
+        # monthly_spending_plot = self.plotter(monthly_spending, ALL_CATEGORIES)
+        # monthly_spending_plot.plot_all_categories()
 
         self.view.setup_ui()
         self.view.stackedWidget.setCurrentIndex(0)

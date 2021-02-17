@@ -45,7 +45,7 @@ class View(QtWidgets.QMainWindow):
         self.stackedWidget.setObjectName("stackedWidget")
         self.stackedWidget.setStatusTip("Budgy")
 
-        # TODO: add this logic to the controlelr render_frame function
+        # TODO: add this logic to the controller render_frame function
         self.stackedWidget.addWidget(self.analysis_page(self.controller))
         self.stackedWidget.addWidget(self.budget_page(self.controller))
 
@@ -70,18 +70,26 @@ class View(QtWidgets.QMainWindow):
         self.actionEdit_Budget.setText("Edit Budget")
         self.actionEdit_Budget.setShortcut("Ctrl+E")
 
-        self.actionSave_Analysis = QtWidgets.QAction(self)
-        self.actionSave_Analysis.setObjectName("actionSave_Analysis")
-        self.actionSave_Analysis.setText("Save Analysis")
-        self.actionSave_Analysis.setShortcut("Ctrl+S")
+        self.actionGenerate_summary = QtWidgets.QAction(self)
+        self.actionGenerate_summary.setObjectName("actionGenerate_summary")
+        self.actionGenerate_summary.setText("Generate Summary")
+        self.actionGenerate_summary.setShortcut("Ctrl+S")
+        self.actionGenerate_summary.setStatusTip("Generate Summary .PDF file")
+
+        self.actionUpdate_Transactions = QtWidgets.QAction(self)
+        self.actionUpdate_Transactions.setObjectName("actionUpdate_Transactions")
+        self.actionUpdate_Transactions.setText("Update_Transactions")
+        self.actionUpdate_Transactions.setShortcut("Ctrl+U")
+        self.actionUpdate_Transactions.setStatusTip("Update Transactions CSV from Mint")
 
         self.actionExit = QtWidgets.QAction(self)
         self.actionExit.setObjectName("actionExit")
         self.actionExit.setText("Exit")
         self.actionExit.setShortcut("Esc")
 
+        self.menuFile.addAction(self.actionUpdate_Transactions)
         self.menuFile.addAction(self.actionEdit_Budget)
-        self.menuFile.addAction(self.actionSave_Analysis)
+        self.menuFile.addAction(self.actionGenerate_summary)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionExit)
         self.menuFile.setTitle("File")
@@ -89,7 +97,7 @@ class View(QtWidgets.QMainWindow):
         self.menubar.addAction(self.menuFile.menuAction())
 
         #TODO: set first widget and save instance to controller "pages"
-        self.stackedWidget.setCurrentIndex(1)
+        self.stackedWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
@@ -108,7 +116,7 @@ class AnalysisPage(QtWidgets.QWidget):
         self.title.setText("Budgy")
 
         self.chart_type_comboBox = QtWidgets.QComboBox(self)
-        self.chart_type_comboBox.setGeometry(QtCore.QRect(180, 200, 300, 50))
+        self.chart_type_comboBox.setGeometry(QtCore.QRect(230, 200, 300, 50))
         self.chart_type_comboBox.setObjectName("chart_type_comboBox")
         self.chart_type_comboBox.addItem("")
         self.chart_type_comboBox.addItem("")
@@ -119,7 +127,7 @@ class AnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.setStatusTip("Choose Chart Type")
 
         self.time_period_combobox = QtWidgets.QComboBox(self)
-        self.time_period_combobox.setGeometry(QtCore.QRect(180, 275, 300, 50))
+        self.time_period_combobox.setGeometry(QtCore.QRect(630, 200, 300, 50))
         self.time_period_combobox.setObjectName("time_period_combobox")
         self.time_period_combobox.addItem("")
         self.time_period_combobox.addItem("")
@@ -134,51 +142,41 @@ class AnalysisPage(QtWidgets.QWidget):
         self.time_period_combobox.setStatusTip("Choose Time Breakdown Type")
 
         self.sub_category_combobox = QtWidgets.QComboBox(self)
-        self.sub_category_combobox.setGeometry(QtCore.QRect(180, 350, 300, 50))
+        self.sub_category_combobox.setGeometry(QtCore.QRect(1030, 200, 300, 50))
         self.sub_category_combobox.setObjectName("sub_category_combobox")
         self.sub_category_combobox.addItem("")
         self.sub_category_combobox.setItemText(0, "Sub Category")
         self.sub_category_combobox.setStatusTip("Choose Sub Category for Analysis")
 
         self.date_range_box = QtWidgets.QGroupBox(self)
-        self.date_range_box.setGeometry(QtCore.QRect(550, 200, 500, 217))
+        self.date_range_box.setGeometry(QtCore.QRect(230, 270, 1100, 110))
         self.date_range_box.setObjectName("date_range_box")
         self.date_range_box.setTitle("Date Range")
         self.date_range_box.setStatusTip("Choose Date Range of Analysis")
 
         self.start_date = QtWidgets.QDateEdit(self.date_range_box)
-        self.start_date.setGeometry(QtCore.QRect(200, 50, 300, 50))
+        self.start_date.setGeometry(QtCore.QRect(200, 40, 300, 50))
         self.start_date.setObjectName("start_date")
         self.start_date.setStatusTip("Choose Start Date of Analysis")
 
         self.end_date = QtWidgets.QDateEdit(self.date_range_box)
-        self.end_date.setGeometry(QtCore.QRect(200, 120, 300, 50))
+        self.end_date.setGeometry(QtCore.QRect(750, 40, 300, 50))
         self.end_date.setObjectName("end_date")
         self.end_date.setStatusTip("Choose End Date of Analysis")
 
         self.from_label = QtWidgets.QLabel(self.date_range_box)
-        self.from_label.setGeometry(QtCore.QRect(0, 50, 200, 50))
+        self.from_label.setGeometry(QtCore.QRect(50, 40, 100, 50))
         self.from_label.setObjectName("from_label")
-        self.from_label.setText("from")
+        self.from_label.setText("From:")
+        self.from_label.setAlignment(QtCore.Qt.AlignCenter)
         self.from_label.setStatusTip("Choose Start Date of Analysis")
 
         self.to_label = QtWidgets.QLabel(self.date_range_box)
-        self.to_label.setGeometry(QtCore.QRect(0, 120, 200, 50))
+        self.to_label.setGeometry(QtCore.QRect(600, 40, 100, 50))
         self.to_label.setObjectName("to_label")
-        self.to_label.setText("to")
+        self.to_label.setText("To:")
+        self.to_label.setAlignment(QtCore.Qt.AlignCenter)
         self.to_label.setStatusTip("Choose End Date of Analysis")
-
-        self.generate_summary = QtWidgets.QPushButton(self)
-        self.generate_summary.setGeometry(QtCore.QRect(1120, 225, 200, 50))
-        self.generate_summary.setObjectName("generate_summary")
-        self.generate_summary.setText("Generate Summary")
-        self.generate_summary.setStatusTip("Generate Summary .PDF file")
-
-        self.update_transactions = QtWidgets.QPushButton(self)
-        self.update_transactions.setGeometry(QtCore.QRect(1120, 300, 200, 50))
-        self.update_transactions.setObjectName("update_transactions")
-        self.update_transactions.setText("Update Transactions")
-        self.update_transactions.setStatusTip("Update Transactions CSV from Mint")
 
 
 class BudgetPage(QtWidgets.QWidget):
