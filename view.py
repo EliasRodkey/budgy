@@ -35,7 +35,7 @@ class View(QtWidgets.QMainWindow):
     # controller and model
     def setup_ui(self):
         self.setObjectName("Budgy")
-        self.resize(1600, 1500)
+        self.resize(1600, 1000)
         self.setWindowTitle("Budgy")
 
         self.centralwidget = QtWidgets.QWidget(self)
@@ -71,6 +71,9 @@ class View(QtWidgets.QMainWindow):
         self.actionEdit_Budget = QtWidgets.QAction(self)
         self.actionEdit_Budget.setObjectName("actionEdit_Budget")
         self.actionEdit_Budget.setText("Edit Budget")
+        self.actionEdit_Budget.triggered.connect(
+            lambda : self.controller.show_page(self.controller.view.budget_edit_page)
+        )
         self.actionEdit_Budget.setShortcut("Ctrl+E")
 
         self.actionGenerate_summary = QtWidgets.QAction(self)
@@ -113,19 +116,19 @@ class TitlePage(QtWidgets.QWidget):
         self.setObjectName("Title Page")
 
         self.title = QtWidgets.QLabel(self)
-        self.title.setGeometry(QtCore.QRect(0, 300, 1600, 150))
+        self.title.setGeometry(QtCore.QRect(0, 100, 1600, 150))
         self.title.setAlignment(QtCore.Qt.AlignCenter)
         self.title.setText("Budgy")
         self.title.setStatusTip("Budgy")
 
         self.description = QtWidgets.QLabel(self)
-        self.description.setGeometry(QtCore.QRect(500, 475, 600, 250))
+        self.description.setGeometry(QtCore.QRect(500, 300, 600, 250))
         self.description.setText("ADD DESCRIPTION")
         self.description.setAlignment(QtCore.Qt.AlignCenter)
         self.description.setStatusTip("Budgy Description")
 
         self.next_button = QtWidgets.QPushButton(self)
-        self.next_button.setGeometry(QtCore.QRect(700, 800, 200, 50))
+        self.next_button.setGeometry(QtCore.QRect(700, 600, 200, 50))
         self.next_button.setText("Continue...")
         self.next_button.setStatusTip("Continue to Analysis")
         self.next_button.clicked.connect(
@@ -206,6 +209,19 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.to_label.setAlignment(QtCore.Qt.AlignCenter)
         self.to_label.setStatusTip("Choose End Date of Analysis")
 
+        # self.see_analysis_button = QtWidgets.QPushButton(self)
+        # self.see_analysis_button.set_geometry
+
+        self.to_budget_analysis_button = QtWidgets
+        self.to_budget_analysis_button = QtWidgets.QPushButton(self)
+        self.to_budget_analysis_button.setGeometry(QtCore.QRect(675, 800, 250, 50))
+        self.to_budget_analysis_button.setText("Budget Analysis")
+        self.to_budget_analysis_button.setStatusTip("Go to Spending Analysis")
+        self.to_budget_analysis_button.clicked.connect(
+            lambda : self.controller.show_page(self.controller.view.budget_analysis_page)
+        )
+        self.to_budget_analysis_button.setShortcut("Right")
+
 
 class BudgetAnalysisPage(QtWidgets.QWidget):
     def __init__(self, controller):
@@ -215,6 +231,16 @@ class BudgetAnalysisPage(QtWidgets.QWidget):
 
     def page_setup(self):
         self.setObjectName("Budget Analysis Page")
+
+        self.to_spending_analysis_button = QtWidgets
+        self.to_spending_analysis_button = QtWidgets.QPushButton(self)
+        self.to_spending_analysis_button.setGeometry(QtCore.QRect(675, 800, 250, 50))
+        self.to_spending_analysis_button.setText("Spending Analysis")
+        self.to_spending_analysis_button.setStatusTip("Go to Spending Analysis")
+        self.to_spending_analysis_button.clicked.connect(
+            lambda : self.controller.show_page(self.controller.view.spending_analysis_page)
+        )
+        self.to_spending_analysis_button.setShortcut("Right")
 
 
 class BudgetEditPage(QtWidgets.QWidget):
