@@ -21,6 +21,7 @@ class View(QtWidgets.QMainWindow):
         self.app = QtWidgets.QApplication(sys.argv)
         super().__init__()
 
+        self.title_page = TitlePage
         self.spending_analysis_page = SpendingAnalysisPage
         self.budget_analysis_page = BudgetAnalysisPage
         self.budget_edit_page = BudgetEditPage
@@ -47,6 +48,7 @@ class View(QtWidgets.QMainWindow):
         self.stackedWidget.setStatusTip("Budgy")
 
         # TODO: add this logic to the controller render_frame function
+        self.stackedWidget.addWidget(self.title_page(self.controller))
         self.stackedWidget.addWidget(self.spending_analysis_page(self.controller))
         self.stackedWidget.addWidget(self.budget_analysis_page(self.controller))
         self.stackedWidget.addWidget(self.budget_edit_page(self.controller))
@@ -103,6 +105,33 @@ class View(QtWidgets.QMainWindow):
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
+class TitlePage(QtWidgets.QWidget):
+    def __init__(self, controller):
+        self.controller = controller
+        super().__init__()
+        self.page_setup()
+
+    def page_setup(self):
+        self.setObjectName("Title Page")
+
+        self.title = QtWidgets.QLabel(self)
+        self.title.setGeometry(QtCore.QRect(0, 300, 1600, 150))
+        self.title.setAlignment(QtCore.Qt.AlignCenter)
+        self.title.setText("Budgy")
+        self.title.setStatusTip("Budgy")
+
+        self.description = QtWidgets.QLabel(self)
+        self.description.setGeometry(QtCore.QRect(500, 475, 600, 250))
+        self.description.setText("ADD DESCRIPTION")
+        self.description.setAlignment(QtCore.Qt.AlignCenter)
+        self.description.setStatusTip("Budgy Description")
+
+        self.next_button = QtWidgets.QPushButton(self)
+        self.next_button.setGeometry(QtCore.QRect(700, 800, 200, 50))
+        self.next_button.setText("Continue...")
+        self.next_button.setStatusTip("Continue to Analysis")
+
+
 class SpendingAnalysisPage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
@@ -111,11 +140,6 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
 
     def page_setup(self):
         self.setObjectName("Spending Analysis Page")
-
-        self.title = QtWidgets.QLabel(self)
-        self.title.setGeometry(QtCore.QRect(0, 0, 1600, 150))
-        self.title.setAlignment(QtCore.Qt.AlignCenter)
-        self.title.setText("Budgy")
 
         self.chart_type_comboBox = QtWidgets.QComboBox(self)
         self.chart_type_comboBox.setGeometry(QtCore.QRect(230, 200, 300, 50))
