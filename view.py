@@ -21,8 +21,9 @@ class View(QtWidgets.QMainWindow):
         self.app = QtWidgets.QApplication(sys.argv)
         super().__init__()
 
-        self.analysis_page = AnalysisPage
-        self.budget_page = BudgetPage
+        self.spending_analysis_page = SpendingAnalysisPage
+        self.budget_analysis_page = BudgetAnalysisPage
+        self.budget_edit_page = BudgetEditPage
 
     # causes the built ui to show up for the user
     def show_ui(self):
@@ -46,8 +47,9 @@ class View(QtWidgets.QMainWindow):
         self.stackedWidget.setStatusTip("Budgy")
 
         # TODO: add this logic to the controller render_frame function
-        self.stackedWidget.addWidget(self.analysis_page(self.controller))
-        self.stackedWidget.addWidget(self.budget_page(self.controller))
+        self.stackedWidget.addWidget(self.spending_analysis_page(self.controller))
+        self.stackedWidget.addWidget(self.budget_analysis_page(self.controller))
+        self.stackedWidget.addWidget(self.budget_edit_page(self.controller))
 
         self.setCentralWidget(self.centralwidget)
 
@@ -101,14 +103,14 @@ class View(QtWidgets.QMainWindow):
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
-class AnalysisPage(QtWidgets.QWidget):
+class SpendingAnalysisPage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
         super().__init__()
         self.page_setup()
 
     def page_setup(self):
-        self.setObjectName("Analysis Page")
+        self.setObjectName("Spending Analysis Page")
 
         self.title = QtWidgets.QLabel(self)
         self.title.setGeometry(QtCore.QRect(0, 0, 1600, 150))
@@ -179,14 +181,24 @@ class AnalysisPage(QtWidgets.QWidget):
         self.to_label.setStatusTip("Choose End Date of Analysis")
 
 
-class BudgetPage(QtWidgets.QWidget):
+class BudgetAnalysisPage(QtWidgets.QWidget):
+    def __init__(self, controller):
+        self.controller = controller
+        super().__init__()
+        self.page_setup()
+
+    def page_setup(self):
+        self.setObjectName("Budget Analysis Page")
+
+
+class BudgetEditPage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
         super().__init__()
         self.page_setup()
     
     def page_setup(self):
-        self.setObjectName("Budget Page")
+        self.setObjectName("Budget Edit Page")
 
         self.save_budget_button = QtWidgets.QPushButton(self)
         self.save_budget_button.setGeometry(QtCore.QRect(180, 280, 75, 23))
