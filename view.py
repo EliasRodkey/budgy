@@ -21,10 +21,10 @@ class View(QtWidgets.QMainWindow):
         self.app = QtWidgets.QApplication(sys.argv)
         super().__init__()
 
-        self.title_page = TitlePage
-        self.spending_analysis_page = SpendingAnalysisPage
-        self.budget_analysis_page = BudgetAnalysisPage
-        self.budget_edit_page = BudgetEditPage
+        self.title_page = TitlePage(self.controller)
+        self.spending_analysis_page = SpendingAnalysisPage(self.controller)
+        self.budget_analysis_page = BudgetAnalysisPage(self.controller)
+        self.budget_edit_page = BudgetEditPage(self.controller)
 
     # causes the built ui to show up for the user
     def show_ui(self):
@@ -47,11 +47,10 @@ class View(QtWidgets.QMainWindow):
         self.stackedWidget.setObjectName("stackedWidget")
         self.stackedWidget.setStatusTip("Budgy")
 
-        # TODO: add this logic to the controller render_frame function
-        self.stackedWidget.addWidget(self.title_page(self.controller))
-        self.stackedWidget.addWidget(self.spending_analysis_page(self.controller))
-        self.stackedWidget.addWidget(self.budget_analysis_page(self.controller))
-        self.stackedWidget.addWidget(self.budget_edit_page(self.controller))
+        self.stackedWidget.addWidget(self.title_page)
+        self.stackedWidget.addWidget(self.spending_analysis_page)
+        self.stackedWidget.addWidget(self.budget_analysis_page)
+        self.stackedWidget.addWidget(self.budget_edit_page)
 
         self.setCentralWidget(self.centralwidget)
 
@@ -100,8 +99,7 @@ class View(QtWidgets.QMainWindow):
 
         self.menubar.addAction(self.menuFile.menuAction())
 
-        #TODO: set first widget and save instance to controller "pages"
-        self.stackedWidget.setCurrentIndex(0)
+        self.stackedWidget.setCurrentWidget(self.title_page)
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
@@ -130,6 +128,10 @@ class TitlePage(QtWidgets.QWidget):
         self.next_button.setGeometry(QtCore.QRect(700, 800, 200, 50))
         self.next_button.setText("Continue...")
         self.next_button.setStatusTip("Continue to Analysis")
+        self.next_button.clicked.connect(
+            lambda : self.controller.show_page(self.controller.view.spending_analysis_page)
+        )
+        self.next_button.setShortcut("Return")
 
 
 class SpendingAnalysisPage(QtWidgets.QWidget):
