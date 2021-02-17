@@ -205,7 +205,7 @@ class BudgetPage(QtWidgets.QWidget):
 class Style():
     def __init__(self):
         pass
-    #TODOL style erythan
+    #TODO style erythan
 
 
 if __name__ == "__main__":
