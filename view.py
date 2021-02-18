@@ -358,6 +358,9 @@ class BudgetEditPage(QtWidgets.QWidget):
         # loads sliders for each budget category depending on the categories in
         # the self/config file
         self.slider_dict = {}
+        self.label_dict = {}
+        self.percent_dict = {}
+        self.dollar_dict = {}
         space_for_slider = int(round(1600 / (len(ALL_CATEGORIES) - 1), 0))
         count = 0
         for category in list(ALL_CATEGORIES.keys()):
@@ -368,7 +371,30 @@ class BudgetEditPage(QtWidgets.QWidget):
                 self.slider_dict[category] = QtWidgets.QSlider(self)
                 self.slider_dict[category].setGeometry(QtCore.QRect(start, 300, 50, 350))
                 self.slider_dict[category].setOrientation(QtCore.Qt.Vertical)
+                self.slider_dict[category].setRange(0, 100)
                 self.slider_dict[category].setObjectName(f"{category}_slider")
+
+                self.label_dict[category] = QtWidgets.QLabel(self)
+                self.label_dict[category].setGeometry(QtCore.QRect(
+                    start, 250, space_for_slider, 50
+                    ))
+                # self.label_dict[category].setAlignment(QtCore.Qt.AlignCenter)
+                self.label_dict[category].setText(category)
+
+                self.percent_dict[category] = QtWidgets.QLabel(self)
+                self.percent_dict[category].setGeometry(QtCore.QRect(
+                    start, 660, space_for_slider, 40
+                ))
+                # self.percent_dict[category].setAlignment(QtCore.Qt.AlignCenter)
+                self.percent_dict[category].setText("0%")
+
+                self.dollar_dict[category] = QtWidgets.QLabel(self)
+                self.dollar_dict[category].setGeometry(QtCore.QRect(
+                    start, 700, space_for_slider, 40
+                ))
+                # self.dollar_dict[category].setAlignment(QtCore.Qt.AlignCenter)
+                self.dollar_dict[category].setText("$0")
+
                 count += 1
             
 
