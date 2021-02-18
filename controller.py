@@ -9,14 +9,15 @@ from shelf.config import ALL_CATEGORIES, LOC_TRANSACTION_PATH
 
 class Controller():
     def __init__(self):
-        # view and page attributes
-        self.view = View(self)
-        self.page_history = []
-
         # model attributes
         self.model = Model(self, LOC_TRANSACTION_PATH, ALL_CATEGORIES)
         self.csv = self.model.csv_data
         self.plotter = self.model.plotter
+        self.avg_monthly_income = 2000
+
+        # view and page attributes
+        self.view = View(self)
+        self.page_history = []
 
         # monthly_spending = self.csv.spending_breakdown(self.csv.months)
         # monthly_spending_plot = self.plotter(monthly_spending, ALL_CATEGORIES)

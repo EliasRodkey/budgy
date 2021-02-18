@@ -1,44 +1,54 @@
+
+from PyQt5.QtWidgets import (QWidget, QSlider, QHBoxLayout,
+                             QLabel, QApplication)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 import sys
-import matplotlib
-matplotlib.use('Qt5Agg')
-
-from PyQt5 import QtCore, QtGui, QtWidgets
-
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
 
 
-class MplCanvas(FigureCanvasQTAgg):
+class Example(QWidget):
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
+    def __init__(self):
+        super().__init__()
 
+        self.initUI()
 
-class MainWindow(QtWidgets.QMainWindow):
+    def initUI(self):
 
-    def __init__(self, *args, **kwargs):
-        super(MainWindow, self).__init__(*args, **kwargs)
+        hbox = QHBoxLayout()
 
-        sc = MplCanvas(self, width=5, height=4, dpi=100)
-        sc.axes.plot([0,1,2,3,4], [10,1,20,3,40])
+        sld = QSlider(Qt.Horizontal, self)
+        sld.setRange(0, 100)
+        sld.setFocusPolicy(Qt.NoFocus)
+        sld.setPageStep(5)
 
-        # Create toolbar, passing canvas as first parament, parent (self, the MainWindow) as second.
-        toolbar = NavigationToolbar(sc, self)
+        sld.valueChanged.connect(self.updateLabel)
 
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(toolbar)
-        layout.addWidget(sc)
+        self.label = QLabel('0', self)
+        self.label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.label.setMinimumWidth(80)
 
-        # Create a placeholder widget to hold our toolbar and canvas.
-        widget = QtWidgets.QWidget()
-        widget.setLayout(layout)
-        self.setCentralWidget(widget)
+        hbox.addWidget(sld)
+        hbox.addSpacing(15)
+        hbox.addWidget(self.label)
 
+        self.setLayout(hbox)
+
+        self.setGeometry(300, 300, 350, 250)
+        self.setWindowTitle('QSlider')
         self.show()
 
+    def updateLabel(self, value):
 
-app = QtWidgets.QApplication(sys.argv)
-w = MainWindow()
-app.exec_()
+        self.label.setText(str(value))
+
+
+def main():
+
+    app = QApplication(sys.argv)
+    ex = Example()
+    sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()

@@ -352,10 +352,7 @@ class BudgetEditPage(QtWidgets.QWidget):
         )
         self.back_button.setShortcut("Backspace")
 
-        self.load_sliders()
-    
-    def load_sliders(self):
-        # loads sliders for each budget category depending on the categories in
+        # load sliders for each budget category depending on the categories in
         # the self/config file
         self.slider_dict = {}
         self.label_dict = {}
@@ -368,12 +365,6 @@ class BudgetEditPage(QtWidgets.QWidget):
                 continue
             else:
                 start = (count * space_for_slider) + (0.5 * space_for_slider)
-                self.slider_dict[category] = QtWidgets.QSlider(self)
-                self.slider_dict[category].setGeometry(QtCore.QRect(start, 300, 50, 350))
-                self.slider_dict[category].setOrientation(QtCore.Qt.Vertical)
-                self.slider_dict[category].setRange(0, 100)
-                self.slider_dict[category].setObjectName(f"{category}_slider")
-
                 self.label_dict[category] = QtWidgets.QLabel(self)
                 self.label_dict[category].setGeometry(QtCore.QRect(
                     start, 250, space_for_slider, 50
@@ -386,23 +377,35 @@ class BudgetEditPage(QtWidgets.QWidget):
                     start, 660, space_for_slider, 40
                 ))
                 # self.percent_dict[category].setAlignment(QtCore.Qt.AlignCenter)
-                self.percent_dict[category].setText("0%")
+                category_percent = 0
+                self.percent_dict[category].setText(f"{category_percent}%")
 
                 self.dollar_dict[category] = QtWidgets.QLabel(self)
                 self.dollar_dict[category].setGeometry(QtCore.QRect(
                     start, 700, space_for_slider, 40
                 ))
                 # self.dollar_dict[category].setAlignment(QtCore.Qt.AlignCenter)
-                self.dollar_dict[category].setText("$0")
+                category_dollars = 0
+                self.dollar_dict[category].setText(f"${category_dollars}")
+
+                self.slider_dict[category] = QtWidgets.QSlider(self)
+                self.slider_dict[category].setGeometry(QtCore.QRect(start, 300, 50, 350))
+                self.slider_dict[category].setOrientation(QtCore.Qt.Vertical)
+                self.slider_dict[category].setRange(0, 100)
+                self.slider_dict[category].valueChanged.connect(
+                    self.update_labels
+                )
+                self.slider_dict[category].setObjectName(f"{category}_slider")
 
                 count += 1
             
-
-    def make_category_slider(self, category, start, width):
-        self.verticalSlider = QtWidgets.QSlider(self)
-        self.verticalSlider.setGeometry(QtCore.QRect(start, 300, width, 350))
-        self.verticalSlider.setOrientation(QtCore.Qt.Vertical)
-        self.verticalSlider.setObjectName(f"{category}_slider")
+    def update_labels(self, value):
+        category = self.sender().objectName().split("_")[0]
+        self.percent_dict[category].setText(f"{value}%")
+        self.dollar_dict[category].setText(
+            f"${(value / 100) * self.controller.avg_monthly_income}"
+            )
+        
 
 
 class Style():
