@@ -148,7 +148,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.setStatusTip("Spending Analyzer")
 
         self.title = QtWidgets.QLabel(self)
-        self.title.setGeometry(QtCore.QRect(0, 25, 1600, 150))
+        self.title.setGeometry(QtCore.QRect(0, 0, 1600, 150))
         self.title.setText("Spending Analyzer")
         self.title.setStatusTip("Spending Analysis Page")
         self.title.setAlignment(QtCore.Qt.AlignCenter)
@@ -255,6 +255,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         print(self.start_date.minimumDate())
         print(self.start_date.maximumDate())
 
+
 class BudgetEditPage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
@@ -266,10 +267,23 @@ class BudgetEditPage(QtWidgets.QWidget):
         self.setStatusTip("Budget Goal Editor")
 
         self.title = QtWidgets.QLabel(self)
-        self.title.setGeometry(QtCore.QRect(0, 25, 1600, 150))
+        self.title.setGeometry(QtCore.QRect(0, 0, 1600, 150))
         self.title.setText("Budget Goal Setter")
         self.title.setStatusTip("Budget Editing Page")
         self.title.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.income_label = QtWidgets.QGroupBox(self)
+        self.income_label.setGeometry(QtCore.QRect(300, 150, 400, 80))
+        self.income_label.setTitle("Average Monthly Income")
+        self.income_label.setStatusTip("Average Monthly Income")
+        self.income_label.setObjectName("income_label")
+
+        self.avg_monthly_income_label = QtWidgets.QLabel(self.income_label)
+        self.avg_monthly_income_label.setGeometry(QtCore.QRect(0, 20, 400, 60))
+        self.avg_monthly_income_label.setText(f"${self.controller.avg_monthly_income}")
+        self.avg_monthly_income_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.avg_monthly_income_label.setStatusTip("Average Monthly Income")
+        self.avg_monthly_income_label.setObjectName("avg_monthly_income_label")
 
         self.save_budget_button = QtWidgets.QPushButton(self)
         self.save_budget_button.setGeometry(QtCore.QRect(900, 800, 250, 50))
@@ -337,14 +351,38 @@ class BudgetEditPage(QtWidgets.QWidget):
                 self.slider_dict[category].setObjectName(f"{category}_slider")
 
                 count += 1
-            
+
+        self.total_percent = QtWidgets.QGroupBox(self)
+        self.total_percent.setGeometry(QtCore.QRect(900, 150, 400, 80))
+        self.total_percent.setTitle("Percent of Income Used")
+        self.total_percent.setStatusTip("Total Percentage of Income Accounted for")
+        self.total_percent.setObjectName("total_percent")
+
+        self.total_percent_label = QtWidgets.QLabel(self.total_percent)
+        self.total_percent_label.setGeometry(QtCore.QRect(0, 20, 400, 60))
+        
+        self.total_percent_label.setText(f"{self.find_total_percent()}%")
+        self.total_percent_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.total_percent_label.setStatusTip("Total Percentage of Income Accounted for")
+        self.total_percent_label.setObjectName("total_percent_label")
+
     def update_labels(self, value):
         category = self.sender().objectName().split("_")[0]
         self.percent_dict[category].setText(f"{value}%")
         self.dollar_dict[category].setText(
             f"${(value / 100) * self.controller.avg_monthly_income}"
             )
+        self.total_percent_label.setText(f"{self.find_total_percent()}%")
         
+    def find_total_percent(self):
+        percent_used = 0
+        for category in list(ALL_CATEGORIES.keys()):
+            if category == "Income":
+                continue
+            else:
+                percent_used += self.slider_dict[category].value()
+        return percent_used
+
 
 class Style():
     def __init__(self):
