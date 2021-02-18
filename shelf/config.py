@@ -1,6 +1,7 @@
 import os
 # contains path to local transactions file
 LOC_TRANSACTION_PATH = os.path.join(os.getcwd(), "transactions.csv")
+LOC_SHELF_PATH = os.path.join("shelf", "shelf")
 ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
             "Income" : [
                 "Income", "Bonus", "Interest Income", "Paycheck", "Reimbursment", 

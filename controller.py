@@ -4,12 +4,15 @@
 
 from view import View
 from model import Model
-from shelf.config import ALL_CATEGORIES, LOC_TRANSACTION_PATH
+from shelf.config import *
+import shelve
+import datetime
 
 
 class Controller():
     def __init__(self):
         # model attributes
+        self.get_last_budget()
         self.model = Model(self, LOC_TRANSACTION_PATH, ALL_CATEGORIES)
         self.csv = self.model.csv_data
         self.plotter = self.model.plotter
@@ -27,6 +30,9 @@ class Controller():
         self.view.stackedWidget.setCurrentIndex(0)
         self.view.show_ui()
 
+        self.past_budgets.close()
+        
+
     def show_page(self, page):
         #code for new page to ensure current data displayed
         self.view.stackedWidget.setCurrentWidget(page)
@@ -36,7 +42,30 @@ class Controller():
         last_page = self.page_history[-2]
         self.view.stackedWidget.setCurrentWidget(last_page)
         self.page_history.append(last_page)
-
-        
+    
+    def get_last_budget(self):
+        self.past_budgets = shelve.open(LOC_SHELF_PATH)
+        try:
+            past_budget_numbers = self.shelf_nums_from_keys(self.past_budgets)
+            self.latest_budget_num = max(past_budget_numbers)
+            self.latest_budget_key = f"budget_{self.latest_budget_num}"
+        except ValueError: 
+            self.latest_budget_num = 0
+            self.latest_budget_key = f"budget_{self.latest_budget_num}"
+            budget_dict = {}
+            budget_dict["save_date"] = datetime.datetime.now().strftime("%m/%d/%Y")
+            for category in list(ALL_CATEGORIES.keys()):
+                budget_dict[category] = 0
+            self.past_budgets[self.latest_budget_key] = budget_dict
+        self.last_budget = self.past_budgets[self.latest_budget_key]
+    
+    def shelf_nums_from_keys(self, shelf):
+        keys = list(shelf.keys())
+        numbers = []
+        for key in keys:
+            numbers.append(int(key.split("budget_")[0]))
+        return numbers
+             
+            
 if __name__ == "__main__":
     app = Controller()
