@@ -10,6 +10,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
+from shelf.config import ALL_CATEGORIES
 import datetime
 
 # View() creates the qt application and is passed to the controller
@@ -331,29 +332,49 @@ class BudgetEditPage(QtWidgets.QWidget):
 
         self.title = QtWidgets.QLabel(self)
         self.title.setGeometry(QtCore.QRect(0, 25, 1600, 150))
-        self.title.setText("Budget Setter")
+        self.title.setText("Budget Goal Setter")
         self.title.setStatusTip("Budget Editing Page")
         self.title.setAlignment(QtCore.Qt.AlignCenter)
 
         self.save_budget_button = QtWidgets.QPushButton(self)
-        self.save_budget_button.setGeometry(QtCore.QRect(180, 280, 75, 23))
+        self.save_budget_button.setGeometry(QtCore.QRect(900, 800, 250, 50))
         self.save_budget_button.setObjectName("save_budget_button")
         self.save_budget_button.setText("Save Changes")
         self.save_budget_button.setShortcut("Ctrl+S+B")
 
-        self.to_spending_analysis_button = QtWidgets
-        self.to_spending_analysis_button = QtWidgets.QPushButton(self)
-        self.to_spending_analysis_button.setGeometry(QtCore.QRect(675, 800, 250, 50))
-        self.to_spending_analysis_button.setText("Back")
-        self.to_spending_analysis_button.setStatusTip("Go to Last page")
-        self.to_spending_analysis_button.clicked.connect(
+        self.back_button = QtWidgets
+        self.back_button = QtWidgets.QPushButton(self)
+        self.back_button.setGeometry(QtCore.QRect(450, 800, 250, 50))
+        self.back_button.setText("Back")
+        self.back_button.setStatusTip("Go to Last page")
+        self.back_button.clicked.connect(
             lambda : self.controller.show_page(self.controller.view.title_page)
         )
-        self.to_spending_analysis_button.setShortcut("Backspace")
+        self.back_button.setShortcut("Backspace")
+
+        self.load_sliders()
     
-    def make_category_slider(self, category):
+    def load_sliders(self):
+        # loads sliders for each budget category depending on the categories in
+        # the self/config file
+        self.slider_dict = {}
+        space_for_slider = int(round(1600 / (len(ALL_CATEGORIES) - 1), 0))
+        count = 0
+        for category in list(ALL_CATEGORIES.keys()):
+            if category == "Income":
+                continue
+            else:
+                start = (count * space_for_slider) + (0.5 * space_for_slider)
+                self.slider_dict[category] = QtWidgets.QSlider(self)
+                self.slider_dict[category].setGeometry(QtCore.QRect(start, 300, 50, 350))
+                self.slider_dict[category].setOrientation(QtCore.Qt.Vertical)
+                self.slider_dict[category].setObjectName(f"{category}_slider")
+                count += 1
+            
+
+    def make_category_slider(self, category, start, width):
         self.verticalSlider = QtWidgets.QSlider(self)
-        self.verticalSlider.setGeometry(QtCore.QRect(40, 50, 16, 160))
+        self.verticalSlider.setGeometry(QtCore.QRect(start, 300, width, 350))
         self.verticalSlider.setOrientation(QtCore.Qt.Vertical)
         self.verticalSlider.setObjectName(f"{category}_slider")
 
