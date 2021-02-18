@@ -192,13 +192,30 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.date_range_box.setTitle("Date Range")
         self.date_range_box.setStatusTip("Choose Date Range of Analysis")
 
+        # retrieves all time spending date ranges from model
+        date_range = self.controller.csv.all_time_dates_str.split(" - ")
+        old_date = date_range[0].split("/")
+        new_date = date_range[1].split("/")
+        start_date = QtCore.QDate(int(old_date[-1]), int(old_date[0]), int(old_date[1]))
+        end_date = QtCore.QDate(int(new_date[-1]), int(new_date[0]), int(new_date[1]))
+
         self.start_date = QtWidgets.QDateEdit(self.date_range_box)
         self.start_date.setGeometry(QtCore.QRect(200, 40, 300, 50))
+        self.start_date.setDate(start_date)
+        self.start_date.setMinimumDate(start_date)
+        self.start_date.dateChanged.connect(
+            self.set_min_date
+        )
         self.start_date.setObjectName("start_date")
         self.start_date.setStatusTip("Choose Start Date of Analysis")
 
         self.end_date = QtWidgets.QDateEdit(self.date_range_box)
         self.end_date.setGeometry(QtCore.QRect(750, 40, 300, 50))
+        self.end_date.setDate(end_date)
+        self.end_date.setMaximumDate(end_date)
+        self.end_date.dateChanged.connect(
+            self.set_max_date
+        )
         self.end_date.setObjectName("end_date")
         self.end_date.setStatusTip("Choose End Date of Analysis")
 
@@ -226,6 +243,17 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.analyze_budget_button.setText("ANALYZE\nBUDGET")
         self.analyze_budget_button.setStatusTip("Analyze Spending of given period")
 
+    def set_min_date(self, value):
+        self.end_date.setMinimumDate(value)
+        print(self.sender().objectName())
+        print(self.start_date.minimumDate())
+        print(self.start_date.maximumDate())
+    
+    def set_max_date(self, value):
+        self.start_date.setMaximumDate(value)
+        print(self.sender().objectName())
+        print(self.start_date.minimumDate())
+        print(self.start_date.maximumDate())
 
 class BudgetEditPage(QtWidgets.QWidget):
     def __init__(self, controller):
