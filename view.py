@@ -24,7 +24,6 @@ class View(QtWidgets.QMainWindow):
 
         self.title_page = TitlePage(self.controller)
         self.spending_analysis_page = SpendingAnalysisPage(self.controller)
-        self.budget_analysis_page = BudgetAnalysisPage(self.controller)
         self.budget_edit_page = BudgetEditPage(self.controller)
 
     # causes the built ui to show up for the user
@@ -50,7 +49,6 @@ class View(QtWidgets.QMainWindow):
 
         self.stackedWidget.addWidget(self.title_page)
         self.stackedWidget.addWidget(self.spending_analysis_page)
-        self.stackedWidget.addWidget(self.budget_analysis_page)
         self.stackedWidget.addWidget(self.budget_edit_page)
 
         self.setCentralWidget(self.centralwidget)
@@ -218,107 +216,15 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.to_label.setAlignment(QtCore.Qt.AlignCenter)
         self.to_label.setStatusTip("Choose End Date of Analysis")
 
-        self.analyze_button = QtWidgets.QPushButton(self)
-        self.analyze_button.setGeometry(QtCore.QRect(550, 500, 500, 100))
-        self.analyze_button.setText("ANALYZE")
-        self.analyze_button.setStatusTip("Analyze Spending of given period")
+        self.analyze_spending_button = QtWidgets.QPushButton(self)
+        self.analyze_spending_button.setGeometry(QtCore.QRect(250, 500, 500, 100))
+        self.analyze_spending_button.setText("ANALYZE\nSPENDING")
+        self.analyze_spending_button.setStatusTip("Analyze Spending of given period")
 
-        self.to_budget_analysis_button = QtWidgets.QPushButton(self)
-        self.to_budget_analysis_button.setGeometry(QtCore.QRect(675, 800, 250, 50))
-        self.to_budget_analysis_button.setText("Budget Analysis")
-        self.to_budget_analysis_button.setStatusTip("Go to Spending Analysis")
-        self.to_budget_analysis_button.clicked.connect(
-            lambda : self.controller.show_page(self.controller.view.budget_analysis_page)
-        )
-        self.to_budget_analysis_button.setShortcut("Right")
-
-
-class BudgetAnalysisPage(QtWidgets.QWidget):
-    def __init__(self, controller):
-        self.controller = controller
-        super().__init__()
-        self.page_setup()
-
-    def page_setup(self):
-        self.setObjectName("Budget Analysis Page")
-        self.setStatusTip("Budget Analyzer")
-
-        self.title = QtWidgets.QLabel(self)
-        self.title.setGeometry(QtCore.QRect(0, 25, 1600, 150))
-        self.title.setText("Budget Analyzer")
-        self.title.setStatusTip("Budget Analysis Page")
-        self.title.setAlignment(QtCore.Qt.AlignCenter)
-
-        self.chart_type_comboBox = QtWidgets.QComboBox(self)
-        self.chart_type_comboBox.setGeometry(QtCore.QRect(430, 200, 300, 50))
-        self.chart_type_comboBox.setObjectName("chart_type_comboBox")
-        self.chart_type_comboBox.addItem("")
-        self.chart_type_comboBox.addItem("")
-        self.chart_type_comboBox.addItem("")
-        self.chart_type_comboBox.setItemText(0, "Chart Type")
-        self.chart_type_comboBox.setItemText(1, "Line")
-        self.chart_type_comboBox.setItemText(2, "Pie")
-        self.chart_type_comboBox.setStatusTip("Choose Chart Type")
-
-        self.time_period_combobox = QtWidgets.QComboBox(self)
-        self.time_period_combobox.setGeometry(QtCore.QRect(980, 200, 300, 50))
-        self.time_period_combobox.setObjectName("time_period_combobox")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.setItemText(0, "Time Breakdown")
-        self.time_period_combobox.setItemText(1, "All")
-        self.time_period_combobox.setItemText(2, "Years")
-        self.time_period_combobox.setItemText(3, "Months")
-        self.time_period_combobox.setItemText(4, "Weeks")
-        self.time_period_combobox.setStatusTip("Choose Time Breakdown Type")
-
-        self.date_range_box = QtWidgets.QGroupBox(self)
-        self.date_range_box.setGeometry(QtCore.QRect(230, 270, 1100, 110))
-        self.date_range_box.setObjectName("date_range_box")
-        self.date_range_box.setTitle("Date Range")
-        self.date_range_box.setStatusTip("Choose Date Range of Analysis")
-
-        self.start_date = QtWidgets.QDateEdit(self.date_range_box)
-        self.start_date.setGeometry(QtCore.QRect(200, 40, 300, 50))
-        self.start_date.setObjectName("start_date")
-        self.start_date.setStatusTip("Choose Start Date of Analysis")
-
-        self.end_date = QtWidgets.QDateEdit(self.date_range_box)
-        self.end_date.setGeometry(QtCore.QRect(750, 40, 300, 50))
-        self.end_date.setObjectName("end_date")
-        self.end_date.setStatusTip("Choose End Date of Analysis")
-
-        self.from_label = QtWidgets.QLabel(self.date_range_box)
-        self.from_label.setGeometry(QtCore.QRect(50, 40, 100, 50))
-        self.from_label.setObjectName("from_label")
-        self.from_label.setText("From:")
-        self.from_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.from_label.setStatusTip("Choose Start Date of Analysis")
-
-        self.to_label = QtWidgets.QLabel(self.date_range_box)
-        self.to_label.setGeometry(QtCore.QRect(600, 40, 100, 50))
-        self.to_label.setObjectName("to_label")
-        self.to_label.setText("To:")
-        self.to_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.to_label.setStatusTip("Choose End Date of Analysis")
-
-        self.analyze_button = QtWidgets.QPushButton(self)
-        self.analyze_button.setGeometry(QtCore.QRect(550, 500, 500, 100))
-        self.analyze_button.setText("ANALYZE")
-        self.analyze_button.setStatusTip("Analyze Spending of given period")
-
-        self.to_spending_analysis_button = QtWidgets
-        self.to_spending_analysis_button = QtWidgets.QPushButton(self)
-        self.to_spending_analysis_button.setGeometry(QtCore.QRect(675, 800, 250, 50))
-        self.to_spending_analysis_button.setText("Spending Analysis")
-        self.to_spending_analysis_button.setStatusTip("Go to Spending Analysis")
-        self.to_spending_analysis_button.clicked.connect(
-            lambda : self.controller.show_page(self.controller.view.spending_analysis_page)
-        )
-        self.to_spending_analysis_button.setShortcut("Right")
+        self.analyze_budget_button = QtWidgets.QPushButton(self)
+        self.analyze_budget_button.setGeometry(QtCore.QRect(850, 500, 500, 100))
+        self.analyze_budget_button.setText("ANALYZE\nBUDGET")
+        self.analyze_budget_button.setStatusTip("Analyze Spending of given period")
 
 
 class BudgetEditPage(QtWidgets.QWidget):

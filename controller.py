@@ -32,7 +32,7 @@ class Controller():
 
         self.past_budgets.close()
         
-
+        
     def show_page(self, page):
         #code for new page to ensure current data displayed
         self.view.stackedWidget.setCurrentWidget(page)
