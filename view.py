@@ -145,6 +145,13 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
 
     def page_setup(self):
         self.setObjectName("Spending Analysis Page")
+        self.setStatusTip("Spending Analyzer")
+
+        self.title = QtWidgets.QLabel(self)
+        self.title.setGeometry(QtCore.QRect(0, 25, 1600, 150))
+        self.title.setText("Spending Analyzer")
+        self.title.setStatusTip("Spending Analysis Page")
+        self.title.setAlignment(QtCore.Qt.AlignCenter)
 
         self.chart_type_comboBox = QtWidgets.QComboBox(self)
         self.chart_type_comboBox.setGeometry(QtCore.QRect(230, 200, 300, 50))
@@ -231,6 +238,13 @@ class BudgetAnalysisPage(QtWidgets.QWidget):
 
     def page_setup(self):
         self.setObjectName("Budget Analysis Page")
+        self.setStatusTip("Budget Analyzer")
+
+        self.title = QtWidgets.QLabel(self)
+        self.title.setGeometry(QtCore.QRect(0, 25, 1600, 150))
+        self.title.setText("Budget Analyzer")
+        self.title.setStatusTip("Budget Analysis Page")
+        self.title.setAlignment(QtCore.Qt.AlignCenter)
 
         self.to_spending_analysis_button = QtWidgets
         self.to_spending_analysis_button = QtWidgets.QPushButton(self)
@@ -251,11 +265,29 @@ class BudgetEditPage(QtWidgets.QWidget):
     
     def page_setup(self):
         self.setObjectName("Budget Edit Page")
+        self.setStatusTip("Budget Goal Editor")
+
+        self.title = QtWidgets.QLabel(self)
+        self.title.setGeometry(QtCore.QRect(0, 25, 1600, 150))
+        self.title.setText("Budget Setter")
+        self.title.setStatusTip("Budget Editing Page")
+        self.title.setAlignment(QtCore.Qt.AlignCenter)
 
         self.save_budget_button = QtWidgets.QPushButton(self)
         self.save_budget_button.setGeometry(QtCore.QRect(180, 280, 75, 23))
         self.save_budget_button.setObjectName("save_budget_button")
-        self.save_budget_button.setText("Save Budget")
+        self.save_budget_button.setText("Save Changes")
+        self.save_budget_button.setShortcut("Ctrl+S+B")
+
+        self.to_spending_analysis_button = QtWidgets
+        self.to_spending_analysis_button = QtWidgets.QPushButton(self)
+        self.to_spending_analysis_button.setGeometry(QtCore.QRect(675, 800, 250, 50))
+        self.to_spending_analysis_button.setText("Back")
+        self.to_spending_analysis_button.setStatusTip("Go to Last page")
+        self.to_spending_analysis_button.clicked.connect(
+            lambda : self.controller.show_page(self.controller.view.title_page)
+        )
+        self.to_spending_analysis_button.setShortcut("Backspace")
     
     def make_category_slider(self, category):
         self.verticalSlider = QtWidgets.QSlider(self)
