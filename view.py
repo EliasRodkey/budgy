@@ -104,6 +104,7 @@ class View(QtWidgets.QMainWindow):
         self.menubar.addAction(self.menuFile.menuAction())
 
         self.stackedWidget.setCurrentWidget(self.title_page)
+        self.controller.page_history.append(self.title_page)
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
@@ -348,7 +349,7 @@ class BudgetEditPage(QtWidgets.QWidget):
         self.back_button.setText("Back")
         self.back_button.setStatusTip("Go to Last page")
         self.back_button.clicked.connect(
-            lambda : self.controller.show_page(self.controller.view.title_page)
+            lambda : self.controller.show_last_page()
         )
         self.back_button.setShortcut("Backspace")
 

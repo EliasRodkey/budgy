@@ -26,13 +26,17 @@ class Controller():
         self.view.setup_ui()
         self.view.stackedWidget.setCurrentIndex(0)
         self.view.show_ui()
-    
+
     def show_page(self, page):
         #code for new page to ensure current data displayed
         self.view.stackedWidget.setCurrentWidget(page)
         self.page_history.append(page)
+    
+    def show_last_page(self):
+        last_page = self.page_history[-2]
+        self.view.stackedWidget.setCurrentWidget(last_page)
+        self.page_history.append(last_page)
 
         
-
 if __name__ == "__main__":
     app = Controller()
