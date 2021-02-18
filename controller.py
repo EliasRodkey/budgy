@@ -63,8 +63,21 @@ class Controller():
         keys = list(shelf.keys())
         numbers = []
         for key in keys:
-            numbers.append(int(key.split("budget_")[0]))
+            numbers.append(int(key.split("budget_")[1]))
         return numbers
+
+    def save_budget(self):
+        budget_dict = {"save_date" : datetime.datetime.now().strftime("%m/%d/%Y")}
+        for category in list(ALL_CATEGORIES.keys()):
+            if category == "Income":
+                continue
+            else:
+                value = self.view.budget_edit_page.percent_dict[category].text().replace("%", "")
+                budget_dict[category] = int(value)
+        self.latest_budget_num += 1
+        self.latest_budget_key = f"budget_{self.latest_budget_num}"
+        self.past_budgets[self.latest_budget_key] = budget_dict
+        self.last_budget = self.past_budgets[self.latest_budget_key]
              
             
 if __name__ == "__main__":

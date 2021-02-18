@@ -342,6 +342,9 @@ class BudgetEditPage(QtWidgets.QWidget):
         self.save_budget_button.setObjectName("save_budget_button")
         self.save_budget_button.setText("Save Changes")
         self.save_budget_button.setShortcut("Ctrl+S+B")
+        self.save_budget_button.clicked.connect(
+            self.controller.save_budget
+        )
 
         self.back_button = QtWidgets
         self.back_button = QtWidgets.QPushButton(self)
@@ -378,7 +381,7 @@ class BudgetEditPage(QtWidgets.QWidget):
                     start, 660, space_for_slider, 40
                 ))
                 # self.percent_dict[category].setAlignment(QtCore.Qt.AlignCenter)
-                category_percent = 0
+                category_percent = self.controller.last_budget[category]
                 self.percent_dict[category].setText(f"{category_percent}%")
 
                 self.dollar_dict[category] = QtWidgets.QLabel(self)
@@ -386,13 +389,14 @@ class BudgetEditPage(QtWidgets.QWidget):
                     start, 700, space_for_slider, 40
                 ))
                 # self.dollar_dict[category].setAlignment(QtCore.Qt.AlignCenter)
-                category_dollars = 0
+                category_dollars = category_percent / 100 * self.controller.avg_monthly_income
                 self.dollar_dict[category].setText(f"${category_dollars}")
 
                 self.slider_dict[category] = QtWidgets.QSlider(self)
                 self.slider_dict[category].setGeometry(QtCore.QRect(start, 300, 50, 350))
                 self.slider_dict[category].setOrientation(QtCore.Qt.Vertical)
                 self.slider_dict[category].setRange(0, 100)
+                self.slider_dict[category].setValue(self.controller.last_budget[category])
                 self.slider_dict[category].valueChanged.connect(
                     self.update_labels
                 )
@@ -407,7 +411,6 @@ class BudgetEditPage(QtWidgets.QWidget):
             f"${(value / 100) * self.controller.avg_monthly_income}"
             )
         
-
 
 class Style():
     def __init__(self):
