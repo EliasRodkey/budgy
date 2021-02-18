@@ -13,12 +13,35 @@ import datetime
 import calendar
 from random import randint
 
+class RowConstructor():
+    def __init__(self, df, date_range):
+        self.df = df
+        self.datetime_range = self.range_to_datetimes(date_range)
+    
+    def date_range_row(self):
+        pass
+
+    def category_data_point(self, category):
+        pass
+
+    @staticmethod
+    def range_to_datetimes(date_range):
+        rang = date_range.split(" - ")
+        old_date = datetime.datetime.strptime(rang[0], "%m/%d/%Y")
+        new_date = datetime.datetime.strptime(rang[1], "%m/%d/%Y")
+        return {"start" : old_date, "end" : new_date}
+    
+    @staticmethod
+    def datetimes_to_range(datetimes):
+        old_date = datetimes["start"].strftime("%m/%d/%Y")
+        new_date = datetimes["end"].strftime("%m/%d/%Y")
+        return f"{old_date} - {new_date}"
+
 
 class CSVAnalyzer():
     def __init__(self, local_path, category_breakdown):
         self.ALL_CATEGORIES = category_breakdown
         self.df = pd.read_csv(local_path)
-        self.df.to_csv(local_path)
         for i, series in self.df.iterrows():
             if series["Transaction Type"] == "debit": #changes debits to negative numbers
                 self.df.loc[i, "Amount"] = -self.df.loc[i, "Amount"]

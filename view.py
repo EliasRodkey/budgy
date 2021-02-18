@@ -245,15 +245,9 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
 
     def set_min_date(self, value):
         self.end_date.setMinimumDate(value)
-        print(self.sender().objectName())
-        print(self.start_date.minimumDate())
-        print(self.start_date.maximumDate())
     
     def set_max_date(self, value):
         self.start_date.setMaximumDate(value)
-        print(self.sender().objectName())
-        print(self.start_date.minimumDate())
-        print(self.start_date.maximumDate())
 
 
 class BudgetEditPage(QtWidgets.QWidget):
