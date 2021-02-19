@@ -2,6 +2,7 @@
 # csv_parser.py - reads and sorts data from raw mint csv
 # using pandas dataframe
 import logging
+from numpy.core.arrayprint import format_float_positional
 
 logging.basicConfig(
     level=logging.INFO, 
@@ -85,7 +86,8 @@ class DataPointConstructor():
     # gathers all transactions surrounding a single category
     # in a given timespan and adds them up returning the sum
     def __init__(
-        self, df, 
+        self, df,
+        display_type, 
         category, 
         search_column, 
         budget_percent, 
@@ -105,13 +107,40 @@ class DataPointConstructor():
             & (self.df["Date"] <= self.end_date) \
             & (self.df[search_column] == category)
         self.transactions = self.df[filt]
-        self.amount = self.transactions["Amount"].sum()
+        self.actual_spending = self.transactions["Amount"].sum()
         # budget assessment attributes
         self.expected_income = days.days / 30.5 * avg_monthly_income
         self.expected_spending_percent = budget_percent / 100
         self.expected_spending = self.expected_income * -self.expected_spending_percent
-        self.over_budget = True if -self.amount > self.expected_spending else False
-        self.actual_spending_percent = -self.amount / self.expected_income
+        self.over_budget = True if -self.actual_spending > -self.expected_spending else False
+        self.actual_spending_percent = -self.actual_spending / self.expected_income
+        # create dataframe object for datapaoint
+        self.point_df = self.point_to_df(display_type)
+
+    def point_to_df(self, display_data_type="actual_spending"):
+        MODES_OF_DISPLAY = {
+            "actual_spending" : self.actual_spending,
+            "transactions" : self.transactions,
+            "expected_income" : self.expected_income,
+            "expected_spending_percent" : self.expected_spending_percent,
+            "expected_spending" : self.expected_spending,
+            "over_budget" : self.over_budget,
+            "actual_spending_percent" : self.actual_spending_percent
+        }
+
+        dictionary = {
+            "Start Date" : [self.start_date],
+            "End Date" : [self.end_date],
+            self.category : [MODES_OF_DISPLAY[display_data_type]]
+        }
+        return pd.DataFrame(dictionary)
+    
+    def __add__(self, data_frame):
+        assert data_frame["Start Date"].iloc[0] == self.start_date
+        assert data_frame["End Date"].iloc[0] == self.end_date
+        category_series = self.point_df[self.category]
+        data_frame[self.category] = category_series
+        return data_frame
 
 
 class RowConstructor():
@@ -119,6 +148,7 @@ class RowConstructor():
         self.subcategory = subcategory
         self.datetime_range = self.range_to_datetimes(date_range)
         self.category_data_point("Shopping")
+        
     
     def date_range_row(self):
         pass
@@ -210,12 +240,22 @@ if __name__ == "__main__":
     old = "1/7/2019"
     new = "1/1/2021"
     # analyze.update_csv_file()
-    point = DataPointConstructor(
-        analyze.df, "Food", "General Category", 
+    food_point = DataPointConstructor(
+        analyze.df, "over_budget", "Food", "General Category", 
         EXAMPLE_BUDGET["Food"], AVG_MONTHLY_INCOME, f"{old} - {new}"
     )
-    print(point.actual_spending_percent)
-    print(point.amount)
+    shopping_point = DataPointConstructor(
+        analyze.df, "over_budget", "Shopping", "General Category", 
+        EXAMPLE_BUDGET["Shopping"], AVG_MONTHLY_INCOME, f"{old} - {new}"
+    )
+    other_point = DataPointConstructor(
+        analyze.df, "over_budget", "Other", "General Category", 
+        EXAMPLE_BUDGET["Shopping"], AVG_MONTHLY_INCOME, f"{old} - {new}"
+    )
+    print(other_point.expected_spending, other_point.actual_spending)
+    print(other_point.over_budget, other_point.expected_spending_percent, other_point.actual_spending_percent)
+    new_df = shopping_point + food_point.point_df
+    print(other_point + new_df)
 
 
 
