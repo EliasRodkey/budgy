@@ -13,6 +13,7 @@ class Controller():
     def __init__(self):
         # model attributes
         self.get_last_budget()
+        print(self.last_budget)
         self.model = Model(self, LOC_TRANSACTION_PATH, ALL_CATEGORIES)
         self.csv = self.model.csv_data
         self.plotter = self.model.plotter
