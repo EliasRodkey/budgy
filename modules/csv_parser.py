@@ -14,15 +14,26 @@ import calendar
 from random import randint
 
 class RowConstructor():
-    def __init__(self, df, date_range):
+    def __init__(self, df, date_range, subcategory=None):
         self.df = df
+        self.subcategory = subcategory
         self.datetime_range = self.range_to_datetimes(date_range)
+        self.category_data_point("Shopping")
     
     def date_range_row(self):
         pass
 
     def category_data_point(self, category):
-        pass
+        # gathers all transactions surrounding a single category
+        # in a given timespan and adds them up returning the sum
+        if self.sub_category == None:
+            cat_column = "General Category"
+        else:
+            cat_column = "Category"
+        filt = (self.df["Date"] >= self.datetime_range["start"]) \
+            & (self.df["Date"] <= self.datetime_range["end"]) \
+            & (self.df[cat_column] == category)
+        return self.df[filt]["Amount"].sum()
 
     @staticmethod
     def range_to_datetimes(date_range):
@@ -41,7 +52,9 @@ class RowConstructor():
 class CSVAnalyzer():
     def __init__(self, local_path, category_breakdown):
         self.ALL_CATEGORIES = category_breakdown
-        self.df = pd.read_csv(local_path)
+        self.local_path = local_path
+        self.df = pd.read_csv(self.local_path)
+        
         for i, series in self.df.iterrows():
             if series["Transaction Type"] == "debit": #changes debits to negative numbers
                 self.df.loc[i, "Amount"] = -self.df.loc[i, "Amount"]
@@ -214,15 +227,15 @@ class CSVAnalyzer():
         return self.sort_dates(low) + same + self.sort_dates(high)
 
     # opens tkinter file selectino dialog window
-    def Update_csv_file(self, local_path):
+    def update_csv_file(self):
         import tkinter as tk
         from tkinter import filedialog as fd
         root = tk.Tk()
         root.withdraw()
         filename = fd.askopenfilename()
         self.df = pd.read_csv(filename)
-        self.df.to_csv(local_path)
-        self.__init__()
+        self.df.to_csv(self.local_path, index=False)
+        self.__init__(self.local_path, self.ALL_CATEGORIES)
 
     # creates an extra column with the more general spending category for each transaction
     def create_umbrella_column(self, df):
@@ -242,7 +255,71 @@ class CSVAnalyzer():
         return df
 
 if __name__ == "__main__":
+    import os
+    LOC_TRANSACTION_PATH = os.path.join(os.getcwd(), "transactions.csv")
+    LOC_SHELF_PATH = os.path.join("shelf", "shelf")
+    ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
+                "Income" : [
+                    "Income", "Bonus", "Interest Income", "Paycheck", "Reimbursment", 
+                    "Rental Income", "Returned Purchase", "Check",
+                    ],
+                "Bills/Utilities" : [
+                    "Bills & Utilities", "Home Phone", "Internet", "Mobile Phone", "Television", 
+                    "Utilities", "Mortgage & Rent", "Loan Payment", "Subscription", "Venmo Charge"
+                    ],
+                "Food" : [
+                    "Fast Food", "Groceries", "Restaurants", "Food & Dining"],
+                "Drink" : [
+                    "Alcohol & Bars", "Coffee Shops"
+                    ],
+                "Car" : [
+                    "Auto Insurance", "Auto Payment", "Parking", "Public Transportation"
+                    ],
+                "Shopping" : [
+                    "Shopping", "Books", "Clothing", "Electronics & Software", "Hobbies", 
+                    "Sporting Goods", "Amazon Purchases"
+                    ],
+                "Entertainment" : [
+                    "Amusement", "Arts", "Movies & DVDs", "Music", "Newspapers & Magazines",
+                    "Video Games", "Concerts"
+                    ],
+                "Travel" : [
+                    "Travel", "Air Travel", "Hotel", "Rental Car & Taxi", "Vacation"
+                    ],
+                "Health" : [
+                    "Health & Fitness", "Dentist", "Doctor", "Eyecare", "Gym", 
+                    "Health Insurance", "Pharmacy", "Sports"
+                    ],
+                "Education": [
+                    "Books & Supplies", "Studeny Loan", "Tuition"
+                    ],
+                "Investments" : [
+                    "Trade Commissions", "Finance Charge", "Investments", "Buy", "Deposit", 
+                    "Dividend & Cap Gains", "Sell", "Withdrawal"
+                    ],
+                "Business" : [
+                    "Advertising", "Business Services"
+                    ],
+                "Taxes" : [
+                    "Taxes", "Federal Tax", "Local Tax", "Property Tax", "Sales Tax", "State Tax"],
+                "Other"	 : [
+                    "Business Services", "Office Supplies", "Fees & Charges", "ATM Fee",    
+                    "Late Fee", "Service Fee", "Gifts & Donations", "Furnishings", 
+                    "Home Improvement", "Loans", "Hair", "Transfer for Cash Spending",
+                    "Uncategorized", "Cash & ATM", "Transfer", "Printing", "Shipping"
+                    # "Credit Card Payment", "Laundry", "Spa & Massage", "Loan Fees and Charges", 
+                    # "Loan Principal", "Personal Care", "Loan Insurance", "Loan Interest",
+                    # "Kids", "Allowance", "Baby Supplies", "Babysitter & Daycare", "Child Support",
+                    # "Kids Activities", "Pets", "Pet Food & Supplies", "Pet Grooming", "Veterinary",
+                    # "Home Insurance", "Home Services", "Financial Advisor", "Life Insurance",
+                    # "Charity", "Gift", "Bank Fee", "Misc Expenses", "Financial", "Home",
+                    # "Lawn & Garden", "Toys", "Home Supplies", "Legal",
+                    ]
+            }
+    
     import pprint
-    analyze = CSVAnalyzer()
-    analyze.custom_date_range("01/09/2020", new_date="05/05/2021")
-    pprint.pprint(analyze.spending_breakdown(analyze.months))
+    analyze = CSVAnalyzer(LOC_TRANSACTION_PATH, ALL_CATEGORIES)
+    old = "1/7/2019"
+    new = "1/1/2021"
+    # analyze.update_csv_file()
+    row = RowConstructor(analyze.df, f"{old} - {new}")
