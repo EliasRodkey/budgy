@@ -13,6 +13,33 @@ import datetime
 import calendar
 from random import randint
 
+
+def range_to_datetimes(date_range):
+    rang = date_range.split(" - ")
+    old_date = datetime.datetime.strptime(rang[0], "%m/%d/%Y")
+    new_date = datetime.datetime.strptime(rang[1], "%m/%d/%Y")
+    return {"start" : old_date, "end" : new_date}
+
+def datetimes_to_range(datetimes):
+    old_date = datetimes["start"].strftime("%m/%d/%Y")
+    new_date = datetimes["end"].strftime("%m/%d/%Y")
+    return f"{old_date} - {new_date}"
+
+
+class DataPointConstructor():
+    # gathers all transactions surrounding a single category
+    # in a given timespan and adds them up returning the sum
+    def __init__(self, category, search_column, date_range):
+        self.date_range = range_to_datetimes(date_range)
+        self.start_date = self.date_range["start"]
+        self.end_date = self.date_range["end"]
+
+        filt = (self.df["Date"] >= self.start_date) \
+            & (self.df["Date"] <= self.end_date) \
+            & (self.df[search_column] == category)
+        self.amount = self.df[filt]["Amount"].sum()
+
+
 class RowConstructor():
     def __init__(self, df, date_range, subcategory=None):
         self.df = df
@@ -22,32 +49,7 @@ class RowConstructor():
     
     def date_range_row(self):
         pass
-
-    def category_data_point(self, category):
-        # gathers all transactions surrounding a single category
-        # in a given timespan and adds them up returning the sum
-        if self.sub_category == None:
-            cat_column = "General Category"
-        else:
-            cat_column = "Category"
-        filt = (self.df["Date"] >= self.datetime_range["start"]) \
-            & (self.df["Date"] <= self.datetime_range["end"]) \
-            & (self.df[cat_column] == category)
-        return self.df[filt]["Amount"].sum()
-
-    @staticmethod
-    def range_to_datetimes(date_range):
-        rang = date_range.split(" - ")
-        old_date = datetime.datetime.strptime(rang[0], "%m/%d/%Y")
-        new_date = datetime.datetime.strptime(rang[1], "%m/%d/%Y")
-        return {"start" : old_date, "end" : new_date}
-    
-    @staticmethod
-    def datetimes_to_range(datetimes):
-        old_date = datetimes["start"].strftime("%m/%d/%Y")
-        new_date = datetimes["end"].strftime("%m/%d/%Y")
-        return f"{old_date} - {new_date}"
-
+        
 
 class CSVAnalyzer():
     def __init__(self, local_path, category_breakdown):
