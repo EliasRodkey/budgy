@@ -2,7 +2,6 @@
 # csv_parser.py - reads and sorts data from raw mint csv
 # using pandas dataframe
 import logging
-from numpy.core.arrayprint import format_float_positional
 
 logging.basicConfig(
     level=logging.INFO, 
@@ -13,6 +12,86 @@ import pandas as pd
 import datetime
 import calendar
 from random import randint
+
+import os
+LOC_TRANSACTION_PATH = os.path.join(os.getcwd(), "transactions.csv")
+LOC_SHELF_PATH = os.path.join("shelf", "shelf")
+AVG_MONTHLY_INCOME = 1740
+# TODO: tie budget to UI
+EXAMPLE_BUDGET = {
+    'save_date': '02/18/2021', 
+    'Bills/Utilities': 75, 
+    'Food': 15, 
+    'Drink': 5, 
+    'Car': 2, 
+    'Shopping': 3, 
+    'Entertainment': 2, 
+    'Travel': 3, 
+    'Health': 1, 
+    'Education': 1, 
+    'Investments': 10, 
+    'Business': 1, 
+    'Taxes': 1, 
+    'Other': 1
+}
+ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
+        "Income" : [
+            "Income", "Bonus", "Interest Income", "Paycheck", "Reimbursment", 
+            "Rental Income", "Returned Purchase", "Check",
+            ],
+        "Bills/Utilities" : [
+            "Bills & Utilities", "Home Phone", "Internet", "Mobile Phone", "Television", 
+            "Utilities", "Mortgage & Rent", "Loan Payment", "Subscription", "Venmo Charge"
+            ],
+        "Food" : [
+            "Fast Food", "Groceries", "Restaurants", "Food & Dining"],
+        "Drink" : [
+            "Alcohol & Bars", "Coffee Shops"
+            ],
+        "Car" : [
+            "Auto Insurance", "Auto Payment", "Parking", "Public Transportation"
+            ],
+        "Shopping" : [
+            "Shopping", "Books", "Clothing", "Electronics & Software", "Hobbies", 
+            "Sporting Goods", "Amazon Purchases"
+            ],
+        "Entertainment" : [
+            "Amusement", "Arts", "Movies & DVDs", "Music", "Newspapers & Magazines",
+            "Video Games", "Concerts"
+            ],
+        "Travel" : [
+            "Travel", "Air Travel", "Hotel", "Rental Car & Taxi", "Vacation"
+            ],
+        "Health" : [
+            "Health & Fitness", "Dentist", "Doctor", "Eyecare", "Gym", 
+            "Health Insurance", "Pharmacy", "Sports"
+            ],
+        "Education": [
+            "Books & Supplies", "Studeny Loan", "Tuition"
+            ],
+        "Investments" : [
+            "Trade Commissions", "Finance Charge", "Investments", "Buy", "Deposit", 
+            "Dividend & Cap Gains", "Sell", "Withdrawal"
+            ],
+        "Business" : [
+            "Advertising", "Business Services"
+            ],
+        "Taxes" : [
+            "Taxes", "Federal Tax", "Local Tax", "Property Tax", "Sales Tax", "State Tax"],
+        "Other"	 : [
+            "Business Services", "Office Supplies", "Fees & Charges", "ATM Fee",    
+            "Late Fee", "Service Fee", "Gifts & Donations", "Furnishings", 
+            "Home Improvement", "Loans", "Hair", "Transfer for Cash Spending",
+            "Uncategorized", "Cash & ATM", "Transfer", "Printing", "Shipping"
+            # "Credit Card Payment", "Laundry", "Spa & Massage", "Loan Fees and Charges", 
+            # "Loan Principal", "Personal Care", "Loan Insurance", "Loan Interest",
+            # "Kids", "Allowance", "Baby Supplies", "Babysitter & Daycare", "Child Support",
+            # "Kids Activities", "Pets", "Pet Food & Supplies", "Pet Grooming", "Veterinary",
+            # "Home Insurance", "Home Services", "Financial Advisor", "Life Insurance",
+            # "Charity", "Gift", "Bank Fee", "Misc Expenses", "Financial", "Home",
+            # "Lawn & Garden", "Toys", "Home Supplies", "Legal",
+            ]
+    }
 
 
 def range_to_datetimes(date_range):
@@ -81,25 +160,28 @@ class CSVAnalyzer():
         self.df.to_csv(self.local_path, index=False)
         self.__init__(self.local_path, self.ALL_CATEGORIES)
 
+DF = CSVAnalyzer(LOC_TRANSACTION_PATH, ALL_CATEGORIES).df
+
 
 class DataPointConstructor():
     # gathers all transactions surrounding a single category
     # in a given timespan and adds them up returning the sum
     def __init__(
-        self, df,
+        self,
         display_type, 
         category, 
         search_column, 
-        budget_percent, 
         avg_monthly_income, 
-        date_range
+        date_range,
+        budget_percent = None
     ):
-        self.df = df
+        self.df = DF
         self.category = category
         self.subcategory = True if search_column == "Category" else False
         self.date_range = range_to_datetimes(date_range)
         self.start_date = self.date_range["start"]
         self.end_date = self.date_range["end"]
+        self.row_id = date_range
         days = self.end_date - self.start_date
         # filters whoel df for transactions between the start and end dates in the 
         # correct category
@@ -108,12 +190,20 @@ class DataPointConstructor():
             & (self.df[search_column] == category)
         self.transactions = self.df[filt]
         self.actual_spending = self.transactions["Amount"].sum()
-        # budget assessment attributes
+        # expected income assessment
         self.expected_income = days.days / 30.5 * avg_monthly_income
-        self.expected_spending_percent = budget_percent / 100
-        self.expected_spending = self.expected_income * -self.expected_spending_percent
-        self.over_budget = True if -self.actual_spending > -self.expected_spending else False
         self.actual_spending_percent = -self.actual_spending / self.expected_income
+
+        if budget_percent != None:
+            # budget assessment attributes
+            self.expected_spending_percent = budget_percent / 100
+            self.expected_spending = self.expected_income * -self.expected_spending_percent
+            self.over_budget = True if self.actual_spending < self.expected_spending else False
+        else:
+            self.expected_spending_percent = None
+            self.expected_spending = None
+            self.over_budget = None
+    
         # create dataframe object for datapaoint
         self.point_df = self.point_to_df(display_type)
 
@@ -129,6 +219,7 @@ class DataPointConstructor():
         }
 
         dictionary = {
+            "Row ID" : self.row_id,
             "Start Date" : [self.start_date],
             "End Date" : [self.end_date],
             self.category : [MODES_OF_DISPLAY[display_data_type]]
@@ -136,6 +227,7 @@ class DataPointConstructor():
         return pd.DataFrame(dictionary)
     
     def __add__(self, data_frame):
+        assert data_frame["Row ID"].iloc[0] == self.row_id
         assert data_frame["Start Date"].iloc[0] == self.start_date
         assert data_frame["End Date"].iloc[0] == self.end_date
         category_series = self.point_df[self.category]
@@ -144,118 +236,49 @@ class DataPointConstructor():
 
 
 class RowConstructor():
-    def __init__(self, date_range, subcategory=None):
-        self.subcategory = subcategory
-        self.datetime_range = self.range_to_datetimes(date_range)
-        self.category_data_point("Shopping")
-        
-    
-    def date_range_row(self):
-        pass
+    def __init__(
+        self, display_type, search_column, 
+        category_list, date_range, 
+        avg_monthly_income, budget = None
+    ):
+        self.search_column = search_column
+        self.categories = category_list
+        self.datetime_range = range_to_datetimes(date_range)
+        self.data_frame = pd.DataFrame(
+            {
+                "Row ID" : [date_range],
+                "Start Date" : [self.datetime_range["start"]],
+                "End Date" : [self.datetime_range["end"]]
+            }
+        )
+        for category in self.categories:
+            if budget != None and category != "Income":
+                self.budget = budget
+            else:
+                self.budget = {category : None}
+            column_item = DataPointConstructor(
+                display_type, category, search_column,
+                avg_monthly_income, date_range, 
+                budget_percent=self.budget[category]
+            )
+            self.data_frame = column_item + self.data_frame
         
 
 if __name__ == "__main__":
-    import os
-    LOC_TRANSACTION_PATH = os.path.join(os.getcwd(), "transactions.csv")
-    LOC_SHELF_PATH = os.path.join("shelf", "shelf")
-    AVG_MONTHLY_INCOME = 1740
-    # TODO: tie budget to UI
-    EXAMPLE_BUDGET = {
-        'save_date': '02/18/2021', 
-        'Bills/Utilities': 75, 
-        'Food': 15, 
-        'Drink': 5, 
-        'Car': 2, 
-        'Shopping': 3, 
-        'Entertainment': 2, 
-        'Travel': 3, 
-        'Health': 1, 
-        'Education': 1, 
-        'Investments': 10, 
-        'Business': 1, 
-        'Taxes': 1, 
-        'Other': 1
-    }
-    ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
-                "Income" : [
-                    "Income", "Bonus", "Interest Income", "Paycheck", "Reimbursment", 
-                    "Rental Income", "Returned Purchase", "Check",
-                    ],
-                "Bills/Utilities" : [
-                    "Bills & Utilities", "Home Phone", "Internet", "Mobile Phone", "Television", 
-                    "Utilities", "Mortgage & Rent", "Loan Payment", "Subscription", "Venmo Charge"
-                    ],
-                "Food" : [
-                    "Fast Food", "Groceries", "Restaurants", "Food & Dining"],
-                "Drink" : [
-                    "Alcohol & Bars", "Coffee Shops"
-                    ],
-                "Car" : [
-                    "Auto Insurance", "Auto Payment", "Parking", "Public Transportation"
-                    ],
-                "Shopping" : [
-                    "Shopping", "Books", "Clothing", "Electronics & Software", "Hobbies", 
-                    "Sporting Goods", "Amazon Purchases"
-                    ],
-                "Entertainment" : [
-                    "Amusement", "Arts", "Movies & DVDs", "Music", "Newspapers & Magazines",
-                    "Video Games", "Concerts"
-                    ],
-                "Travel" : [
-                    "Travel", "Air Travel", "Hotel", "Rental Car & Taxi", "Vacation"
-                    ],
-                "Health" : [
-                    "Health & Fitness", "Dentist", "Doctor", "Eyecare", "Gym", 
-                    "Health Insurance", "Pharmacy", "Sports"
-                    ],
-                "Education": [
-                    "Books & Supplies", "Studeny Loan", "Tuition"
-                    ],
-                "Investments" : [
-                    "Trade Commissions", "Finance Charge", "Investments", "Buy", "Deposit", 
-                    "Dividend & Cap Gains", "Sell", "Withdrawal"
-                    ],
-                "Business" : [
-                    "Advertising", "Business Services"
-                    ],
-                "Taxes" : [
-                    "Taxes", "Federal Tax", "Local Tax", "Property Tax", "Sales Tax", "State Tax"],
-                "Other"	 : [
-                    "Business Services", "Office Supplies", "Fees & Charges", "ATM Fee",    
-                    "Late Fee", "Service Fee", "Gifts & Donations", "Furnishings", 
-                    "Home Improvement", "Loans", "Hair", "Transfer for Cash Spending",
-                    "Uncategorized", "Cash & ATM", "Transfer", "Printing", "Shipping"
-                    # "Credit Card Payment", "Laundry", "Spa & Massage", "Loan Fees and Charges", 
-                    # "Loan Principal", "Personal Care", "Loan Insurance", "Loan Interest",
-                    # "Kids", "Allowance", "Baby Supplies", "Babysitter & Daycare", "Child Support",
-                    # "Kids Activities", "Pets", "Pet Food & Supplies", "Pet Grooming", "Veterinary",
-                    # "Home Insurance", "Home Services", "Financial Advisor", "Life Insurance",
-                    # "Charity", "Gift", "Bank Fee", "Misc Expenses", "Financial", "Home",
-                    # "Lawn & Garden", "Toys", "Home Supplies", "Legal",
-                    ]
-            }
-    
-    import pprint
-    analyze = CSVAnalyzer(LOC_TRANSACTION_PATH, ALL_CATEGORIES)
+    categories = ALL_CATEGORIES["Shopping"]
     old = "1/7/2019"
     new = "1/1/2021"
+    row = RowConstructor(
+        "actual_spending", 
+        "Category", 
+        categories, 
+        f"{old} - {new}", 
+        AVG_MONTHLY_INCOME, 
+        budget=None
+    )
+    print(row.data_frame)
     # analyze.update_csv_file()
-    food_point = DataPointConstructor(
-        analyze.df, "over_budget", "Food", "General Category", 
-        EXAMPLE_BUDGET["Food"], AVG_MONTHLY_INCOME, f"{old} - {new}"
-    )
-    shopping_point = DataPointConstructor(
-        analyze.df, "over_budget", "Shopping", "General Category", 
-        EXAMPLE_BUDGET["Shopping"], AVG_MONTHLY_INCOME, f"{old} - {new}"
-    )
-    other_point = DataPointConstructor(
-        analyze.df, "over_budget", "Other", "General Category", 
-        EXAMPLE_BUDGET["Shopping"], AVG_MONTHLY_INCOME, f"{old} - {new}"
-    )
-    print(other_point.expected_spending, other_point.actual_spending)
-    print(other_point.over_budget, other_point.expected_spending_percent, other_point.actual_spending_percent)
-    new_df = shopping_point + food_point.point_df
-    print(other_point + new_df)
+    
 
 
 
