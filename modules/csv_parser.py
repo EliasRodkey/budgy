@@ -241,6 +241,7 @@ class RowConstructor():
         category_list, date_range, 
         avg_monthly_income, budget = None
     ):
+        # set main class attributes
         self.search_column = search_column
         self.categories = category_list
         self.datetime_range = range_to_datetimes(date_range)
@@ -251,6 +252,10 @@ class RowConstructor():
                 "End Date" : [self.datetime_range["end"]]
             }
         )
+
+        self.gross_gain = 0
+        self.gross_loss = 0
+        # loop through categories and add them to the dataframe as columns
         for category in self.categories:
             if budget != None and category != "Income":
                 self.budget = budget
@@ -262,21 +267,30 @@ class RowConstructor():
                 budget_percent=self.budget[category]
             )
             self.data_frame = column_item + self.data_frame
-        
+            if column_item.actual_spending > 0:
+                self.gross_gain += column_item.actual_spending
+            elif column_item.actual_spending < 0:
+                self.gross_loss += column_item.actual_spending
+        self.net_gain_loss = self.gross_gain + self.gross_loss
+
+
+class TableConstructor():
+    def __init__(self, date_range_list):
+        pass
 
 if __name__ == "__main__":
-    categories = ALL_CATEGORIES["Shopping"]
-    old = "1/7/2019"
-    new = "1/1/2021"
+    categories = list(ALL_CATEGORIES.keys())
+    old = "1/1/2020"
+    new = "12/31/2020"
     row = RowConstructor(
         "actual_spending", 
-        "Category", 
+        "General Category", 
         categories, 
         f"{old} - {new}", 
         AVG_MONTHLY_INCOME, 
         budget=None
     )
-    print(row.data_frame)
+    print(row.gross_gain)
     # analyze.update_csv_file()
     
 
