@@ -2,6 +2,8 @@
 # csv_parser.py - reads and sorts data from raw mint csv
 # using pandas dataframe
 import logging
+from tkinter.constants import ALL
+from numpy.lib.shape_base import column_stack
 
 logging.basicConfig(
     level=logging.INFO, 
@@ -239,7 +241,7 @@ class RowConstructor():
     def __init__(
         self, display_type, search_column, 
         category_list, date_range, 
-        avg_monthly_income, budget = None
+        avg_monthly_income, budget=None
     ):
         # set main class attributes
         self.search_column = search_column
@@ -272,25 +274,46 @@ class RowConstructor():
             elif column_item.actual_spending < 0:
                 self.gross_loss += column_item.actual_spending
         self.net_gain_loss = self.gross_gain + self.gross_loss
+    
+    def __add__(self, data_frame):
+        assert list(self.data_frame.columns) == list(data_frame.columns)
+        return self.data_frame.append(data_frame)
+
 
 
 class TableConstructor():
-    def __init__(self, date_range_list):
+    def __init__(
+        self, display_type, 
+        date_range_list, category_list, 
+        avg_monthly_income, budget=None
+    ):
         pass
 
+
 if __name__ == "__main__":
-    categories = list(ALL_CATEGORIES.keys())
+    # categories = list(ALL_CATEGORIES.keys())
+    categories = ALL_CATEGORIES["Shopping"]
     old = "1/1/2020"
-    new = "12/31/2020"
+    new = "6/1/2020"
     row = RowConstructor(
         "actual_spending", 
-        "General Category", 
+        "Category", 
         categories, 
         f"{old} - {new}", 
         AVG_MONTHLY_INCOME, 
         budget=None
     )
-    print(row.gross_gain)
+    old2 = "6/2/2020"
+    new2 = "12/31/2020"
+    row2 = RowConstructor(
+        "actual_spending", 
+        "Category", 
+        categories, 
+        f"{old2} - {new2}", 
+        AVG_MONTHLY_INCOME, 
+        budget=None
+    )
+    print(row + row2.data_frame)
     # analyze.update_csv_file()
     
 
