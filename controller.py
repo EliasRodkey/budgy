@@ -117,7 +117,16 @@ class Controller():
     def category_chosen(self):
         choices = self.view.spending_analysis_page.category_combobox.checkedItems()
         self.category_list = choices
-
+    
+    def analysis_type_chosen(self, choice):
+        self.analysis_type = choice
+        if choice == "" or choice == "Select One...":
+            self.analysis_type_table_key = self.config.ANALYSIS_TYPES["Actual Spending ($)"]["table key"]
+            compatible_graphs = self.config.ANALYSIS_TYPES["Actual Spending ($)"]["compatible graphs"]
+        else:
+            self.analysis_type_table_key = self.config.ANALYSIS_TYPES[choice]["table key"]
+            compatible_graphs = self.config.ANALYSIS_TYPES[choice]["compatible graphs"]
+        self.view.spending_analysis_page.update_chart_types(compatible_graphs)
             
 
 if __name__ == "__main__":

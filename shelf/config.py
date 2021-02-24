@@ -6,13 +6,25 @@ class Config():
         self.LOC_TRANSACTION_PATH = os.path.join(os.getcwd(), "transactions.csv")
         self.LOC_SHELF_PATH = os.path.join("shelf", "shelf")
         self.ANALYSIS_TYPES = {
-            "Actual Spending ($)" : ("actual_spending",), 
-            "Actual Spending (%)" : ("actual_spending_percent",),
-            "Transactions" : ("transactions",), 
-            "Expected Income" : ("expected_income",), 
+            "Actual Spending ($)" : {
+                "table key" : "actual_spending",
+                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+            }, 
+            "Actual Spending (%)" : {
+                "table key" : "actual_spending_percent",
+                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+            },
+            "Transactions" : {
+                "table key" : "transactions",
+                "compatible graphs" : ["Table"]
+            }, 
+            # "Expected Income" : ("expected_income",), s
             # "Budgeted Spending (%)" : ("expected_spending_percent",), 
             # "Budgeted Spending ($)" : ("expected_spending",), 
-            "Over Budget (T/F)" : ("over_budget",)
+            "Over Budget (T/F)" : {
+                "table key" : "over_budget",
+                "compatible graphs" : ["Table", "Bar Graph"]
+            }
         }
         self.ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
                     "Income" : [

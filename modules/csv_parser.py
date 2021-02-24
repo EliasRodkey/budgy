@@ -67,7 +67,7 @@ class DataPointConstructor():
     # in a given timespan and adds them up returning the sum
     def __init__(
         self, df,
-        display_type, 
+        analysis_type, 
         category, 
         search_column, 
         avg_monthly_income, 
@@ -104,7 +104,7 @@ class DataPointConstructor():
             self.over_budget = None
     
         # create dataframe object for datapaoint
-        self.point_df = self.point_to_df(display_type)
+        self.point_df = self.point_to_df(analysis_type)
 
     def point_to_df(self, display_data_type="actual_spending"):
         MODES_OF_DISPLAY = {
@@ -136,7 +136,7 @@ class DataPointConstructor():
 
 class RowConstructor():
     def __init__(
-        self, df, display_type, search_column, 
+        self, df, analysis_type, search_column, 
         category_list, date_range, 
         avg_monthly_income, budget=None
     ):
@@ -161,7 +161,7 @@ class RowConstructor():
             else:
                 self.budget = {category : None}
             column_item = DataPointConstructor(
-                df, display_type, category, search_column,
+                df, analysis_type, category, search_column,
                 avg_monthly_income, date_range, 
                 budget_percent=self.budget[category]
             )
@@ -180,12 +180,12 @@ class RowConstructor():
 
 class TableConstructor():
     def __init__(
-        self, df, display_type, search_column,
+        self, df, analysis_type, search_column,
         date_range_list, category_list, 
         avg_monthly_income, budget=None
     ):
         # define key attributes
-        self.display_type = display_type
+        self.analysis_type = analysis_type
         self.date_range_list = date_range_list
         self.categories = category_list
 
@@ -194,7 +194,7 @@ class TableConstructor():
         self.data_frame = pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *self.categories])
         for date_range in date_range_list:
             row = RowConstructor(
-                df, display_type, search_column,
+                df, analysis_type, search_column,
                 self.categories, date_range, 
                 avg_monthly_income, budget
             )
