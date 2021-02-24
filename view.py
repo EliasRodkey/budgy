@@ -105,6 +105,25 @@ class View(QtWidgets.QMainWindow):
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
+# subclass
+class CheckableComboBox(QtWidgets.QComboBox):
+    # once there is a checkState set, it is rendered
+    # here we assume default Unchecked
+    def addItem(self, item):
+        super(CheckableComboBox, self).addItem(item)
+        item = self.model().item(self.count()-1,0)
+        item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+        item.setCheckState(QtCore.Qt.Unchecked)
+    
+    def addItems(self, items:list):
+        for item in items:
+            self.addItem(item)
+
+    def itemChecked(self, index):
+        item = self.model().item(index,0)
+        return item.checkState() == QtCore.Qt.Checked
+
+
 class TitlePage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
@@ -140,21 +159,6 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
         super().__init__()
-
-        # subclass
-        class CheckableComboBox(QtWidgets.QComboBox):
-            # once there is a checkState set, it is rendered
-            # here we assume default Unchecked
-            def addItem(self, item):
-                super(CheckableComboBox, self).addItem(item)
-                item = self.model().item(self.count()-1,0)
-                item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                item.setCheckState(QtCore.Qt.Unchecked)
-
-            def itemChecked(self, index):
-                item = self.model().item(index,0)
-                return item.checkState() == QtCore.Qt.Checked
-
         self.page_setup()
 
     def page_setup(self):
@@ -192,6 +196,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.addItem("Select One...")
         self.chart_type_comboBox.addItem("Line")
         self.chart_type_comboBox.addItem("Pie")
+        self.chart_type_comboBox.addItem("Table")
         self.chart_type_comboBox.setStatusTip("Choose Chart Type")
 
         self.time_period_label = QtWidgets.QLabel(self)
@@ -215,13 +220,26 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.sub_category_label.setText("Categories")
 
         self.sub_category_combobox = QtWidgets.QComboBox(self)
-        self.sub_category_combobox.setGeometry(QtCore.QRect(350, 610, 300, 50))
+        self.sub_category_combobox.setGeometry(QtCore.QRect(350, 1100, 300, 50))
         self.sub_category_combobox.setObjectName("sub_category_combobox")
-        self.sub_category_combobox.addItem("Select Multiple...")
+        self.sub_category_combobox.addItem("Select One...")
+        self.sub_category_combobox.addItems(
+            list(self.controller.config.ALL_CATEGORIES.keys())
+        )
+        self.sub_category_combobox.setStatusTip("Choose Category for Analysis")
+
+        self.category_combobox = CheckableComboBox(self)
+        self.category_combobox.setGeometry(QtCore.QRect(350, 610, 300, 50))
+        self.category_combobox.setObjectName("sub_category_combobox")
+        self.category_combobox.addItem("Select Multiple...")
+        self.category_combobox.addItems(
+            list(self.controller.config.ALL_CATEGORIES.keys())
+        )
         self.sub_category_combobox.setStatusTip("Choose Category for Analysis")
 
         self.sub_category_checkbox = QtWidgets.QCheckBox(self)
         self.sub_category_checkbox.setGeometry(QtCore.QRect(350, 660, 30, 50))
+        self.sub_category_checkbox.stateChanged.connect(self.controller.sub_category_checked)
 
         self.checkbox_label = QtWidgets.QLabel(self)
         self.checkbox_label.setGeometry(QtCore.QRect(380, 660, 270, 50))
@@ -284,6 +302,16 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         # self.analyze_budget_button.setGeometry(QtCore.QRect(850, 500, 500, 100))
         # self.analyze_budget_button.setText("ANALYZE\nBUDGET")
         # self.analyze_budget_button.setStatusTip("Analyze Spending of given period")
+
+    def change_subcategory_combobox(self, state):
+        if state == 2:
+            self.sub_category_label.setText("Sub Categories")
+            self.sub_category_combobox.setGeometry(QtCore.QRect(350, 610, 300, 50))
+            self.category_combobox.setGeometry(QtCore.QRect(350, 1100, 300, 50))
+        else:
+            self.sub_category_label.setText("Categories")
+            self.sub_category_combobox.setGeometry(QtCore.QRect(350, 1100, 300, 50))
+            self.category_combobox.setGeometry(QtCore.QRect(350, 610, 300, 50))
 
     def set_min_date(self, value):
         self.end_date.setMinimumDate(value)

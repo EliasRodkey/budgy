@@ -14,7 +14,7 @@ class Controller():
     def __init__(self):
         # bring configuration setting into controller
         self.config = Config()
-        
+
         # model attributes
         self.get_last_budget()
         self.model = Model(self, self.config.LOC_TRANSACTION_PATH, self.config.ALL_CATEGORIES)
@@ -67,7 +67,7 @@ class Controller():
 
     def save_budget(self):
         budget_dict = {"save_date" : datetime.datetime.now().strftime("%m/%d/%Y")}
-        for category in list(ALL_CATEGORIES.keys()):
+        for category in list(self.config.ALL_CATEGORIES.keys()):
             if category == "Income":
                 continue
             else:
@@ -101,6 +101,15 @@ class Controller():
             wavg += income * weight
             decay_value += 1
         return round(wavg, 2)
+    
+    def sub_category_checked(self, state):
+        if state == 2:
+            self.search_column = "Category"
+            self.view.spending_analysis_page.change_subcategory_combobox(state)
+        else:
+            self.search_column = "General Category"
+            self.view.spending_analysis_page.change_subcategory_combobox(state)
+        print(self.search_column)
 
             
 
