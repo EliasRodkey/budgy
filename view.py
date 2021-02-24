@@ -269,11 +269,11 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.checkbox_label.setObjectName("checkbox_label")
         self.checkbox_label.setText("View Subcategories")
 
-        # self.date_range_box = QtWidgets.QGroupBox(self)
-        # self.date_range_box.setGeometry(QtCore.QRect(230, 500, 1100, 110))
-        # self.date_range_box.setObjectName("date_range_box")
-        # self.date_range_box.setTitle("Time Frame")
-        # self.date_range_box.setStatusTip("Choose Date Range of Analysis")
+        self.date_range_box = QtWidgets.QGroupBox(self)
+        self.date_range_box.setGeometry(QtCore.QRect(800, 210, 500, 375))
+        self.date_range_box.setObjectName("date_range_box")
+        self.date_range_box.setTitle("Time Frame")
+        self.date_range_box.setStatusTip("Choose Date Range of Analysis")
 
         # retrieves all time spending date ranges from model
         date_range = self.controller.model.all_time_transaction_dates.split(" - ")
@@ -282,42 +282,42 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         start_date = QtCore.QDate(int(old_date[-1]), int(old_date[0]), int(old_date[1]))
         end_date = QtCore.QDate(int(new_date[-1]), int(new_date[0]), int(new_date[1]))
 
-        # self.start_date = QtWidgets.QDateEdit(self.date_range_box)
-        # self.start_date.setGeometry(QtCore.QRect(200, 40, 300, 50))
-        # self.start_date.setDate(start_date)
-        # self.start_date.setMinimumDate(start_date)
-        # self.start_date.dateChanged.connect(
-        #     self.set_min_date
-        # )
-        # self.start_date.setObjectName("start_date")
-        # self.start_date.setStatusTip("Choose Start Date of Analysis")
+        self.start_date = QtWidgets.QDateEdit(self.date_range_box)
+        self.start_date.setGeometry(QtCore.QRect(150, 100, 300, 50))
+        self.start_date.setDate(start_date)
+        self.start_date.setMinimumDate(start_date)
+        self.start_date.dateChanged.connect(
+            self.set_min_date
+        )
+        self.start_date.setObjectName("start_date")
+        self.start_date.setStatusTip("Choose Start Date of Analysis")
 
-        # self.end_date = QtWidgets.QDateEdit(self.date_range_box)
-        # self.end_date.setGeometry(QtCore.QRect(750, 40, 300, 50))
-        # self.end_date.setDate(end_date)
-        # self.end_date.setMaximumDate(end_date)
-        # self.end_date.dateChanged.connect(
-        #     self.set_max_date
-        # )
-        # self.end_date.setObjectName("end_date")
-        # self.end_date.setStatusTip("Choose End Date of Analysis")
+        self.end_date = QtWidgets.QDateEdit(self.date_range_box)
+        self.end_date.setGeometry(QtCore.QRect(150, 250, 300, 50))
+        self.end_date.setDate(end_date)
+        self.end_date.setMaximumDate(end_date)
+        self.end_date.dateChanged.connect(
+            self.set_max_date
+        )
+        self.end_date.setObjectName("end_date")
+        self.end_date.setStatusTip("Choose End Date of Analysis")
 
-        # self.from_label = QtWidgets.QLabel(self.date_range_box)
-        # self.from_label.setGeometry(QtCore.QRect(50, 40, 100, 50))
-        # self.from_label.setObjectName("from_label")
-        # self.from_label.setText("From:")
-        # self.from_label.setAlignment(QtCore.Qt.AlignCenter)
-        # self.from_label.setStatusTip("Choose Start Date of Analysis")
+        self.from_label = QtWidgets.QLabel(self.date_range_box)
+        self.from_label.setGeometry(QtCore.QRect(25, 100, 100, 50))
+        self.from_label.setObjectName("from_label")
+        self.from_label.setText("From:")
+        self.from_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.from_label.setStatusTip("Choose Start Date of Analysis")
 
-        # self.to_label = QtWidgets.QLabel(self.date_range_box)
-        # self.to_label.setGeometry(QtCore.QRect(600, 40, 100, 50))
-        # self.to_label.setObjectName("to_label")
-        # self.to_label.setText("To:")
-        # self.to_label.setAlignment(QtCore.Qt.AlignCenter)
-        # self.to_label.setStatusTip("Choose End Date of Analysis")
+        self.to_label = QtWidgets.QLabel(self.date_range_box)
+        self.to_label.setGeometry(QtCore.QRect(25, 250, 100, 50))
+        self.to_label.setObjectName("to_label")
+        self.to_label.setText("To:")
+        self.to_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.to_label.setStatusTip("Choose End Date of Analysis")
 
         self.analyze_button = QtWidgets.QPushButton(self)
-        self.analyze_button.setGeometry(QtCore.QRect(950, 500, 500, 100))
+        self.analyze_button.setGeometry(QtCore.QRect(800, 610, 500, 100))
         self.analyze_button.setText("ANALYZE\nSPENDING")
         self.analyze_button.pressed.connect(
             self.controller.category_chosen
