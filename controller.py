@@ -2,6 +2,7 @@
 # controller.py - controls the interactions between the user and the 
 # model backend
 
+from numpy.testing._private.utils import decorate_methods
 from view import View
 from model import Model
 from shelf.config import *
@@ -13,20 +14,15 @@ class Controller():
     def __init__(self):
         # model attributes
         self.get_last_budget()
-        print(self.last_budget)
         self.model = Model(self, LOC_TRANSACTION_PATH, ALL_CATEGORIES)
-        self.csv = self.model.csv_data
         self.plotter = self.model.plotter
-        self.avg_monthly_income = 2000
+        self.avg_monthly_income = self.find_avg_monthly_income()
 
         # view and page attributes
         self.view = View(self)
         self.page_history = []
 
-        # monthly_spending = self.csv.spending_breakdown(self.csv.months)
-        # monthly_spending_plot = self.plotter(monthly_spending, ALL_CATEGORIES)
-        # monthly_spending_plot.plot_all_categories()
-
+        # view loading and showing
         self.view.setup_ui()
         self.view.stackedWidget.setCurrentIndex(0)
         self.view.show_ui()
@@ -78,7 +74,32 @@ class Controller():
         self.latest_budget_key = f"budget_{self.latest_budget_num}"
         self.past_budgets[self.latest_budget_key] = budget_dict
         self.last_budget = self.past_budgets[self.latest_budget_key]
-             
+    
+    def find_avg_monthly_income(self):
+        single_weight = 100 / 78 / 100
+        self.dates = self.model.date_ranges(self.model.start, self.model.end)
+        one_year_dates = self.dates.find_month_from_today(12)[0]
+        split = one_year_dates.split(" - ")
+        row_ids = self.model.date_ranges(
+            datetime.datetime.strptime(split[0], "%m/%d/%Y"), 
+            datetime.datetime.strptime(split[1], "%m/%d/%Y")
+        ).months
+        incomes = self.model.table_maker(
+            self.model.df, "actual_spending", 
+            "General Category", 
+            row_ids,
+            ["Income"], 1
+        ).data_frame
+        decay_value = 0
+        wavg = 0
+        for i, row_id in enumerate(row_ids):
+            income = incomes[incomes["Row ID"] == row_id]["Income"].item()
+            weight = single_weight * decay_value
+            wavg += income * weight
+            decay_value += 1
+        return round(wavg, 2)
             
+            
+
 if __name__ == "__main__":
     app = Controller()

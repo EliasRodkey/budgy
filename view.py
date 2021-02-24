@@ -193,7 +193,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.date_range_box.setStatusTip("Choose Date Range of Analysis")
 
         # retrieves all time spending date ranges from model
-        date_range = self.controller.csv.all_time_dates_str.split(" - ")
+        date_range = self.controller.model.all_time_transaction_dates.split(" - ")
         old_date = date_range[0].split("/")
         new_date = date_range[1].split("/")
         start_date = QtCore.QDate(int(old_date[-1]), int(old_date[0]), int(old_date[1]))
@@ -331,7 +331,7 @@ class BudgetEditPage(QtWidgets.QWidget):
                     start, 700, space_for_slider, 40
                 ))
                 # self.dollar_dict[category].setAlignment(QtCore.Qt.AlignCenter)
-                category_dollars = category_percent / 100 * self.controller.avg_monthly_income
+                category_dollars = round(category_percent / 100 * self.controller.avg_monthly_income, 2)
                 self.dollar_dict[category].setText(f"${category_dollars}")
 
                 self.slider_dict[category] = QtWidgets.QSlider(self)
@@ -362,9 +362,9 @@ class BudgetEditPage(QtWidgets.QWidget):
 
     def update_labels(self, value):
         category = self.sender().objectName().split("_")[0]
-        self.percent_dict[category].setText(f"{value}%")
+        self.percent_dict[category].setText(f"{round(value, 2)}%")
         self.dollar_dict[category].setText(
-            f"${(value / 100) * self.controller.avg_monthly_income}"
+            f"${(round(value, 2) / 100) * self.controller.avg_monthly_income}"
             )
         self.total_percent_label.setText(f"{self.find_total_percent()}%")
         
