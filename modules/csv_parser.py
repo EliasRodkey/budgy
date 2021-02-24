@@ -87,12 +87,13 @@ class DataPointConstructor():
         filt = (self.df["Date"] >= self.start_date) \
             & (self.df["Date"] <= self.end_date) \
             & (self.df[search_column] == category)
+        # TODO: add number of transactions attribute
         self.transactions = self.df[filt]
         self.actual_spending = self.transactions["Amount"].sum()
         # expected income assessment
         self.expected_income = days.days * (avg_monthly_income / 30.5)
         self.actual_spending_percent = -self.actual_spending / self.expected_income
-
+        # TODO add amounts/percents over/under budget
         if budget_percent != None:
             # budget assessment attributes
             self.expected_spending_percent = budget_percent / 100
@@ -102,6 +103,7 @@ class DataPointConstructor():
             self.expected_spending_percent = None
             self.expected_spending = None
             self.over_budget = None
+        # TODO: add mapping so that not everything calculated every time
     
         # create dataframe object for datapaoint
         self.point_df = self.point_to_df(analysis_type)

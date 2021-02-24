@@ -142,6 +142,9 @@ class Controller():
             budget = None
         else:
             budget = self.last_budget
+        # TODO: connect to graph display function
+        # TODO: make parrallel graph comparing to budget
+        # TODO: make save budget stuff
         print(TableConstructor(
             self.model.df,
             self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
