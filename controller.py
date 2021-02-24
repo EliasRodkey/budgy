@@ -102,6 +102,7 @@ class Controller():
             decay_value += 1
         return round(wavg, 2)
     
+    ### Combobox and Checkbox methods ###
     def sub_category_checked(self, state):
         if state == 2:
             self.search_column = "Category"
@@ -109,7 +110,13 @@ class Controller():
         else:
             self.search_column = "General Category"
             self.view.spending_analysis_page.change_subcategory_combobox(state)
-        print(self.search_column)
+    
+    def sub_category_chosen(self, choice):
+        self.category_list = self.config.ALL_CATEGORIES[choice]
+    
+    def category_chosen(self):
+        choices = self.view.spending_analysis_page.category_combobox.checkedItems()
+        self.category_list = choices
 
             
 

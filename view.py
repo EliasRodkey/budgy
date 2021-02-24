@@ -105,25 +105,6 @@ class View(QtWidgets.QMainWindow):
         QtCore.QMetaObject.connectSlotsByName(self)
 
 
-# subclass
-class CheckableComboBox(QtWidgets.QComboBox):
-    # once there is a checkState set, it is rendered
-    # here we assume default Unchecked
-    def addItem(self, item):
-        super(CheckableComboBox, self).addItem(item)
-        item = self.model().item(self.count()-1,0)
-        item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-        item.setCheckState(QtCore.Qt.Unchecked)
-    
-    def addItems(self, items:list):
-        for item in items:
-            self.addItem(item)
-
-    def itemChecked(self, index):
-        item = self.model().item(index,0)
-        return item.checkState() == QtCore.Qt.Checked
-
-
 class TitlePage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
@@ -153,6 +134,43 @@ class TitlePage(QtWidgets.QWidget):
             lambda : self.controller.show_page(self.controller.view.spending_analysis_page)
         )
         self.next_button.setShortcut("Return")
+
+# subclass
+class CheckableComboBox(QtWidgets.QComboBox):
+    # once there is a checkState set, it is rendered
+    # here we assume default Unchecked
+    def addItem(self, item):
+        super(CheckableComboBox, self).addItem(item)
+        item = self.model().item(self.count()-1,0)
+        item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+        item.setCheckState(QtCore.Qt.Unchecked)
+        self.view().pressed.connect(self.handle_item_pressed)
+    
+    def addItems(self, items:list):
+        for item in items:
+            self.addItem(item)
+
+    def itemChecked(self, index):
+        item = self.model().item(index,0)
+        return item.checkState() == QtCore.Qt.Checked
+    
+    def handle_item_pressed(self, index):
+        item = self.model().itemFromIndex(index)
+        if item.checkState() == QtCore.Qt.Checked:
+            # making it unchecked
+            item.setCheckState(QtCore.Qt.Unchecked)
+        # if not checked
+        else:
+            # making the item checked
+            item.setCheckState(QtCore.Qt.Checked)
+
+    def checkedItems(self):
+        checkedItems = []
+        for index in range(self.count()):
+            item = self.model().item(index)
+            if item.checkState() == QtCore.Qt.Checked:
+                checkedItems.append(item.text())
+        return checkedItems
 
 
 class SpendingAnalysisPage(QtWidgets.QWidget):
@@ -226,6 +244,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.sub_category_combobox.addItems(
             list(self.controller.config.ALL_CATEGORIES.keys())
         )
+        self.sub_category_combobox.currentTextChanged.connect(self.controller.sub_category_chosen)
         self.sub_category_combobox.setStatusTip("Choose Category for Analysis")
 
         self.category_combobox = CheckableComboBox(self)
@@ -293,10 +312,13 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         # self.to_label.setAlignment(QtCore.Qt.AlignCenter)
         # self.to_label.setStatusTip("Choose End Date of Analysis")
 
-        # self.analyze_spending_button = QtWidgets.QPushButton(self)
-        # self.analyze_spending_button.setGeometry(QtCore.QRect(250, 500, 500, 100))
-        # self.analyze_spending_button.setText("ANALYZE\nSPENDING")
-        # self.analyze_spending_button.setStatusTip("Analyze Spending of given period")
+        self.analyze_button = QtWidgets.QPushButton(self)
+        self.analyze_button.setGeometry(QtCore.QRect(950, 500, 500, 100))
+        self.analyze_button.setText("ANALYZE\nSPENDING")
+        self.analyze_button.pressed.connect(
+            self.controller.category_chosen
+        )
+        self.analyze_button.setStatusTip("Analyze Spending of given period")
 
         # self.analyze_budget_button = QtWidgets.QPushButton(self)
         # self.analyze_budget_button.setGeometry(QtCore.QRect(850, 500, 500, 100))

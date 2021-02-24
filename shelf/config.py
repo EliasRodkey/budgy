@@ -10,8 +10,8 @@ class Config():
             "Actual Spending (%)" : ("actual_spending_percent",),
             "Transactions" : ("transactions",), 
             "Expected Income" : ("expected_income",), 
-            "Budgeted Spending (%)" : ("expected_spending_percent",), 
-            "Budgeted Spending ($)" : ("expected_spending",), 
+            # "Budgeted Spending (%)" : ("expected_spending_percent",), 
+            # "Budgeted Spending ($)" : ("expected_spending",), 
             "Over Budget (T/F)" : ("over_budget",)
         }
         self.ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
