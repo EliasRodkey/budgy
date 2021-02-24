@@ -28,6 +28,9 @@ class DateFinder():
             "start" : input_start_date, 
             "end" : input_end_date
         }
+        self.all = [
+            f"{self.all_time_dates['start'].strftime('%m/%d/%Y')} - {self.all_time_dates['end'].strftime('%m/%d/%Y')}"
+            ]
         self.years = self.find_years(self.all_time_dates)
         self.one_year_today = self.find_year_from_today()
         self.months = self.find_months(self.all_time_dates)

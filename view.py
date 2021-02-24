@@ -318,16 +318,11 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
 
         self.analyze_button = QtWidgets.QPushButton(self)
         self.analyze_button.setGeometry(QtCore.QRect(800, 610, 500, 100))
-        self.analyze_button.setText("ANALYZE\nSPENDING")
+        self.analyze_button.setText("ANALYZE SPENDING")
         self.analyze_button.pressed.connect(
-            self.controller.category_chosen
+            self.controller.analyze_spending
         )
         self.analyze_button.setStatusTip("Analyze Spending of given period")
-
-        # self.analyze_budget_button = QtWidgets.QPushButton(self)
-        # self.analyze_budget_button.setGeometry(QtCore.QRect(850, 500, 500, 100))
-        # self.analyze_budget_button.setText("ANALYZE\nBUDGET")
-        # self.analyze_budget_button.setStatusTip("Analyze Spending of given period")
 
     def change_subcategory_combobox(self, state):
         if state == 2:

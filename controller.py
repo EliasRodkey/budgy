@@ -2,7 +2,7 @@
 # controller.py - controls the interactions between the user and the 
 # model backend
 
-from numpy.testing._private.utils import decorate_methods
+from modules.csv_parser import TableConstructor
 from view import View
 from model import Model
 from shelf.config import Config
@@ -24,6 +24,12 @@ class Controller():
         # view and page attributes
         self.view = View(self)
         self.page_history = []
+
+        # default attributes for spending analysis
+        self.analysis_type = "Actual Spending ($)"
+        self.search_column = "General Category"
+        self.category_list = list(self.config.ALL_CATEGORIES.keys())
+        self.dates_list = [self.model.all_time_transaction_dates]
 
         # view loading and showing
         self.view.setup_ui()
@@ -127,6 +133,44 @@ class Controller():
             self.analysis_type_table_key = self.config.ANALYSIS_TYPES[choice]["table key"]
             compatible_graphs = self.config.ANALYSIS_TYPES[choice]["compatible graphs"]
         self.view.spending_analysis_page.update_chart_types(compatible_graphs)
+    
+    ### Apending Analysis Methods ###
+    def analyze_spending(self):
+        self.finalize_categories()
+        self.get_date_list()
+        if self.search_column == "Category":
+            budget = None
+        else:
+            budget = self.last_budget
+        print(TableConstructor(
+            self.model.df,
+            self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
+            self.search_column,
+            self.dates_list,
+            self.category_list,
+            self.avg_monthly_income,
+            budget=budget
+        ).data_frame)
+    
+    def get_date_list(self):
+        start = self.view.spending_analysis_page.start_date.date().toPyDate()
+        end = self.view.spending_analysis_page.end_date.date().toPyDate()
+        self.dates_obj = self.model.date_ranges(start, end)
+        breakdown = self.view.spending_analysis_page.time_period_combobox.currentText()
+        if breakdown == "All":
+            self.dates_list = self.dates_obj.all
+        elif breakdown == "Years":
+            self.dates_list = self.dates_obj.years
+        elif breakdown == "Months":
+            self.dates_list = self.dates_obj.months
+        elif breakdown == "Weeks":
+            self.dates_list = self.dates_obj.weeks
+        else:
+            self.dates_list = self.dates_obj.all
+    
+    def finalize_categories(self):
+        if self.search_column == "General Category":
+            self.category_chosen()
             
 
 if __name__ == "__main__":
