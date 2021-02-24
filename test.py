@@ -1,54 +1,29 @@
+from PyQt5 import QtGui, QtCore, QtWidgets
+import sys, os
 
-from PyQt5.QtWidgets import (QWidget, QSlider, QHBoxLayout,
-                             QLabel, QApplication)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap
-import sys
+# subclass
+class CheckableComboBox(QtWidgets.QComboBox):
+    # once there is a checkState set, it is rendered
+    # here we assume default Unchecked
+    def addItem(self, item):
+        super(CheckableComboBox, self).addItem(item)
+        item = self.model().item(self.count()-1,0)
+        item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+        item.setCheckState(QtCore.Qt.Unchecked)
 
+    def itemChecked(self, index):
+        item = self.model().item(i,0)
+        return item.checkState() == QtCore.Qt.Checked
+        
 
-class Example(QWidget):
+# the basic main()
+app = QtWidgets.QApplication(sys.argv)
+dialog = QtWidgets.QMainWindow()
+mainWidget = QtWidgets.QWidget()
+dialog.setCentralWidget(mainWidget)
+ComboBox = CheckableComboBox(mainWidget)
+for i in range(6):
+    ComboBox.addItem("Combobox Item " + str(i))
 
-    def __init__(self):
-        super().__init__()
-
-        self.initUI()
-
-    def initUI(self):
-
-        hbox = QHBoxLayout()
-
-        sld = QSlider(Qt.Horizontal, self)
-        sld.setRange(0, 100)
-        sld.setFocusPolicy(Qt.NoFocus)
-        sld.setPageStep(5)
-
-        sld.valueChanged.connect(self.updateLabel)
-
-        self.label = QLabel('0', self)
-        self.label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.label.setMinimumWidth(80)
-
-        hbox.addWidget(sld)
-        hbox.addSpacing(15)
-        hbox.addWidget(self.label)
-
-        self.setLayout(hbox)
-
-        self.setGeometry(300, 300, 350, 250)
-        self.setWindowTitle('QSlider')
-        self.show()
-
-    def updateLabel(self, value):
-
-        self.label.setText(str(value))
-
-
-def main():
-
-    app = QApplication(sys.argv)
-    ex = Example()
-    sys.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    main()
+dialog.show()
+sys.exit(app.exec_())

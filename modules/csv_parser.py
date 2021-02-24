@@ -90,7 +90,7 @@ class DataPointConstructor():
         self.transactions = self.df[filt]
         self.actual_spending = self.transactions["Amount"].sum()
         # expected income assessment
-        self.expected_income = days.days * (30.5 / avg_monthly_income)
+        self.expected_income = days.days * (avg_monthly_income / 30.5)
         self.actual_spending_percent = -self.actual_spending / self.expected_income
 
         if budget_percent != None:

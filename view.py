@@ -10,7 +10,6 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
-from shelf.config import ALL_CATEGORIES
 import datetime
 
 # View() creates the qt application and is passed to the controller
@@ -141,6 +140,21 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
     def __init__(self, controller):
         self.controller = controller
         super().__init__()
+
+        # subclass
+        class CheckableComboBox(QtWidgets.QComboBox):
+            # once there is a checkState set, it is rendered
+            # here we assume default Unchecked
+            def addItem(self, item):
+                super(CheckableComboBox, self).addItem(item)
+                item = self.model().item(self.count()-1,0)
+                item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                item.setCheckState(QtCore.Qt.Unchecked)
+
+            def itemChecked(self, index):
+                item = self.model().item(index,0)
+                return item.checkState() == QtCore.Qt.Checked
+
         self.page_setup()
 
     def page_setup(self):
@@ -153,44 +167,72 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.title.setStatusTip("Spending Analysis Page")
         self.title.setAlignment(QtCore.Qt.AlignCenter)
 
+        self.data_display_type_label = QtWidgets.QLabel(self)
+        self.data_display_type_label.setGeometry(QtCore.QRect(350, 200, 300, 50))
+        self.data_display_type_label.setObjectName("data_display_type_label")
+        self.data_display_type_label.setText("Analysis Type")
+
+        self.data_display_type_comboBox = QtWidgets.QComboBox(self)
+        self.data_display_type_comboBox.setGeometry(QtCore.QRect(350, 250, 300, 50))
+        self.data_display_type_comboBox.addItem("Select One...")
+        self.data_display_type_comboBox.addItems(
+            list(self.controller.config.ANALYSIS_TYPES.keys())
+        )
+        self.data_display_type_comboBox.setObjectName("data_display_type_comboBox")
+        self.data_display_type_comboBox.setStatusTip("Choose Analysis Type")
+
+        self.chart_type_label = QtWidgets.QLabel(self)
+        self.chart_type_label.setGeometry(QtCore.QRect(350, 320, 300, 50))
+        self.chart_type_label.setObjectName("chart_type_label")
+        self.chart_type_label.setText("Chart Type")
+
         self.chart_type_comboBox = QtWidgets.QComboBox(self)
-        self.chart_type_comboBox.setGeometry(QtCore.QRect(230, 200, 300, 50))
+        self.chart_type_comboBox.setGeometry(QtCore.QRect(350, 370, 300, 50))
         self.chart_type_comboBox.setObjectName("chart_type_comboBox")
-        self.chart_type_comboBox.addItem("")
-        self.chart_type_comboBox.addItem("")
-        self.chart_type_comboBox.addItem("")
-        self.chart_type_comboBox.setItemText(0, "Chart Type")
-        self.chart_type_comboBox.setItemText(1, "Line")
-        self.chart_type_comboBox.setItemText(2, "Pie")
+        self.chart_type_comboBox.addItem("Select One...")
+        self.chart_type_comboBox.addItem("Line")
+        self.chart_type_comboBox.addItem("Pie")
         self.chart_type_comboBox.setStatusTip("Choose Chart Type")
 
+        self.time_period_label = QtWidgets.QLabel(self)
+        self.time_period_label.setGeometry(QtCore.QRect(350, 440, 300, 50))
+        self.time_period_label.setObjectName("time_period_label")
+        self.time_period_label.setText("Breakdown")
+
         self.time_period_combobox = QtWidgets.QComboBox(self)
-        self.time_period_combobox.setGeometry(QtCore.QRect(630, 200, 300, 50))
+        self.time_period_combobox.setGeometry(QtCore.QRect(350, 490, 300, 50))
         self.time_period_combobox.setObjectName("time_period_combobox")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.addItem("")
-        self.time_period_combobox.setItemText(0, "Time Breakdown")
-        self.time_period_combobox.setItemText(1, "All")
-        self.time_period_combobox.setItemText(2, "Years")
-        self.time_period_combobox.setItemText(3, "Months")
-        self.time_period_combobox.setItemText(4, "Weeks")
-        self.time_period_combobox.setStatusTip("Choose Time Breakdown Type")
+        self.time_period_combobox.addItem("Select One...")
+        self.time_period_combobox.addItem("All")
+        self.time_period_combobox.addItem("Years")
+        self.time_period_combobox.addItem("Months")
+        self.time_period_combobox.addItem("Weeks")
+        self.time_period_combobox.setStatusTip("Choose Time Breakdown")
+
+        self.sub_category_label = QtWidgets.QLabel(self)
+        self.sub_category_label.setGeometry(QtCore.QRect(350, 560, 300, 50))
+        self.sub_category_label.setObjectName("sub_category_label")
+        self.sub_category_label.setText("Categories")
 
         self.sub_category_combobox = QtWidgets.QComboBox(self)
-        self.sub_category_combobox.setGeometry(QtCore.QRect(1030, 200, 300, 50))
+        self.sub_category_combobox.setGeometry(QtCore.QRect(350, 610, 300, 50))
         self.sub_category_combobox.setObjectName("sub_category_combobox")
-        self.sub_category_combobox.addItem("")
-        self.sub_category_combobox.setItemText(0, "Sub Category")
-        self.sub_category_combobox.setStatusTip("Choose Sub Category for Analysis")
+        self.sub_category_combobox.addItem("Select Multiple...")
+        self.sub_category_combobox.setStatusTip("Choose Category for Analysis")
 
-        self.date_range_box = QtWidgets.QGroupBox(self)
-        self.date_range_box.setGeometry(QtCore.QRect(230, 270, 1100, 110))
-        self.date_range_box.setObjectName("date_range_box")
-        self.date_range_box.setTitle("Date Range")
-        self.date_range_box.setStatusTip("Choose Date Range of Analysis")
+        self.sub_category_checkbox = QtWidgets.QCheckBox(self)
+        self.sub_category_checkbox.setGeometry(QtCore.QRect(350, 660, 30, 50))
+
+        self.checkbox_label = QtWidgets.QLabel(self)
+        self.checkbox_label.setGeometry(QtCore.QRect(380, 660, 270, 50))
+        self.checkbox_label.setObjectName("checkbox_label")
+        self.checkbox_label.setText("View Subcategories")
+
+        # self.date_range_box = QtWidgets.QGroupBox(self)
+        # self.date_range_box.setGeometry(QtCore.QRect(230, 500, 1100, 110))
+        # self.date_range_box.setObjectName("date_range_box")
+        # self.date_range_box.setTitle("Time Frame")
+        # self.date_range_box.setStatusTip("Choose Date Range of Analysis")
 
         # retrieves all time spending date ranges from model
         date_range = self.controller.model.all_time_transaction_dates.split(" - ")
@@ -199,49 +241,49 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         start_date = QtCore.QDate(int(old_date[-1]), int(old_date[0]), int(old_date[1]))
         end_date = QtCore.QDate(int(new_date[-1]), int(new_date[0]), int(new_date[1]))
 
-        self.start_date = QtWidgets.QDateEdit(self.date_range_box)
-        self.start_date.setGeometry(QtCore.QRect(200, 40, 300, 50))
-        self.start_date.setDate(start_date)
-        self.start_date.setMinimumDate(start_date)
-        self.start_date.dateChanged.connect(
-            self.set_min_date
-        )
-        self.start_date.setObjectName("start_date")
-        self.start_date.setStatusTip("Choose Start Date of Analysis")
+        # self.start_date = QtWidgets.QDateEdit(self.date_range_box)
+        # self.start_date.setGeometry(QtCore.QRect(200, 40, 300, 50))
+        # self.start_date.setDate(start_date)
+        # self.start_date.setMinimumDate(start_date)
+        # self.start_date.dateChanged.connect(
+        #     self.set_min_date
+        # )
+        # self.start_date.setObjectName("start_date")
+        # self.start_date.setStatusTip("Choose Start Date of Analysis")
 
-        self.end_date = QtWidgets.QDateEdit(self.date_range_box)
-        self.end_date.setGeometry(QtCore.QRect(750, 40, 300, 50))
-        self.end_date.setDate(end_date)
-        self.end_date.setMaximumDate(end_date)
-        self.end_date.dateChanged.connect(
-            self.set_max_date
-        )
-        self.end_date.setObjectName("end_date")
-        self.end_date.setStatusTip("Choose End Date of Analysis")
+        # self.end_date = QtWidgets.QDateEdit(self.date_range_box)
+        # self.end_date.setGeometry(QtCore.QRect(750, 40, 300, 50))
+        # self.end_date.setDate(end_date)
+        # self.end_date.setMaximumDate(end_date)
+        # self.end_date.dateChanged.connect(
+        #     self.set_max_date
+        # )
+        # self.end_date.setObjectName("end_date")
+        # self.end_date.setStatusTip("Choose End Date of Analysis")
 
-        self.from_label = QtWidgets.QLabel(self.date_range_box)
-        self.from_label.setGeometry(QtCore.QRect(50, 40, 100, 50))
-        self.from_label.setObjectName("from_label")
-        self.from_label.setText("From:")
-        self.from_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.from_label.setStatusTip("Choose Start Date of Analysis")
+        # self.from_label = QtWidgets.QLabel(self.date_range_box)
+        # self.from_label.setGeometry(QtCore.QRect(50, 40, 100, 50))
+        # self.from_label.setObjectName("from_label")
+        # self.from_label.setText("From:")
+        # self.from_label.setAlignment(QtCore.Qt.AlignCenter)
+        # self.from_label.setStatusTip("Choose Start Date of Analysis")
 
-        self.to_label = QtWidgets.QLabel(self.date_range_box)
-        self.to_label.setGeometry(QtCore.QRect(600, 40, 100, 50))
-        self.to_label.setObjectName("to_label")
-        self.to_label.setText("To:")
-        self.to_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.to_label.setStatusTip("Choose End Date of Analysis")
+        # self.to_label = QtWidgets.QLabel(self.date_range_box)
+        # self.to_label.setGeometry(QtCore.QRect(600, 40, 100, 50))
+        # self.to_label.setObjectName("to_label")
+        # self.to_label.setText("To:")
+        # self.to_label.setAlignment(QtCore.Qt.AlignCenter)
+        # self.to_label.setStatusTip("Choose End Date of Analysis")
 
-        self.analyze_spending_button = QtWidgets.QPushButton(self)
-        self.analyze_spending_button.setGeometry(QtCore.QRect(250, 500, 500, 100))
-        self.analyze_spending_button.setText("ANALYZE\nSPENDING")
-        self.analyze_spending_button.setStatusTip("Analyze Spending of given period")
+        # self.analyze_spending_button = QtWidgets.QPushButton(self)
+        # self.analyze_spending_button.setGeometry(QtCore.QRect(250, 500, 500, 100))
+        # self.analyze_spending_button.setText("ANALYZE\nSPENDING")
+        # self.analyze_spending_button.setStatusTip("Analyze Spending of given period")
 
-        self.analyze_budget_button = QtWidgets.QPushButton(self)
-        self.analyze_budget_button.setGeometry(QtCore.QRect(850, 500, 500, 100))
-        self.analyze_budget_button.setText("ANALYZE\nBUDGET")
-        self.analyze_budget_button.setStatusTip("Analyze Spending of given period")
+        # self.analyze_budget_button = QtWidgets.QPushButton(self)
+        # self.analyze_budget_button.setGeometry(QtCore.QRect(850, 500, 500, 100))
+        # self.analyze_budget_button.setText("ANALYZE\nBUDGET")
+        # self.analyze_budget_button.setStatusTip("Analyze Spending of given period")
 
     def set_min_date(self, value):
         self.end_date.setMinimumDate(value)
@@ -304,9 +346,9 @@ class BudgetEditPage(QtWidgets.QWidget):
         self.label_dict = {}
         self.percent_dict = {}
         self.dollar_dict = {}
-        space_for_slider = int(round(1600 / (len(ALL_CATEGORIES) - 1), 0))
+        space_for_slider = int(round(1600 / (len(self.controller.config.ALL_CATEGORIES) - 1), 0))
         count = 0
-        for category in list(ALL_CATEGORIES.keys()):
+        for category in list(self.controller.config.ALL_CATEGORIES.keys()):
             if category == "Income":
                 continue
             else:
@@ -370,7 +412,7 @@ class BudgetEditPage(QtWidgets.QWidget):
         
     def find_total_percent(self):
         percent_used = 0
-        for category in list(ALL_CATEGORIES.keys()):
+        for category in list(self.controller.config.ALL_CATEGORIES.keys()):
             if category == "Income":
                 continue
             else:

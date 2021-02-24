@@ -5,16 +5,19 @@
 from numpy.testing._private.utils import decorate_methods
 from view import View
 from model import Model
-from shelf.config import *
+from shelf.config import Config
 import shelve
 import datetime
 
 
 class Controller():
     def __init__(self):
+        # bring configuration setting into controller
+        self.config = Config()
+        
         # model attributes
         self.get_last_budget()
-        self.model = Model(self, LOC_TRANSACTION_PATH, ALL_CATEGORIES)
+        self.model = Model(self, self.config.LOC_TRANSACTION_PATH, self.config.ALL_CATEGORIES)
         self.plotter = self.model.plotter
         self.avg_monthly_income = self.find_avg_monthly_income()
 
@@ -40,7 +43,7 @@ class Controller():
         self.page_history.append(last_page)
     
     def get_last_budget(self):
-        self.past_budgets = shelve.open(LOC_SHELF_PATH)
+        self.past_budgets = shelve.open(self.config.LOC_SHELF_PATH)
         try:
             past_budget_numbers = self.shelf_nums_from_keys(self.past_budgets)
             self.latest_budget_num = max(past_budget_numbers)
@@ -50,7 +53,7 @@ class Controller():
             self.latest_budget_key = f"budget_{self.latest_budget_num}"
             budget_dict = {}
             budget_dict["save_date"] = datetime.datetime.now().strftime("%m/%d/%Y")
-            for category in list(ALL_CATEGORIES.keys()):
+            for category in list(self.config.ALL_CATEGORIES.keys()):
                 budget_dict[category] = 0
             self.past_budgets[self.latest_budget_key] = budget_dict
         self.last_budget = self.past_budgets[self.latest_budget_key]
@@ -98,7 +101,7 @@ class Controller():
             wavg += income * weight
             decay_value += 1
         return round(wavg, 2)
-            
+
             
 
 if __name__ == "__main__":
