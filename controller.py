@@ -116,6 +116,8 @@ class Controller():
     def sub_category_checked(self, state):
         if state == 2:
             self.search_column = "Category"
+
+
             self.view.spending_analysis_page.change_subcategory_combobox(state)
         else:
             self.search_column = "General Category"
@@ -139,7 +141,10 @@ class Controller():
         self.view.spending_analysis_page.update_chart_types(compatible_graphs)
     
     def chart_type_chosen(self, choice):
-        self.chart_type = choice
+        if choice == "" or choice == "Select One...":
+            return
+        else:
+            self.chart_type = choice
     
     ### Apending Analysis Methods ###
     def analyze_spending(self):
@@ -157,15 +162,12 @@ class Controller():
         table = TableConstructor(
             self.model.df,
             self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
-            self.search_column,
-            self.dates_list,
-            self.category_list,
-            self.avg_monthly_income,
+            self.search_column, self.dates_list,
+            self.category_list, self.avg_monthly_income,
             budget=budget
         ).data_frame
         plot = self.plotter(
             table, self.chart_type, 
-            
             self.breakdown, 
             self.search_column
         )

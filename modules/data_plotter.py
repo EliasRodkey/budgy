@@ -2,7 +2,9 @@
 # data_plotter.py - reads data from csv_parser.py and plots
 # a variety of graphs for data visulization
 import pandas as pd
+from random import sample
 from matplotlib import pyplot as plt
+
 
 class DataPlotter():
     # TODO: make parrallel graph comparing to budget
@@ -14,6 +16,24 @@ class DataPlotter():
             "Bar Graph" : self.build_bar_graph, 
             "Histogram" : self.build_histogram
         }
+        self.COLOR_LIST = [
+            (178, 33, 179),
+            (140, 104, 170),
+            (224, 79, 127),
+            (242, 228, 116),
+            (101, 199, 44),
+            (241, 144, 69),
+            (20, 176, 185),
+            (179, 26, 126),
+            (103, 148, 225),
+            (191, 60, 46),
+            (41, 124, 59),
+            (161, 78, 104),
+            (74, 117, 242),
+            (66, 74, 142),
+            (254, 69, 6),
+            (54, 206, 219)
+        ]
         if search_column == "Category":
             title_category = "Subcategories"
         else:
@@ -30,15 +50,52 @@ class DataPlotter():
         function()
     
     def build_pie_chart(self):
-        if "Income" in self.columns:
-            self.columns.remove("Income")
-        x = self.df[self.columns].iloc[0]
-        explode = [0.1 for i in x.tolist()]
+        x, labels = self.clean_pie_data()
+        colors = self.generate_colors(len(x))
+        explode = [(30/i) for i in x]
         self.plot.pie(
-            x.abs(), explode=tuple(explode),
+            x, explode=tuple(explode),
             radius=1.1, autopct='%1.2f%%',
-            pctdistance=0.8
+            pctdistance=0.8, colors=colors,
+            textprops={"fontsize" : 14}
         )
+        self.plot.legend(labels)
+    
+    def clean_pie_data(self):
+        labels = self.columns.copy()
+        if "Income" in labels:
+            labels.remove("Income")
+
+        x = self.df[labels].iloc[0].tolist()
+        if self.title.split(" ")[-1] != "All":
+            totals = []
+            for column in labels:
+                totals += self.df[column].sum()
+            x = totals
+        remove = []
+
+        for i, column in enumerate(labels):
+            if round(x[i], 1) == 0.0:
+                remove.insert(0, (i, column))
+        for item in remove:
+            del x[item[0]]
+            labels.remove(item[1])
+
+        for i, num in enumerate(x):
+            if num < 0:
+                x[i] = -num
+        return x, labels
+    
+    def generate_colors(self, num_of_plots):
+        colors_256 = sample(self.COLOR_LIST, num_of_plots)
+        colors = []
+        for color in colors_256:
+            temp = []
+            for rgb in color:
+                temp.append(rgb / 256)
+            colors.append(tuple(temp))
+        return colors
+
 
     def build_line_chart(self):
         pass
@@ -58,8 +115,6 @@ class DataPlotter():
     def save(self):
         pass
 
-if __name__ == "__main__":
-    pass
 
 class DataPlotter2():
     def __init__(self, df):

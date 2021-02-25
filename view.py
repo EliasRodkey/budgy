@@ -171,6 +171,8 @@ class CheckableComboBox(QtWidgets.QComboBox):
             item = self.model().item(index)
             if item.checkState() == QtCore.Qt.Checked:
                 checkedItems.append(item.text())
+        if "Select Multiple..." in checkedItems:
+            checkedItems.remove("Select Multiple...")
         return checkedItems
 
 
@@ -327,6 +329,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.analyze_button.pressed.connect(
             self.controller.analyze_spending
         )
+        self.analyze_button.setShortcut("Return")
         self.analyze_button.setStatusTip("Analyze Spending of given period")
 
     def change_subcategory_combobox(self, state):
