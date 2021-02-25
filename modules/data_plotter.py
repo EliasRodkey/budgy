@@ -21,15 +21,24 @@ class DataPlotter():
         self.title = f"{chart_type} of {title_category}\nBreakdown: {breakdown}"
         self.df = df
         self.columns = self.df.columns.tolist()[3:]
-        self.dates_df = self.df["Start Date"]
+        self.dates_df = self.df["Start Date"].dt.strftime("%m/%d/%Y")
         
+        self.plot = plt
+        self.plot.style.use("ggplot")
+        self.plot.figure(figsize=(20, 15))
         function = CHART_MAP[chart_type]
         function()
     
     def build_pie_chart(self):
-        print(self.title)
-        print(self.columns)
-        print(self.dates_df)
+        if "Income" in self.columns:
+            self.columns.remove("Income")
+        x = self.df[self.columns].iloc[0]
+        explode = [0.1 for i in x.tolist()]
+        self.plot.pie(
+            x.abs(), explode=tuple(explode),
+            radius=1.1, autopct='%1.2f%%',
+            pctdistance=0.8
+        )
 
     def build_line_chart(self):
         pass
@@ -44,7 +53,7 @@ class DataPlotter():
         pass
     
     def show(self):
-        pass
+        self.plot.show()
     
     def save(self):
         pass

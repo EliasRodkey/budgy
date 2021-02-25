@@ -165,6 +165,7 @@ class Controller():
         ).data_frame
         plot = self.plotter(
             table, self.chart_type, 
+            
             self.breakdown, 
             self.search_column
         )
