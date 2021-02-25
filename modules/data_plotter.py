@@ -5,12 +5,49 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 class DataPlotter():
-    def __init__(self, df, chart_type):
-        print("yeet")
+    # TODO: make parrallel graph comparing to budget
+    def __init__(self, df, chart_type, breakdown, search_column):
+        CHART_MAP = {
+            "Pie Chart" : self.build_pie_chart,
+            "Line Chart" : self.build_line_chart, 
+            "Table": self.build_table, 
+            "Bar Graph" : self.build_bar_graph, 
+            "Histogram" : self.build_histogram
+        }
+        if search_column == "Category":
+            title_category = "Subcategories"
+        else:
+            title_category = "General Categories"
+        self.title = f"{chart_type} of {title_category}\nBreakdown: {breakdown}"
+        self.df = df
+        self.columns = self.df.columns.tolist()[3:]
+        self.dates_df = self.df["Start Date"]
+        
+        function = CHART_MAP[chart_type]
+        function()
+    
+    def build_pie_chart(self):
+        print(self.title)
+        print(self.columns)
+        print(self.dates_df)
+
+    def build_line_chart(self):
+        pass
+
+    def build_table(self):
+        pass
+
+    def build_bar_graph(self):
+        pass
+
+    def build_histogram(self):
+        pass
     
     def show(self):
         pass
-
+    
+    def save(self):
+        pass
 
 if __name__ == "__main__":
     pass

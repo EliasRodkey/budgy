@@ -11,6 +11,8 @@ import datetime
 
 
 class Controller():
+    # TODO: make save budget stuff
+    # TODO: make net income stuff
     def __init__(self):
         # bring configuration setting into controller
         self.config = Config()
@@ -28,6 +30,7 @@ class Controller():
         # default attributes for spending analysis
         self.analysis_type = "Actual Spending ($)"
         self.search_column = "General Category"
+        self.breakdown = "All"
         self.category_list = list(self.config.ALL_CATEGORIES.keys())
         self.dates_list = [self.model.all_time_transaction_dates]
         self.chart_type = "Pie Chart"
@@ -146,9 +149,11 @@ class Controller():
             budget = None
         else:
             budget = self.last_budget
-        # TODO: connect to graph display function
-        # TODO: make parrallel graph comparing to budget
-        # TODO: make save budget stuff
+        if len(self.category_list) == 0:
+            self.view.error_popup(
+                "No Categories Chosen\nPlease Select at Least One"
+            )
+            return 
         table = TableConstructor(
             self.model.df,
             self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
@@ -158,8 +163,12 @@ class Controller():
             self.avg_monthly_income,
             budget=budget
         ).data_frame
-        self.plotter(table, self.chart_type)
-        self.plotter.show()
+        plot = self.plotter(
+            table, self.chart_type, 
+            self.breakdown, 
+            self.search_column
+        )
+        plot.show()
     
     def get_date_list(self):
         start = self.view.spending_analysis_page.start_date.date().toPyDate()

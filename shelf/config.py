@@ -5,46 +5,47 @@ class Config():
         # contains path to local transactions file
         self.LOC_TRANSACTION_PATH = os.path.join(os.getcwd(), "transactions.csv")
         self.LOC_SHELF_PATH = os.path.join("shelf", "shelf")
+        self.CHART_TYPES = ["Pie Chart", "Line Chart", "Table", "Bar Graph", "Histogram"]
         self.ANALYSIS_TYPES = {
             "Actual Spending ($)" : {
                 "table key" : "actual_spending",
-                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+                "compatible graphs" : self.CHART_TYPES[:3]
             }, 
             "Actual Spending (%)" : {
                 "table key" : "actual_spending_percent",
-                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+                "compatible graphs" : self.CHART_TYPES[:3]
             },
             "Transactions" : {
                 "table key" : "transactions",
-                "compatible graphs" : ["Table"]
+                "compatible graphs" : self.CHART_TYPES[2]
             }, 
             "Number Of Transactions" : {
                 "table key" : "transaction_number",
-                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph", "Histogram"]
+                "compatible graphs" : self.CHART_TYPES
             },
             "Expected Income" : {
                 "table key" : "expected_income",
-                "compatible_graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+                "compatible_graphs" : self.CHART_TYPES[:3]
             },
             "Budgeted Spending (%)" : {
                 "table key" : "expected_spending_percent",
-                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+                "compatible graphs" : self.CHART_TYPES[:3]
             }, 
             "Budgeted Spending ($)" : {
                 "table key" : "expected_spending",
-                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+                "compatible graphs" : self.CHART_TYPES[:3]
             }, 
             "Amount Over/Under Budget ($)" : {
                 "table key" : "amount_over",
-                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+                "compatible graphs" : self.CHART_TYPES[:3]
             },
             "Amount Over/Under Budget (%)" : {
                 "table key" : "amount_over_percent",
-                "compatible graphs" : ["Pie Chart", "Line Chart", "Table", "Bar Graph"]
+                "compatible graphs" : self.CHART_TYPES[:3]
             },
             "Over Budget (T/F)" : {
                 "table key" : "over_budget",
-                "compatible graphs" : ["Table", "Bar Graph"]
+                "compatible graphs" : self.CHART_TYPES[2:3]
             }
         }
         self.ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions

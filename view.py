@@ -20,10 +20,11 @@ class View(QtWidgets.QMainWindow):
         self.controller = controller
         self.app = QtWidgets.QApplication(sys.argv)
         super().__init__()
-
+        # add other pages as attributes to view
         self.title_page = TitlePage(self.controller)
         self.spending_analysis_page = SpendingAnalysisPage(self.controller)
         self.budget_edit_page = BudgetEditPage(self.controller)
+        self.error_popup = ErrorPopup
 
     # causes the built ui to show up for the user
     def show_ui(self):
@@ -219,6 +220,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.addItem("Pie Chart")
         self.chart_type_comboBox.addItem("Table")
         self.chart_type_comboBox.addItem("Bar Graph")
+        self.chart_type_comboBox.addItem("Histogram")
         self.chart_type_comboBox.currentTextChanged.connect(
             self.controller.chart_type_chosen
         )
@@ -477,6 +479,15 @@ class BudgetEditPage(QtWidgets.QWidget):
                 percent_used += self.slider_dict[category].value()
         return percent_used
 
+class ErrorPopup(QtWidgets.QMessageBox):
+    def __init__(self, msg):
+        super().__init__()
+        self.setIcon(QtWidgets.QMessageBox.Critical)
+        # self.setWindowIcon(QtGui.QIcon('imgs/error.jpg'))
+        self.setText("oh FUCK!")
+        self.setInformativeText(msg)
+        self.setWindowTitle("Budgy Error")
+        self.exec_()
 
 class Style():
     def __init__(self):
