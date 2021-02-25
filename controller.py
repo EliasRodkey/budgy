@@ -145,7 +145,7 @@ class Controller():
         # TODO: connect to graph display function
         # TODO: make parrallel graph comparing to budget
         # TODO: make save budget stuff
-        print(TableConstructor(
+        table = TableConstructor(
             self.model.df,
             self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
             self.search_column,
@@ -153,7 +153,7 @@ class Controller():
             self.category_list,
             self.avg_monthly_income,
             budget=budget
-        ).data_frame)
+        ).data_frame
     
     def get_date_list(self):
         start = self.view.spending_analysis_page.start_date.date().toPyDate()

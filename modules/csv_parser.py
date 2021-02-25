@@ -76,54 +76,109 @@ class DataPointConstructor():
     ):
         self.df = df
         self.category = category
+        self.avg_monthly_income = avg_monthly_income
         self.subcategory = True if search_column == "Category" else False
         self.date_range = range_to_datetimes(date_range)
         self.start_date = self.date_range["start"]
         self.end_date = self.date_range["end"]
         self.row_id = date_range
-        days = self.end_date - self.start_date
+        self.days = self.end_date - self.start_date
         # filters whoel df for transactions between the start and end dates in the 
         # correct category
-        filt = (self.df["Date"] >= self.start_date) \
+        self.filt = (self.df["Date"] >= self.start_date) \
             & (self.df["Date"] <= self.end_date) \
             & (self.df[search_column] == category)
-        # TODO: add number of transactions attribute
-        self.transactions = self.df[filt]
-        self.actual_spending = self.transactions["Amount"].sum()
         # expected income assessment
-        self.expected_income = days.days * (avg_monthly_income / 30.5)
-        self.actual_spending_percent = -self.actual_spending / self.expected_income
-        # TODO add amounts/percents over/under budget
         if budget_percent != None:
-            # budget assessment attributes
-            self.expected_spending_percent = budget_percent / 100
-            self.expected_spending = self.expected_income * -self.expected_spending_percent
-            self.over_budget = True if self.actual_spending < self.expected_spending else False
+            self.has_budget = budget_percent
         else:
-            self.expected_spending_percent = None
-            self.expected_spending = None
-            self.over_budget = None
-        # TODO: add mapping so that not everything calculated every time
-    
+            self.has_budget = False
+        
+        self.ANALYSIS_TYPES = {
+            "actual_spending" : self.get_actual_spending,
+            "actual_spending_percent" : self.get_actual_spending_percent,
+            "transactions" : self.get_transactions,
+            "transaction_number" : self.get_number_transactions,
+            "expected_income" : self.get_expected_income,
+            "expected_spending_percent" : self.get_expected_spending_percent,
+            "expected_spending" : self.get_expected_spending,
+            "over_budget" : self.get_over_budget,
+            "amount_over" : self.get_amount_over_expected,
+            "amount_over_percent" : self.get_amount_over_expected_percent
+        }
+
         # create dataframe object for datapaoint
         self.point_df = self.point_to_df(analysis_type)
 
-    def point_to_df(self, display_data_type="actual_spending"):
-        MODES_OF_DISPLAY = {
-            "actual_spending" : self.actual_spending,
-            "transactions" : self.transactions,
-            "expected_income" : self.expected_income,
-            "expected_spending_percent" : self.expected_spending_percent,
-            "expected_spending" : self.expected_spending,
-            "over_budget" : self.over_budget,
-            "actual_spending_percent" : self.actual_spending_percent
-        }
+    ### calculation methods ###
+    def get_transactions(self, df, filt):
+        transactions = df[filt]
+        return transactions
+    
+    def get_number_transactions(self, df, filt):
+        transactions = self.get_transactions(df, filt)
+        num = len(transactions.index) 
+        return num
 
+    def get_actual_spending(self, df, filt):
+        transactions = self.get_transactions(df, filt) 
+        actual_spending = transactions["Amount"].sum()
+        return actual_spending
+    
+    def get_expected_income(self, df, filt):
+        return (self.avg_monthly_income / 30.5) * self.days.days
+
+    def get_actual_spending_percent(self, df, filt):
+        actual_spending = self.get_actual_spending(df, filt)
+        expected_income = self.get_expected_income(df, filt)
+        percent = -actual_spending / expected_income
+        return percent
+
+    def get_expected_spending_percent(self, df, filt):
+        if not self.has_budget:
+            return "No Budget"
+        else:
+            percent = self.has_budget / 100
+            return percent
+    
+    def get_expected_spending(self, df, filt):
+        if not self.has_budget:
+            return "No Budget"
+        else:
+            expected_percent = self.get_expected_spending_percent(df, filt)
+            expected_income = self.get_expected_income(df, filt)
+            spending = -expected_percent * expected_income
+            return spending
+
+    def get_over_budget(self, df, filt):
+        if not self.has_budget:
+            return "No Budget"
+        else:
+            amount_over = self.get_amount_over_expected(df, filt)
+            return True if amount_over > 0 else False
+
+    def get_amount_over_expected_percent(self, df, filt):
+        if not self.has_budget:
+            return "No Budget"
+        else:
+            actual_spending = self.get_actual_spending_percent(df, filt)
+            expected_spending = self.get_expected_spending_percent(df, filt)
+            return expected_spending - actual_spending
+
+    def get_amount_over_expected(self, df, filt):
+        if not self.has_budget:
+            return "No Budget"
+        else:
+            actual_spending = self.get_actual_spending(df, filt)
+            expected_spending = self.get_expected_spending(df, filt)
+            return (-expected_spending) - (-actual_spending)
+
+    def point_to_df(self, display_data_type="actual_spending"):
         dictionary = {
             "Row ID" : self.row_id,
             "Start Date" : [self.start_date],
             "End Date" : [self.end_date],
-            self.category : [MODES_OF_DISPLAY[display_data_type]]
+            self.category : [self.ANALYSIS_TYPES[display_data_type(self.df, self.filt)]]
         }
         return pd.DataFrame(dictionary)
     

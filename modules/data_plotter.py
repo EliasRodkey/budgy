@@ -5,7 +5,14 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 class DataPlotter():
-    def __init__(self, df, category_breakdown, sub_category=None, time_span=None):
+    def __init__(self, df):
+        pass
+    
+if __name__ == "__main__":
+    pass
+
+class DataPlotter2():
+    def __init__(self, df):
         self.df = df
         self.ALL_CATEGORIES = category_breakdown
         self.time_span = time_span
