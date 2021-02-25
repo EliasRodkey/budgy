@@ -219,6 +219,9 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.addItem("Pie Chart")
         self.chart_type_comboBox.addItem("Table")
         self.chart_type_comboBox.addItem("Bar Graph")
+        self.chart_type_comboBox.currentTextChanged.connect(
+            self.controller.chart_type_chosen
+        )
         self.chart_type_comboBox.setStatusTip("Choose Chart Type")
 
         self.time_period_label = QtWidgets.QLabel(self)

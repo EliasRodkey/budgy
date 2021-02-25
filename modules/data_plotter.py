@@ -5,9 +5,13 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 class DataPlotter():
-    def __init__(self, df):
-        pass
+    def __init__(self, df, chart_type):
+        print("yeet")
     
+    def show(self):
+        pass
+
+
 if __name__ == "__main__":
     pass
 

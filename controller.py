@@ -30,6 +30,7 @@ class Controller():
         self.search_column = "General Category"
         self.category_list = list(self.config.ALL_CATEGORIES.keys())
         self.dates_list = [self.model.all_time_transaction_dates]
+        self.chart_type = "Pie Chart"
 
         # view loading and showing
         self.view.setup_ui()
@@ -134,6 +135,9 @@ class Controller():
             compatible_graphs = self.config.ANALYSIS_TYPES[choice]["compatible graphs"]
         self.view.spending_analysis_page.update_chart_types(compatible_graphs)
     
+    def chart_type_chosen(self, choice):
+        self.chart_type = choice
+    
     ### Apending Analysis Methods ###
     def analyze_spending(self):
         self.finalize_categories()
@@ -154,6 +158,8 @@ class Controller():
             self.avg_monthly_income,
             budget=budget
         ).data_frame
+        self.plotter(table, self.chart_type)
+        self.plotter.show()
     
     def get_date_list(self):
         start = self.view.spending_analysis_page.start_date.date().toPyDate()

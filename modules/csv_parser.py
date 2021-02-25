@@ -106,6 +106,7 @@ class DataPointConstructor():
             "amount_over" : self.get_amount_over_expected,
             "amount_over_percent" : self.get_amount_over_expected_percent
         }
+        self.actual_spending = self.get_actual_spending(self.df, self.filt)
 
         # create dataframe object for datapaoint
         self.point_df = self.point_to_df(analysis_type)
@@ -174,11 +175,12 @@ class DataPointConstructor():
             return (-expected_spending) - (-actual_spending)
 
     def point_to_df(self, display_data_type="actual_spending"):
+        function = self.ANALYSIS_TYPES[display_data_type]
         dictionary = {
             "Row ID" : self.row_id,
             "Start Date" : [self.start_date],
             "End Date" : [self.end_date],
-            self.category : [self.ANALYSIS_TYPES[display_data_type(self.df, self.filt)]]
+            self.category : [function(self.df, self.filt)]
         }
         return pd.DataFrame(dictionary)
     
