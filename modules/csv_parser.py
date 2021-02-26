@@ -97,7 +97,7 @@ class DataPointConstructor():
         self.ANALYSIS_TYPES = {
             "actual_spending" : self.get_actual_spending,
             "actual_spending_percent" : self.get_actual_spending_percent,
-            "transactions" : self.get_transactions,
+            # "transactions" : self.get_transactions,
             "transaction_number" : self.get_number_transactions,
             "expected_income" : self.get_expected_income,
             "expected_spending_percent" : self.get_expected_spending_percent,
@@ -133,6 +133,7 @@ class DataPointConstructor():
         actual_spending = self.get_actual_spending(df, filt)
         expected_income = self.get_expected_income(df, filt)
         percent = -actual_spending / expected_income
+        #TODO returns a -0.0 for zeros sometimes? must solve
         return round(percent, 2)
 
     def get_expected_spending_percent(self, df, filt):
@@ -162,9 +163,10 @@ class DataPointConstructor():
         if not self.has_budget:
             return "No Budget"
         else:
-            actual_spending = self.get_actual_spending_percent(df, filt)
-            expected_spending = self.get_expected_spending_percent(df, filt)
-            return round(expected_spending - actual_spending, 2)
+            actual_spending = self.get_actual_spending(df, filt)
+            expected_spending = self.get_expected_spending(df, filt)
+            percent = (expected_spending + (-actual_spending)) / -expected_spending
+            return round(percent, 2)
 
     def get_amount_over_expected(self, df, filt):
         if not self.has_budget:
@@ -172,7 +174,7 @@ class DataPointConstructor():
         else:
             actual_spending = self.get_actual_spending(df, filt)
             expected_spending = self.get_expected_spending(df, filt)
-            return round((-expected_spending) - (-actual_spending), 2)
+            return round(expected_spending + (-actual_spending), 2)
 
     def point_to_df(self, display_data_type="actual_spending"):
         function = self.ANALYSIS_TYPES[display_data_type]

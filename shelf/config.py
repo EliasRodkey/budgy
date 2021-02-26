@@ -15,17 +15,17 @@ class Config():
                 "table key" : "actual_spending_percent",
                 "compatible graphs" : self.CHART_TYPES[:3]
             },
-            "Transactions" : {
-                "table key" : "transactions",
-                "compatible graphs" : self.CHART_TYPES[2]
-            }, 
+            # "Transactions" : {
+            #     "table key" : "transactions",
+            #     "compatible graphs" : [self.CHART_TYPES[2]]
+            # }, 
             "Number Of Transactions" : {
                 "table key" : "transaction_number",
                 "compatible graphs" : self.CHART_TYPES
             },
             "Expected Income" : {
                 "table key" : "expected_income",
-                "compatible_graphs" : self.CHART_TYPES[:3]
+                "compatible graphs" : self.CHART_TYPES[:3]
             },
             "Budgeted Spending (%)" : {
                 "table key" : "expected_spending_percent",
