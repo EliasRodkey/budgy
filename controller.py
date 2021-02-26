@@ -33,7 +33,7 @@ class Controller():
         self.breakdown = "All"
         self.category_list = list(self.config.ALL_CATEGORIES.keys())
         self.dates_list = [self.model.all_time_transaction_dates]
-        self.chart_type = "Pie Chart"
+        self.chart_type = "Table"
 
         # view loading and showing
         self.view.setup_ui()

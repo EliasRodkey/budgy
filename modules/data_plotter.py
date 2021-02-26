@@ -51,6 +51,9 @@ class DataPlotter():
     
     def build_pie_chart(self):
         x, labels = self.clean_pie_data()
+        print(self.df)
+        print(x)
+        print(labels)
         colors = self.generate_colors(len(x))
         explode = [(30/i) for i in x]
         self.plot.pie(
@@ -96,13 +99,35 @@ class DataPlotter():
             colors.append(tuple(temp))
         return colors
 
-
     def build_line_chart(self):
         pass
 
     def build_table(self):
-        pass
+        ax = self.plot.subplot(111, frame_on=False) 
+        ax.xaxis.set_visible(False) 
+        ax.yaxis.set_visible(False)
+        
+        table_vals, col_labels = self.clean_table_data()
+        the_table = self.plot.table(
+            cellText=table_vals,
+            #colWidths = [0.5]*len(col_labels),
+            #rowLabels=row_labels, 
+            colLabels=col_labels, loc="center",
+            cellLoc="center", rowLoc = "center"
+        )
+        the_table.auto_set_font_size(False)
+        the_table.set_fontsize(14)
+        the_table.scale(1.2, 2)
+        
 
+    def clean_table_data(self):
+        display_table = self.df[["Start Date", *self.columns]]
+        display_table["Start Date"] = display_table["Start Date"].astype("str")
+        vals = display_table.values
+        col_labels = display_table.columns.tolist()
+        # row_labels = display_table["Row ID"]
+        return vals, col_labels
+        
     def build_bar_graph(self):
         pass
 

@@ -124,23 +124,23 @@ class DataPointConstructor():
     def get_actual_spending(self, df, filt):
         transactions = self.get_transactions(df, filt) 
         actual_spending = transactions["Amount"].sum()
-        return actual_spending
+        return round(actual_spending, 2)
     
     def get_expected_income(self, df, filt):
-        return (self.avg_monthly_income / 30.5) * self.days.days
+        return round((self.avg_monthly_income / 30.5) * self.days.days, 2)
 
     def get_actual_spending_percent(self, df, filt):
         actual_spending = self.get_actual_spending(df, filt)
         expected_income = self.get_expected_income(df, filt)
         percent = -actual_spending / expected_income
-        return percent
+        return round(percent, 2)
 
     def get_expected_spending_percent(self, df, filt):
         if not self.has_budget:
             return "No Budget"
         else:
             percent = self.has_budget / 100
-            return percent
+            return round(percent, 2)
     
     def get_expected_spending(self, df, filt):
         if not self.has_budget:
@@ -149,7 +149,7 @@ class DataPointConstructor():
             expected_percent = self.get_expected_spending_percent(df, filt)
             expected_income = self.get_expected_income(df, filt)
             spending = -expected_percent * expected_income
-            return spending
+            return round(spending, 2)
 
     def get_over_budget(self, df, filt):
         if not self.has_budget:
@@ -164,7 +164,7 @@ class DataPointConstructor():
         else:
             actual_spending = self.get_actual_spending_percent(df, filt)
             expected_spending = self.get_expected_spending_percent(df, filt)
-            return expected_spending - actual_spending
+            return round(expected_spending - actual_spending, 2)
 
     def get_amount_over_expected(self, df, filt):
         if not self.has_budget:
@@ -172,7 +172,7 @@ class DataPointConstructor():
         else:
             actual_spending = self.get_actual_spending(df, filt)
             expected_spending = self.get_expected_spending(df, filt)
-            return (-expected_spending) - (-actual_spending)
+            return round((-expected_spending) - (-actual_spending), 2)
 
     def point_to_df(self, display_data_type="actual_spending"):
         function = self.ANALYSIS_TYPES[display_data_type]
