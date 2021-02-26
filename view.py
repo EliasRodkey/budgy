@@ -203,6 +203,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.data_display_type_comboBox.addItems(
             list(self.controller.config.ANALYSIS_TYPES.keys())
         )
+        self.data_display_type_comboBox.setCurrentIndex(1)
         self.data_display_type_comboBox.currentTextChanged.connect(
             self.controller.analysis_type_chosen
         )
@@ -223,6 +224,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.addItem("Table")
         self.chart_type_comboBox.addItem("Bar Graph")
         self.chart_type_comboBox.addItem("Histogram")
+        self.chart_type_comboBox.setCurrentIndex(3)
         self.chart_type_comboBox.currentTextChanged.connect(
             self.controller.chart_type_chosen
         )
@@ -241,6 +243,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.time_period_combobox.addItem("Years")
         self.time_period_combobox.addItem("Months")
         self.time_period_combobox.addItem("Weeks")
+        self.time_period_combobox.setCurrentIndex(1)
         self.time_period_combobox.setStatusTip("Choose Time Breakdown")
 
         self.sub_category_label = QtWidgets.QLabel(self)
@@ -346,7 +349,11 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.clear()
         self.chart_type_comboBox.addItem("Select One...")
         self.chart_type_comboBox.addItems(graphs_list)
-        return
+    
+    def update_breakdown_types(self, breakdown_list):
+        self.time_period_combobox.clear()
+        self.time_period_combobox.addItem("Select One...")
+        self.time_period_combobox.addItems(breakdown_list)
 
     def set_min_date(self, value):
         self.end_date.setMinimumDate(value)

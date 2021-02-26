@@ -145,6 +145,8 @@ class Controller():
             return
         else:
             self.chart_type = choice
+            compatible_breakdowns = self.config.CHART_BREAKDOWN_MAP[choice]
+            self.view.spending_analysis_page.update_breakdown_types(compatible_breakdowns)
     
     ### Apending Analysis Methods ###
     def analyze_spending(self):
