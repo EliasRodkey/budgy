@@ -51,11 +51,8 @@ class DataPlotter():
     
     def build_pie_chart(self):
         x, labels = self.clean_pie_data()
-        print(self.df)
-        print(x)
-        print(labels)
         colors = self.generate_colors(len(x))
-        explode = [(30/i) for i in x]
+        explode = self.find_explosion(x)
         self.plot.pie(
             x, explode=tuple(explode),
             radius=1.1, autopct='%1.2f%%',
@@ -65,21 +62,21 @@ class DataPlotter():
         self.plot.legend(labels)
     
     def clean_pie_data(self):
+        # removes income information to avoid confussion with negatives
         labels = self.columns.copy()
         if "Income" in labels:
             labels.remove("Income")
-
+        # list of values for pie chart
         x = self.df[labels].iloc[0].tolist()
-        if self.title.split(" ")[-1] != "All":
-            totals = []
-            for column in labels:
-                totals += self.df[column].sum()
-            x = totals
+        # removes any categories with a value of 0
+        print(x)
         remove = []
-
         for i, column in enumerate(labels):
-            if round(x[i], 1) == 0.0:
+            if x[i] < 0:
+                x[i] = -x[i]
+            if round(x[i], 2) <= 0.0:
                 remove.insert(0, (i, column))
+        print(remove)
         for item in remove:
             del x[item[0]]
             labels.remove(item[1])
@@ -89,6 +86,15 @@ class DataPlotter():
                 x[i] = -num
         return x, labels
     
+    def find_explosion(self, x):
+        explode = []
+        for i in x:
+            temp = 30 / i
+            if temp > 0.5:
+                temp = 0.5
+            explode.append(temp)
+        return explode
+
     def generate_colors(self, num_of_plots):
         colors_256 = sample(self.COLOR_LIST, num_of_plots)
         colors = []

@@ -33,7 +33,7 @@ class Config():
             },
             "Expected Income" : {
                 "table key" : "expected_income",
-                "compatible graphs" : self.CHART_TYPES[:3],
+                "compatible graphs" : self.CHART_TYPES[1:3],
             },
             "Budgeted Spending (%)" : {
                 "table key" : "expected_spending_percent",
@@ -45,11 +45,11 @@ class Config():
             }, 
             "Amount Over/Under Budget ($)" : {
                 "table key" : "amount_over",
-                "compatible graphs" : self.CHART_TYPES[:3],
+                "compatible graphs" : self.CHART_TYPES[1:3],
             },
             "Amount Over/Under Budget (%)" : {
                 "table key" : "amount_over_percent",
-                "compatible graphs" : self.CHART_TYPES[:3]
+                "compatible graphs" : self.CHART_TYPES[1:3]
             },
             "Over Budget (T/F)" : {
                 "table key" : "over_budget",
