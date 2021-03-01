@@ -103,6 +103,7 @@ class DataPointConstructor():
             "expected_spending_percent" : self.get_expected_spending_percent,
             "expected_spending" : self.get_expected_spending,
             "over_budget" : self.get_over_budget,
+            "net_income" : self.quick,
             "amount_over" : self.get_amount_over_expected,
             "amount_over_percent" : self.get_amount_over_expected_percent
         }
@@ -110,6 +111,9 @@ class DataPointConstructor():
 
         # create dataframe object for datapaoint
         self.point_df = self.point_to_df(analysis_type)
+
+    def quick(self, df, filt):
+        pass
 
     ### calculation methods ###
     def get_transactions(self, df, filt):
@@ -199,10 +203,11 @@ class RowConstructor():
     def __init__(
         self, df, analysis_type, search_column, 
         category_list, date_range, 
-        avg_monthly_income, budget=None
+        avg_monthly_income, budget=None,
     ):
         # set main class attributes
         self.categories = category_list
+        self.date_range = date_range
         self.datetime_range = range_to_datetimes(date_range)
         self.data_frame = pd.DataFrame(
             {
@@ -233,6 +238,20 @@ class RowConstructor():
             elif column_item.actual_spending < 0:
                 self.gross_loss += column_item.actual_spending
         self.net_gain_loss = self.gross_gain + self.gross_loss
+
+    def net_income_df(self):
+        self.data_frame = pd.DataFrame(
+            {
+                "Row ID" : [self.date_range],
+                "Start Date" : [self.datetime_range["start"]],
+                "End Date" : [self.datetime_range["end"]],
+                "Net Gain" : [self.gross_gain],
+                "Net Loss" : [self.gross_loss],
+                "Net Income" : [self.net_gain_loss]
+            }
+        )
+        self.columns = self.data_frame.columns.tolist()
+        return self.data_frame
     
     def __add__(self, data_frame):
         assert list(self.data_frame.columns) == list(data_frame.columns)
@@ -260,15 +279,11 @@ class TableConstructor():
         self.date_range_list = date_range_list
         self.categories = category_list
 
-        if self.analysis_type in special_analysis:
-            special_analysis[self.analysis_type]()
-        else:
-            self.normal_analysis()
-        
-    def normal_analysis(self):
         # loop over date ranges and add rows together
         self.row_objects = {}
-        self.data_frame = pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *self.categories])
+        self.data_frame = pd.DataFrame(
+            columns=["Row ID", "Start Date", "End Date", *self.categories]
+        )
         for date_range in self.date_range_list:
             row = RowConstructor(
                 self.df, self.analysis_type, self.search_column,
@@ -277,11 +292,21 @@ class TableConstructor():
             )
             self.data_frame = row + self.data_frame
             self.row_objects[date_range] = row
+
+        if self.analysis_type in special_analysis:
+            special_analysis[self.analysis_type]()
+
         self.data_frame.sort_values(by=["Start Date"], inplace=True)
         self.data_frame.set_index("Start Date")
-    
+
     def net_income_analysis(self):
-        self.data_frame = pd.DataFrame(columns=["Row ID", "Start Date", "End Date", ])
+        self.data_frame = pd.DataFrame(
+            columns=["Row ID", "Start Date", "End Date", "Net Gain", "Net Loss", "Net Income"]
+        )
+        for row in list(self.row_objects.keys()):
+            row_obj = self.row_objects[row]
+            self.data_frame = self.data_frame.append(row_obj.net_income_df())
+        print(self.data_frame)
 
     def budget_comparison_analysis(self):
         pass

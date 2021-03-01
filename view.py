@@ -219,11 +219,10 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.setGeometry(QtCore.QRect(350, 370, 300, 50))
         self.chart_type_comboBox.setObjectName("chart_type_comboBox")
         self.chart_type_comboBox.addItem("Select One...")
-        self.chart_type_comboBox.addItem("Line Chart")
-        self.chart_type_comboBox.addItem("Pie Chart")
-        self.chart_type_comboBox.addItem("Table")
-        self.chart_type_comboBox.addItem("Bar Graph")
-        self.chart_type_comboBox.setCurrentIndex(3)
+        self.chart_type_comboBox.addItems(
+            self.controller.config.ANALYSIS_TYPES["Net Income"]["compatible graphs"]
+        )
+        self.chart_type_comboBox.setCurrentIndex(1)
         self.chart_type_comboBox.currentTextChanged.connect(
             self.controller.chart_type_chosen
         )

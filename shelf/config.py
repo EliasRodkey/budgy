@@ -19,15 +19,15 @@ class Config():
         self.ANALYSIS_TYPES = {
             "Net Income" : {
                 "table key" : "net_income",
-                "compatible graphs" : self.CHART_TYPES[-3]
+                "compatible graphs" : [self.CHART_TYPES[-3]]
             },
             "Budget Side by Side ($)" : {
                 "table key" : "budget_comparison",
-                "compatible graphs" : self.CHART_TYPES[-2]
+                "compatible graphs" : [self.CHART_TYPES[-2]]
             },
             "Budget Side by Side (%)" : {
                 "table key" : "budget_comparison_percent",
-                "compatible graphs" : self.CHART_TYPES[-2]
+                "compatible graphs" : [self.CHART_TYPES[-2]]
             },
             "Actual Spending ($)" : {
                 "table key" : "actual_spending",
@@ -51,7 +51,7 @@ class Config():
             },
             "Income Side by Side" : {
                 "table key" : "income_comparison",
-                "compatible graphs" : self.CHART_TYPES[-1],
+                "compatible graphs" : [self.CHART_TYPES[-1]],
             },
             "Expected Income" : {
                 "table key" : "expected_income",

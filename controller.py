@@ -28,12 +28,12 @@ class Controller():
         self.page_history = []
 
         # default attributes for spending analysis
-        self.analysis_type = "Actual Spending ($)"
+        self.analysis_type = "Net Income"
         self.search_column = "General Category"
         self.breakdown = "All"
         self.category_list = list(self.config.ALL_CATEGORIES.keys())
         self.dates_list = [self.model.all_time_transaction_dates]
-        self.chart_type = "Table"
+        self.chart_type = "Net Income Chart"
 
         # view loading and showing
         self.view.setup_ui()
