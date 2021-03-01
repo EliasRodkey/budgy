@@ -94,7 +94,6 @@ class DataPlotter():
             explode.append(temp)
         return explode
 
-
     def build_line_plot(self):
         colors = self.generate_colors(len(self.columns))
         for i, name in enumerate(self.columns):
@@ -133,7 +132,34 @@ class DataPlotter():
         return vals, col_labels
         
     def build_bar_graph(self):
-        pass
+        labels, bottom = self.clean_bar_data()
+        colors = self.generate_colors(len(labels))
+        for i, name in enumerate(labels):
+            self.plot.bar(
+                self.df["Start Date"].astype("str"),
+                self.df[name], label=name,
+                color=colors[i], bottom=bottom["Bottom"],
+            )
+            new_bottom = bottom["Bottom"].add(self.df[name], fill_value=0)
+            bottom["Bottom"] = new_bottom
+        self.plot.xlabel("Date", fontdict={"fontsize" : 16})
+        self.plot.ylabel("Dollars", fontdict={"fontsize" : 16})
+        self.plot.axhline(0, color="black")
+        self.plot.legend()
+
+    def clean_bar_data(self):
+        labels = self.columns.copy()
+        if "Income" in labels:
+            labels.remove("Income")
+        rows = self.df.shape[0]
+        temp = [0 for i in range(rows)]
+        dictionary = {
+            "Start Date" : self.df["Start Date"],
+            "Bottom" : temp
+        }
+        bottom = pd.DataFrame(dictionary)
+        bottom.set_index("Start Date")
+        return labels, bottom
 
     def build_histogram(self):
         pass
@@ -153,29 +179,3 @@ class DataPlotter():
     
     def save(self):
         pass
-
-# old line chart code
-# line_types = [".-", "--", "-"]
-# line_count = 0
-# for i, category in enumerate(self.df[self.category_keys]):
-#     line_plot.plot(self.dates_df["Dates"], self.df[category], line_types[line_count], label=category)
-#     print(line_count)
-#     if line_count == 2:
-#         line_count = 0
-#     else:
-#         line_count += 1
-
-# min_date = self.df.iloc[0]["Date Ranges"].split(" - ")[0]
-# max_date = self.df.iloc[-1]["Date Ranges"].split(" - ")[1]
-# line_plot.title(
-#     f"{self.time_span_text}Spending Breakdown\nfrom {min_date} to {max_date}", 
-#     fontdict={"fontsize": 20}
-#     )
-# if self.time_span == "Month":
-#     line_plot.xticks(self.dates_df["Dates"][::6])
-# elif self.time_span == "Year":
-#     line_plot.xticks(self.dates_df["Dates"])
-# elif self.time_span == "Week":
-#     line_plot.xticks(self.dates_df["Dates"][::26])
-# line_plot.show()
-# return line_plot

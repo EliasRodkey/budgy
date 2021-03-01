@@ -262,3 +262,4 @@ class TableConstructor():
             self.data_frame = row + self.data_frame
             self.row_objects[date_range] = row
         self.data_frame.sort_values(by=["Start Date"], inplace=True)
+        self.data_frame.set_index("Start Date")
