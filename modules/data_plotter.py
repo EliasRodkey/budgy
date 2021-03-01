@@ -11,7 +11,7 @@ class DataPlotter():
     def __init__(self, df, chart_type, breakdown, search_column):
         CHART_MAP = {
             "Pie Chart" : self.build_pie_chart,
-            "Line Chart" : self.build_line_chart, 
+            "Line Chart" : self.build_line_plot, 
             "Table": self.build_table, 
             "Bar Graph" : self.build_bar_graph, 
             "Histogram" : self.build_histogram
@@ -76,17 +76,16 @@ class DataPlotter():
                 x[i] = -x[i]
             if round(x[i], 2) <= 0.0:
                 remove.insert(0, (i, column))
-        print(remove)
         for item in remove:
             del x[item[0]]
             labels.remove(item[1])
-
+        # absolute value loop
         for i, num in enumerate(x):
-            if num < 0:
-                x[i] = -num
+            x[i] = abs(num)
         return x, labels
     
-    def find_explosion(self, x):
+    @staticmethod
+    def find_explosion(x):
         explode = []
         for i in x:
             temp = 30 / i
@@ -95,19 +94,18 @@ class DataPlotter():
             explode.append(temp)
         return explode
 
-    def generate_colors(self, num_of_plots):
-        colors_256 = sample(self.COLOR_LIST, num_of_plots)
-        colors = []
-        for color in colors_256:
-            temp = []
-            for rgb in color:
-                temp.append(rgb / 256)
-            colors.append(tuple(temp))
-        return colors
 
-    def build_line_chart(self):
-        for i, array in self.df[self.columns]:
-            pass
+    def build_line_plot(self):
+        colors = self.generate_colors(len(self.columns))
+        for i, name in enumerate(self.columns):
+            self.plot.plot(
+                self.df["Start Date"].astype("str"), 
+                self.df[name], color=colors[i], marker="x"
+            )
+        self.plot.xlabel("Date", fontdict={"fontsize" : 16})
+        self.plot.ylabel("Dollars", fontdict={"fontsize" : 16})
+        self.plot.axhline(0, color="black")
+        self.plot.legend(self.columns)
 
     def build_table(self):
         ax = self.plot.subplot(111, frame_on=False) 
@@ -139,6 +137,16 @@ class DataPlotter():
 
     def build_histogram(self):
         pass
+
+    def generate_colors(self, num_of_plots):
+        colors_256 = sample(self.COLOR_LIST, num_of_plots)
+        colors = []
+        for color in colors_256:
+            temp = []
+            for rgb in color:
+                temp.append(rgb / 256)
+            colors.append(tuple(temp))
+        return colors
     
     def show(self):
         self.plot.show()
@@ -146,6 +154,7 @@ class DataPlotter():
     def save(self):
         pass
 
+# old line chart code
 # line_types = [".-", "--", "-"]
 # line_count = 0
 # for i, category in enumerate(self.df[self.category_keys]):
@@ -168,9 +177,5 @@ class DataPlotter():
 #     line_plot.xticks(self.dates_df["Dates"])
 # elif self.time_span == "Week":
 #     line_plot.xticks(self.dates_df["Dates"][::26])
-# line_plot.xlabel("Date", fontdict={"fontsize" : 16})
-# line_plot.ylabel("Dollars", fontdict={"fontsize" : 16})
-# line_plot.axhline(0, color="black")
-# line_plot.legend(loc='lower left')
 # line_plot.show()
 # return line_plot

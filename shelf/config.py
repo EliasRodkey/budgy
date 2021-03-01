@@ -8,7 +8,7 @@ class Config():
         self.BREAKDOWNS = ["All", "Years", "Months", "Weeks"]
         self.CHART_BREAKDOWN_MAP = {
             "Pie Chart" :  [self.BREAKDOWNS[0]], 
-            "Line Chart" : self.BREAKDOWNS,
+            "Line Chart" : self.BREAKDOWNS[1:],
             "Table" : self.BREAKDOWNS[:3],
             "Bar Graph" : self.BREAKDOWNS, 
             "Histogram" : [self.BREAKDOWNS[0]]
