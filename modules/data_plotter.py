@@ -13,8 +13,9 @@ class DataPlotter():
             "Pie Chart" : self.build_pie_chart,
             "Line Chart" : self.build_line_plot, 
             "Table": self.build_table, 
-            "Bar Graph" : self.build_bar_graph, 
-            "Histogram" : self.build_histogram
+            "Bar Graph" : self.build_bar_graph,
+            "Net Income Chart" : self.build_net_income_chart,
+            "Budget Comparison Chart" : self.build_comparison_graph
         }
         self.COLOR_LIST = [
             (178, 33, 179),
@@ -160,8 +161,11 @@ class DataPlotter():
         bottom = pd.DataFrame(dictionary)
         bottom.set_index("Start Date")
         return labels, bottom
-
-    def build_histogram(self):
+    
+    def build_net_income_chart(self):
+        pass
+    
+    def build_comparison_graph(self):
         pass
 
     def generate_colors(self, num_of_plots):

@@ -246,20 +246,48 @@ class TableConstructor():
         avg_monthly_income, budget=None
     ):
         # define key attributes
+        special_analysis = {
+            "net_income" : self.net_income_analysis, 
+            "budget_comparison" : self.budget_comparison_percent_analysis, 
+            "budget_comparison_percent" : self.budget_comparison_percent_analysis, 
+            "income_comparison" : self.income_comparison_analysis 
+        }
+        self.df = df
+        self.search_column = search_column
+        self.avg_monthly_income = avg_monthly_income
+        self.budget = budget
         self.analysis_type = analysis_type
         self.date_range_list = date_range_list
         self.categories = category_list
 
+        if self.analysis_type in special_analysis:
+            special_analysis[self.analysis_type]()
+        else:
+            self.normal_analysis()
+        
+    def normal_analysis(self):
         # loop over date ranges and add rows together
         self.row_objects = {}
         self.data_frame = pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *self.categories])
-        for date_range in date_range_list:
+        for date_range in self.date_range_list:
             row = RowConstructor(
-                df, analysis_type, search_column,
+                self.df, self.analysis_type, self.search_column,
                 self.categories, date_range, 
-                avg_monthly_income, budget
+                self.avg_monthly_income, self.budget
             )
             self.data_frame = row + self.data_frame
             self.row_objects[date_range] = row
         self.data_frame.sort_values(by=["Start Date"], inplace=True)
         self.data_frame.set_index("Start Date")
+    
+    def net_income_analysis(self):
+        self.data_frame = pd.DataFrame(columns=["Row ID", "Start Date", "End Date", ])
+
+    def budget_comparison_analysis(self):
+        pass
+
+    def budget_comparison_percent_analysis(self):
+        pass
+
+    def income_comparison_analysis(self):
+        pass

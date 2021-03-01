@@ -10,26 +10,48 @@ class Config():
             "Pie Chart" :  [self.BREAKDOWNS[0]], 
             "Line Chart" : self.BREAKDOWNS[1:],
             "Table" : self.BREAKDOWNS[:3],
-            "Bar Graph" : self.BREAKDOWNS, 
-            "Histogram" : [self.BREAKDOWNS[0]]
+            "Bar Graph" : self.BREAKDOWNS[:3],
+            "Net Income Chart" : self.BREAKDOWNS,
+            "Budget Comparison Chart" : self.BREAKDOWNS,
+            "Income Comparison Chart" : self.BREAKDOWNS
         }
         self.CHART_TYPES = list(self.CHART_BREAKDOWN_MAP.keys())
         self.ANALYSIS_TYPES = {
+            "Net Income" : {
+                "table key" : "net_income",
+                "compatible graphs" : self.CHART_TYPES[-3]
+            },
+            "Budget Side by Side ($)" : {
+                "table key" : "budget_comparison",
+                "compatible graphs" : self.CHART_TYPES[-2]
+            },
+            "Budget Side by Side (%)" : {
+                "table key" : "budget_comparison_percent",
+                "compatible graphs" : self.CHART_TYPES[-2]
+            },
             "Actual Spending ($)" : {
                 "table key" : "actual_spending",
-                "compatible graphs" : self.CHART_TYPES[:3],
+                "compatible graphs" : self.CHART_TYPES,
             }, 
             "Actual Spending (%)" : {
                 "table key" : "actual_spending_percent",
-                "compatible graphs" : self.CHART_TYPES[:3],
+                "compatible graphs" : self.CHART_TYPES,
             },
-            # "Transactions" : {
-            #     "table key" : "transactions",
-            #     "compatible graphs" : [self.CHART_TYPES[2]]
-            # }, 
+            "Amount Over/Under Budget ($)" : {
+                "table key" : "amount_over",
+                "compatible graphs" : self.CHART_TYPES[1:3],
+            },
+            "Amount Over/Under Budget (%)" : {
+                "table key" : "amount_over_percent",
+                "compatible graphs" : self.CHART_TYPES[1:3]
+            },
             "Number Of Transactions" : {
                 "table key" : "transaction_number",
                 "compatible graphs" : self.CHART_TYPES,
+            },
+            "Income Side by Side" : {
+                "table key" : "income_comparison",
+                "compatible graphs" : self.CHART_TYPES[-1],
             },
             "Expected Income" : {
                 "table key" : "expected_income",
@@ -43,18 +65,14 @@ class Config():
                 "table key" : "expected_spending",
                 "compatible graphs" : self.CHART_TYPES[:3],
             }, 
-            "Amount Over/Under Budget ($)" : {
-                "table key" : "amount_over",
-                "compatible graphs" : self.CHART_TYPES[1:3],
-            },
-            "Amount Over/Under Budget (%)" : {
-                "table key" : "amount_over_percent",
-                "compatible graphs" : self.CHART_TYPES[1:3]
-            },
             "Over Budget (T/F)" : {
                 "table key" : "over_budget",
                 "compatible graphs" : self.CHART_TYPES[2:4]
             }
+            # "Transactions" : {
+            #     "table key" : "transactions",
+            #     "compatible graphs" : [self.CHART_TYPES[2]]
+            # }, 
         }
         self.ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
             "Income" : [
