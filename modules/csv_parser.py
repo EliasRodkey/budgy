@@ -95,20 +95,20 @@ class DataPointConstructor():
             self.has_budget = False
         
         self.ANALYSIS_TYPES = {
-            "actual_spending" : self.get_actual_spending,
-            "actual_spending_percent" : self.get_actual_spending_percent,
+            "Actual Spending ($)" : self.get_actual_spending,
+            "Actual Spending (%)" : self.get_actual_spending_percent,
             # "transactions" : self.get_transactions,
-            "transaction_number" : self.get_number_transactions,
-            "expected_income" : self.get_expected_income,
-            "expected_spending_percent" : self.get_expected_spending_percent,
-            "expected_spending" : self.get_expected_spending,
-            "over_budget" : self.get_over_budget,
-            "net_income" : self.get_actual_spending,
-            "budget_comparison" : self.skip,
-            "budget_comparison_percent" : self.skip,
-            "income_comparison" : self.skip,
-            "amount_over" : self.get_amount_over_expected,
-            "amount_over_percent" : self.get_amount_over_expected_percent
+            "Number of Transactions" : self.get_number_transactions,
+            "Expected Income" : self.get_expected_income,
+            "Budgeted Spending (%)" : self.get_expected_spending_percent,
+            "Budgeted Spending ($)" : self.get_expected_spending,
+            "Over Budget (T/F)" : self.get_over_budget,
+            "Net Income" : self.get_actual_spending,
+            "Budget Side by Side ($)" : self.skip,
+            "Budget Side by Side (%)" : self.skip,
+            "Income Side by Side" : self.skip,
+            "Amount Over/Under Budget ($)" : self.get_amount_over_expected,
+            "Amount Over/Under Budget (%)" : self.get_amount_over_expected_percent
         }
         self.actual_spending = self.get_actual_spending(self.df, self.filt)
 

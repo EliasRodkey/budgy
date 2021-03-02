@@ -14,63 +14,21 @@ class Config():
             "Comparison Chart" : self.BREAKDOWNS
         }
         self.CHART_TYPES = list(self.CHART_BREAKDOWN_MAP.keys())
-        self.ANALYSIS_TYPES = {
-            "Net Income" : {
-                "table key" : "net_income",
-                "compatible graphs" : [self.CHART_TYPES[-1]]
-            },
-            "Budget Side by Side ($)" : {
-                "table key" : "budget_comparison",
-                "compatible graphs" : [self.CHART_TYPES[-1]]
-            },
-            "Budget Side by Side (%)" : {
-                "table key" : "budget_comparison_percent",
-                "compatible graphs" : [self.CHART_TYPES[-1]]
-            },
-            "Actual Spending ($)" : {
-                "table key" : "actual_spending",
-                "compatible graphs" : self.CHART_TYPES,
-            }, 
-            "Actual Spending (%)" : {
-                "table key" : "actual_spending_percent",
-                "compatible graphs" : self.CHART_TYPES,
-            },
-            "Amount Over/Under Budget ($)" : {
-                "table key" : "amount_over",
-                "compatible graphs" : self.CHART_TYPES[1:3],
-            },
-            "Amount Over/Under Budget (%)" : {
-                "table key" : "amount_over_percent",
-                "compatible graphs" : self.CHART_TYPES[1:3]
-            },
-            "Number Of Transactions" : {
-                "table key" : "transaction_number",
-                "compatible graphs" : self.CHART_TYPES,
-            },
-            "Income Side by Side" : {
-                "table key" : "income_comparison",
-                "compatible graphs" : [self.CHART_TYPES[-1]],
-            },
-            "Expected Income" : {
-                "table key" : "expected_income",
-                "compatible graphs" : self.CHART_TYPES[1:3],
-            },
-            "Budgeted Spending (%)" : {
-                "table key" : "expected_spending_percent",
-                "compatible graphs" : self.CHART_TYPES[:3],
-            }, 
-            "Budgeted Spending ($)" : {
-                "table key" : "expected_spending",
-                "compatible graphs" : self.CHART_TYPES[:3],
-            }, 
-            "Over Budget (T/F)" : {
-                "table key" : "over_budget",
-                "compatible graphs" : self.CHART_TYPES[2:4]
-            }
-            # "Transactions" : {
-            #     "table key" : "transactions",
-            #     "compatible graphs" : [self.CHART_TYPES[2]]
-            # }, 
+        self.ANALYSIS_CHART_MAP = {
+            "Net Income" : [self.CHART_TYPES[-1]],
+            "Budget Side by Side ($)" : [self.CHART_TYPES[-1]],
+            "Budget Side by Side (%)" : [self.CHART_TYPES[-1]],
+            "Actual Spending ($)" : self.CHART_TYPES,
+            "Actual Spending (%)" : self.CHART_TYPES,
+            "Amount Over/Under Budget ($)" : self.CHART_TYPES[1:3],
+            "Amount Over/Under Budget (%)" : self.CHART_TYPES[1:3],
+            "Number Of Transactions" : self.CHART_TYPES,
+            "Income Side by Side" : [self.CHART_TYPES[-1]],
+            "Expected Income" : self.CHART_TYPES[1:3],
+            "Budgeted Spending (%)" : self.CHART_TYPES[:3],
+            "Budgeted Spending ($)" : self.CHART_TYPES[:3],
+            "Over Budget (T/F)" : self.CHART_TYPES[2:4]
+            # "Transactions" :  [self.CHART_TYPES[2]]
         }
         self.COMPARISON_ANALYSIS_MAP = {
             "net_income" : {

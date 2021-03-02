@@ -123,7 +123,7 @@ class Controller():
         if sender_name == "data_display_type_combobox":
             analysis_page.update_combobox(
                 analysis_page.chart_type_comboBox,
-                self.config.ANALYSIS_TYPES[choice]["compatible graphs"]
+                self.config.ANALYSIS_CHART_MAP[choice]
             )
             analysis_page.chart_type_comboBox.setCurrentIndex(0)
         elif sender_name == "chart_type_combobox":
@@ -189,6 +189,8 @@ class Controller():
         #     self.category_list, self.avg_monthly_income,
         #     budget=budget,
         #     comparison=self.comparison
+        analysis_page = self.view.spending_analysis_page
+        analysis_type = analysis_page.data_display_type_comboBox.currentText()
         if self.search_column == "Category":
             budget = None
         else:
@@ -209,23 +211,13 @@ class Controller():
             self.view.error_popup(msg)
             return
         return inputs
-    
+
     def get_sub_category(self, choice):
         self.category_list = self.config.ALL_CATEGORIES[choice]
     
     def get_category(self):
         choices = self.view.spending_analysis_page.category_combobox.checkedItems()
         self.category_list = choices
-    
-    def get_analysis_type(self, choice):
-        self.analysis_type = choice
-        if choice == "" or choice == "Select One...":
-            self.analysis_type_table_key = self.config.ANALYSIS_TYPES["Actual Spending ($)"]["table key"]
-            compatible_graphs = self.config.ANALYSIS_TYPES["Actual Spending ($)"]["compatible graphs"]
-        else:
-            self.analysis_type_table_key = self.config.ANALYSIS_TYPES[choice]["table key"]
-            compatible_graphs = self.config.ANALYSIS_TYPES[choice]["compatible graphs"]
-        self.view.spending_analysis_page.update_chart_types(compatible_graphs)
     
     def get_chart_type(self, choice):
         if choice == "" or choice == "Select One...":
