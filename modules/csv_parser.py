@@ -241,15 +241,17 @@ class RowConstructor():
             elif column_item.actual_spending < 0:
                 self.gross_loss += column_item.actual_spending
 
-    def net_income_row(self, df_template):
-        df_template["Row ID"] = self.date_range
-        df_template["Start Date"] = self.datetime_range["start"]
-        df_template["End Date"] = self.datetime_range["end"]
-        df_template["Gross Income"] = self.gross_gain
-        df_template["Gross Spending"] = self.gross_loss
-        df_template["Net Income"] = self.gross_gain - self.gross_loss 
-        print(df_template)
-        return df_template  
+    def net_income_row(self):
+        row = pd.DataFrame({
+            "Row ID" : [self.date_range], 
+            "Start Date" : [self.datetime_range["start"]],
+            "End Date" : [self.datetime_range["end"]],
+            "Gross Income" : [self.gross_gain],
+            "Gross Spending" : [self.gross_loss],
+            "Net Income" : [self.gross_gain - self.gross_loss]
+        })
+        print(row)
+        return row  
 
     def income_row(self, df_template):
         pass
@@ -299,12 +301,14 @@ class TableConstructor():
         self.data_frame.sort_values(by=["Start Date"], inplace=True)
         self.data_frame.set_index("Start Date")
 
+    #TODO: make a new class for comparison chart that builds it from scratch with a
+    #TODO: filter to find total spending and income instead of using the row constructors
     def comparison_analysis(self, analysis_map):
         df_constructor =  pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *analysis_map["columns"]])
         self.data_frame = df_constructor.copy()
         for row in self.row_objects:
             if analysis_map["table keys"] == "net":
-                new_row = self.row_objects[row].net_income_row(df_constructor)
+                new_row = self.row_objects[row].net_income_row()
             elif analysis_map["table keys"] == "income":
                 new_row = self.row_objects[row].income_row(df_constructor)
             else:

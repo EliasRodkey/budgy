@@ -25,14 +25,15 @@ class Controller():
         self.view = View(self)
         self.page_history = []
 
-        # default attributes for spending analysis
-        self.analysis_type = "Net Income"
-        self.search_column = "General Category"
-        self.breakdown = "All"
-        self.category_list = list(self.config.ALL_CATEGORIES.keys())
-        self.dates_list = [self.model.all_time_transaction_dates]
-        self.chart_type = "Comparison Chart"
-        self.comparison = True
+        #TODOL delete when I know I dont need it
+        # # default attributes for spending analysis
+        # self.analysis_type = "Net Income"
+        # self.search_column = "General Category"
+        # self.breakdown = "All"
+        # self.category_list = list(self.config.ALL_CATEGORIES.keys())
+        # self.dates_list = [self.model.all_time_transaction_dates]
+        # self.chart_type = "Comparison Chart"
+        # self.comparison = True
 
         # view loading and showing
         self.view.setup_ui()
@@ -113,22 +114,110 @@ class Controller():
         return round(wavg, 2)
     
     ### Combobox and Checkbox methods ###
+    def input_changed(self, choice):
+        if choice == "":
+            return
+        sender = self.view.spending_analysis_page.sender()
+        sender_name = sender.objectName()
+        analysis_page = self.view.spending_analysis_page
+        if sender_name == "data_display_type_combobox":
+            analysis_page.update_combobox(
+                analysis_page.chart_type_comboBox,
+                self.config.ANALYSIS_TYPES[choice]["compatible graphs"]
+            )
+            analysis_page.chart_type_comboBox.setCurrentIndex(0)
+        elif sender_name == "chart_type_combobox":
+            analysis_page.update_combobox(
+                analysis_page.time_period_combobox,
+                self.config.CHART_BREAKDOWN_MAP[choice]
+            )
+        elif sender_name == "time_period_combox":
+            pass
+        elif sender_name == "sub_category_combobox":
+            pass
+        elif sender_name == "category_combobox":
+            pass
+
     def sub_category_checked(self, state):
+        general_category_analysis = list(self.config.ANALYSIS_TYPES.keys())
+        sub_category_incomp = [
+            "Net Income", 
+            "Budget Side by Side ($)", 
+            "Budget Side by Side (%)", 
+            "Amount Over/Under Budget ($)", 
+            "Amount Over/Under Budget (%)",
+            "Income Side by Side",
+            "Budgeted Spending ($)",
+            "Budgeted Spending (%)",
+            "Over Budget (T/F)"
+        ]
+        analysis_page = self.view.spending_analysis_page
         if state == 2:
             self.search_column = "Category"
             self.view.spending_analysis_page.change_subcategory_combobox(state)
+            for item in sub_category_incomp:
+                general_category_analysis.remove(item)
+            analysis_page.data_display_type_comboBox.clear()
+            analysis_page.data_display_type_comboBox.addItems(general_category_analysis)
         else:
             self.search_column = "General Category"
             self.view.spending_analysis_page.change_subcategory_combobox(state)
+            analysis_page.data_display_type_comboBox.clear()
+            analysis_page.data_display_type_comboBox.addItems(general_category_analysis)
+
+    ### Analysis Methods ###
+    def analyze_spending(self):
+        inputs, budget, comparison = self.retrieve_inputs()
+        table = self.model.table_maker(
+            self, *inputs,
+            budget=budget,
+            comparison=comparison
+        ).data_frame
+        # plot = self.plotter(
+        #     table, self.chart_type, 
+        #     self.breakdown, 
+        #     self.search_column
+        # )
+        # plot.show()
     
-    def sub_category_chosen(self, choice):
+    ### Input Retrieval Methods ###
+    def retrieve_inputs(self):
+        # table = self.model.table_maker(
+        #     self, self.model.df,
+        #     self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
+        #     self.search_column, self.dates_list,
+        #     self.category_list, self.avg_monthly_income,
+        #     budget=budget,
+        #     comparison=self.comparison
+        if self.search_column == "Category":
+            budget = None
+        else:
+            budget = self.last_budget
+        self.finalize_categories()
+        self.get_date_list()
+        error = self.check_comparison()
+        inputs = [
+            self.model.df,
+            self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
+            self.search_column,
+            self.get_date_list(),
+            self.category_list, 
+            self.avg_monthly_income
+        ]
+        error, msg = self.check_input_error()
+        if error:
+            self.view.error_popup(msg)
+            return
+        return inputs
+    
+    def get_sub_category(self, choice):
         self.category_list = self.config.ALL_CATEGORIES[choice]
     
-    def category_chosen(self):
+    def get_category(self):
         choices = self.view.spending_analysis_page.category_combobox.checkedItems()
         self.category_list = choices
     
-    def analysis_type_chosen(self, choice):
+    def get_analysis_type(self, choice):
         self.analysis_type = choice
         if choice == "" or choice == "Select One...":
             self.analysis_type_table_key = self.config.ANALYSIS_TYPES["Actual Spending ($)"]["table key"]
@@ -138,14 +227,47 @@ class Controller():
             compatible_graphs = self.config.ANALYSIS_TYPES[choice]["compatible graphs"]
         self.view.spending_analysis_page.update_chart_types(compatible_graphs)
     
-    def chart_type_chosen(self, choice):
+    def get_chart_type(self, choice):
         if choice == "" or choice == "Select One...":
             return
         else:
             self.chart_type = choice
             compatible_breakdowns = self.config.CHART_BREAKDOWN_MAP[choice]
             self.view.spending_analysis_page.update_breakdown_types(compatible_breakdowns)
-    
+
+    def get_date_list(self):
+        start = self.view.spending_analysis_page.start_date.date().toPyDate()
+        end = self.view.spending_analysis_page.end_date.date().toPyDate()
+        self.dates_obj = self.model.date_ranges(start, end)
+        breakdown = self.view.spending_analysis_page.time_period_combobox.currentText()
+        if breakdown == "All":
+            dates_list = self.dates_obj.all
+        elif breakdown == "Years":
+            dates_list = self.dates_obj.years
+        elif breakdown == "Months":
+            dates_list = self.dates_obj.months
+        elif breakdown == "Weeks":
+            dates_list = self.dates_obj.weeks
+        else:
+            dates_list = self.dates_obj.all
+        return dates_list
+
+    def finalize_categories(self):
+        if self.search_column == "General Category":
+            self.category_chosen()
+        if self.analysis_type == "Net Income":
+            self.category_list = list(self.config.ALL_CATEGORIES.keys())
+        if self.analysis_type == "Income Side by Side":
+            self.category_list = ["Income"]
+
+    ### Error Handling Methods ###
+    def check_input_error(self):
+        if len(self.category_list) == 0:
+            self.view.error_popup(
+                "No Categories Chosen\nPlease Select at Least One"
+            )
+            return 
+
     def check_comparison(self):
         error = False
         if self.chart_type == "Comparison Chart":
@@ -156,69 +278,15 @@ class Controller():
                 error = True
             if "Income" in self.category_list and self.chart_type != "Income Side by Side":
                 self.view.error_popup(
-"""     To view Income Comparison Please Select
+"""To view Income Comparison Please Select
 'Income Side by Side' or 'Net Income' from Analysis Type.
-             Otherwiser uncheck income"""
+Otherwiser uncheck income"""
                 )
                 error = True
             self.comparison = True
         else:
             self.comparison = False
         return error
-
-    ### Apending Analysis Methods ###
-    def analyze_spending(self):
-        self.finalize_categories()
-        self.get_date_list()
-        error = self.check_comparison()
-        if error:
-            return
-        if self.search_column == "Category":
-            budget = None
-        else:
-            budget = self.last_budget
-        print(self.chart_type)
-        if len(self.category_list) == 0 and \
-        self.analysis_type != "Net Income" and \
-        self.analysis_type != "Income Side by Side":
-            self.view.error_popup(
-                "No Categories Chosen\nPlease Select at Least One"
-            )
-            return 
-        table = self.model.table_maker(
-            self, self.model.df,
-            self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
-            self.search_column, self.dates_list,
-            self.category_list, self.avg_monthly_income,
-            budget=budget,
-            comparison=self.comparison
-        ).data_frame
-        # plot = self.plotter(
-        #     table, self.chart_type, 
-        #     self.breakdown, 
-        #     self.search_column
-        # )
-        # plot.show()
-    
-    def get_date_list(self):
-        start = self.view.spending_analysis_page.start_date.date().toPyDate()
-        end = self.view.spending_analysis_page.end_date.date().toPyDate()
-        self.dates_obj = self.model.date_ranges(start, end)
-        breakdown = self.view.spending_analysis_page.time_period_combobox.currentText()
-        if breakdown == "All":
-            self.dates_list = self.dates_obj.all
-        elif breakdown == "Years":
-            self.dates_list = self.dates_obj.years
-        elif breakdown == "Months":
-            self.dates_list = self.dates_obj.months
-        elif breakdown == "Weeks":
-            self.dates_list = self.dates_obj.weeks
-        else:
-            self.dates_list = self.dates_obj.all
-    
-    def finalize_categories(self):
-        if self.search_column == "General Category":
-            self.category_chosen()
             
 
 if __name__ == "__main__":

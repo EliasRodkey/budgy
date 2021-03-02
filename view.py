@@ -199,15 +199,13 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
 
         self.data_display_type_comboBox = QtWidgets.QComboBox(self)
         self.data_display_type_comboBox.setGeometry(QtCore.QRect(350, 250, 300, 50))
-        self.data_display_type_comboBox.addItem("Select One...")
         self.data_display_type_comboBox.addItems(
             list(self.controller.config.ANALYSIS_TYPES.keys())
         )
-        self.data_display_type_comboBox.setCurrentIndex(1)
         self.data_display_type_comboBox.currentTextChanged.connect(
-            self.controller.analysis_type_chosen
+            self.controller.input_changed
         )
-        self.data_display_type_comboBox.setObjectName("data_display_type_comboBox")
+        self.data_display_type_comboBox.setObjectName("data_display_type_combobox")
         self.data_display_type_comboBox.setStatusTip("Choose Analysis Type")
 
         self.chart_type_label = QtWidgets.QLabel(self)
@@ -217,14 +215,14 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
 
         self.chart_type_comboBox = QtWidgets.QComboBox(self)
         self.chart_type_comboBox.setGeometry(QtCore.QRect(350, 370, 300, 50))
-        self.chart_type_comboBox.setObjectName("chart_type_comboBox")
-        self.chart_type_comboBox.addItem("Select One...")
+        self.chart_type_comboBox.setObjectName("chart_type_combobox")
         self.chart_type_comboBox.addItems(
-            self.controller.config.ANALYSIS_TYPES["Net Income"]["compatible graphs"]
+            self.controller.config.ANALYSIS_TYPES[
+                self.data_display_type_comboBox.currentText()
+                ]["compatible graphs"]
         )
-        self.chart_type_comboBox.setCurrentIndex(1)
         self.chart_type_comboBox.currentTextChanged.connect(
-            self.controller.chart_type_chosen
+            self.controller.input_changed
         )
         self.chart_type_comboBox.setStatusTip("Choose Chart Type")
 
@@ -236,12 +234,14 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.time_period_combobox = QtWidgets.QComboBox(self)
         self.time_period_combobox.setGeometry(QtCore.QRect(350, 490, 300, 50))
         self.time_period_combobox.setObjectName("time_period_combobox")
-        self.time_period_combobox.addItem("Select One...")
-        self.time_period_combobox.addItem("All")
-        self.time_period_combobox.addItem("Years")
-        self.time_period_combobox.addItem("Months")
-        self.time_period_combobox.addItem("Weeks")
-        self.time_period_combobox.setCurrentIndex(1)
+        self.time_period_combobox.addItems(
+            self.controller.config.CHART_BREAKDOWN_MAP[
+                self.chart_type_comboBox.currentText()
+            ]
+        )
+        self.time_period_combobox.currentTextChanged.connect(
+            self.controller.input_changed
+        )
         self.time_period_combobox.setStatusTip("Choose Time Breakdown")
 
         self.sub_category_label = QtWidgets.QLabel(self)
@@ -252,17 +252,14 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.sub_category_combobox = QtWidgets.QComboBox(self)
         self.sub_category_combobox.setGeometry(QtCore.QRect(350, 1100, 300, 50))
         self.sub_category_combobox.setObjectName("sub_category_combobox")
-        self.sub_category_combobox.addItem("Select One...")
         self.sub_category_combobox.addItems(
             list(self.controller.config.ALL_CATEGORIES.keys())
         )
-        self.sub_category_combobox.currentTextChanged.connect(self.controller.sub_category_chosen)
         self.sub_category_combobox.setStatusTip("Choose Category for Analysis")
 
         self.category_combobox = CheckableComboBox(self)
         self.category_combobox.setGeometry(QtCore.QRect(350, 610, 300, 50))
-        self.category_combobox.setObjectName("sub_category_combobox")
-        self.category_combobox.addItem("Select Multiple...")
+        self.category_combobox.setObjectName("category_combobox")
         self.category_combobox.addItems(
             list(self.controller.config.ALL_CATEGORIES.keys())
         )
@@ -343,15 +340,14 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
             self.sub_category_combobox.setGeometry(QtCore.QRect(350, 1100, 300, 50))
             self.category_combobox.setGeometry(QtCore.QRect(350, 610, 300, 50))
     
-    def update_chart_types(self, graphs_list):
-        self.chart_type_comboBox.clear()
-        self.chart_type_comboBox.addItem("Select One...")
-        self.chart_type_comboBox.addItems(graphs_list)
-    
-    def update_breakdown_types(self, breakdown_list):
-        self.time_period_combobox.clear()
-        self.time_period_combobox.addItem("Select One...")
-        self.time_period_combobox.addItems(breakdown_list)
+    def update_combobox(self, combobox, input_list):
+        current = [
+            combobox.itemText(i) for i in range(combobox.count())
+        ]
+        if current == input_list:
+            return
+        combobox.clear()
+        combobox.addItems(input_list)
 
     def set_min_date(self, value):
         self.end_date.setMinimumDate(value)
