@@ -2,7 +2,6 @@
 # controller.py - controls the interactions between the user and the 
 # model backend
 
-from modules.csv_parser import TableConstructor
 from view import View
 from model import Model
 from shelf.config import Config
@@ -12,7 +11,6 @@ import datetime
 
 class Controller():
     # TODO: make save budget stuff
-    # TODO: make net income stuff
     def __init__(self):
         # bring configuration setting into controller
         self.config = Config()
@@ -33,7 +31,8 @@ class Controller():
         self.breakdown = "All"
         self.category_list = list(self.config.ALL_CATEGORIES.keys())
         self.dates_list = [self.model.all_time_transaction_dates]
-        self.chart_type = "Net Income Chart"
+        self.chart_type = "Comparison Chart"
+        self.comparison = True
 
         # view loading and showing
         self.view.setup_ui()
@@ -98,7 +97,8 @@ class Controller():
             datetime.datetime.strptime(split[1], "%m/%d/%Y")
         ).months
         incomes = self.model.table_maker(
-            self.model.df, "actual_spending", 
+            self, self.model.df, 
+            "actual_spending", 
             "General Category", 
             row_ids,
             ["Income"], 1
@@ -116,8 +116,6 @@ class Controller():
     def sub_category_checked(self, state):
         if state == 2:
             self.search_column = "Category"
-
-
             self.view.spending_analysis_page.change_subcategory_combobox(state)
         else:
             self.search_column = "General Category"
@@ -148,32 +146,59 @@ class Controller():
             compatible_breakdowns = self.config.CHART_BREAKDOWN_MAP[choice]
             self.view.spending_analysis_page.update_breakdown_types(compatible_breakdowns)
     
+    def check_comparison(self):
+        error = False
+        if self.chart_type == "Comparison Chart":
+            if len(self.category_list) > 1:
+                self.view.error_popup(
+                    "Too Many Categories Chosen for Comaprison Chart"
+                )
+                error = True
+            if "Income" in self.category_list and self.chart_type != "Income Side by Side":
+                self.view.error_popup(
+"""     To view Income Comparison Please Select
+'Income Side by Side' or 'Net Income' from Analysis Type.
+             Otherwiser uncheck income"""
+                )
+                error = True
+            self.comparison = True
+        else:
+            self.comparison = False
+        return error
+
     ### Apending Analysis Methods ###
     def analyze_spending(self):
         self.finalize_categories()
         self.get_date_list()
+        error = self.check_comparison()
+        if error:
+            return
         if self.search_column == "Category":
             budget = None
         else:
             budget = self.last_budget
-        if len(self.category_list) == 0:
+        print(self.chart_type)
+        if len(self.category_list) == 0 and \
+        self.analysis_type != "Net Income" and \
+        self.analysis_type != "Income Side by Side":
             self.view.error_popup(
                 "No Categories Chosen\nPlease Select at Least One"
             )
             return 
-        table = TableConstructor(
-            self.model.df,
+        table = self.model.table_maker(
+            self, self.model.df,
             self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
             self.search_column, self.dates_list,
             self.category_list, self.avg_monthly_income,
-            budget=budget
+            budget=budget,
+            comparison=self.comparison
         ).data_frame
-        plot = self.plotter(
-            table, self.chart_type, 
-            self.breakdown, 
-            self.search_column
-        )
-        plot.show()
+        # plot = self.plotter(
+        #     table, self.chart_type, 
+        #     self.breakdown, 
+        #     self.search_column
+        # )
+        # plot.show()
     
     def get_date_list(self):
         start = self.view.spending_analysis_page.start_date.date().toPyDate()

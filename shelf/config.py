@@ -11,23 +11,21 @@ class Config():
             "Line Chart" : self.BREAKDOWNS[1:],
             "Table" : self.BREAKDOWNS[:3],
             "Bar Graph" : self.BREAKDOWNS[:3],
-            "Net Income Chart" : self.BREAKDOWNS,
-            "Budget Comparison Chart" : self.BREAKDOWNS,
-            "Income Comparison Chart" : self.BREAKDOWNS
+            "Comparison Chart" : self.BREAKDOWNS
         }
         self.CHART_TYPES = list(self.CHART_BREAKDOWN_MAP.keys())
         self.ANALYSIS_TYPES = {
             "Net Income" : {
                 "table key" : "net_income",
-                "compatible graphs" : [self.CHART_TYPES[-3]]
+                "compatible graphs" : [self.CHART_TYPES[-1]]
             },
             "Budget Side by Side ($)" : {
                 "table key" : "budget_comparison",
-                "compatible graphs" : [self.CHART_TYPES[-2]]
+                "compatible graphs" : [self.CHART_TYPES[-1]]
             },
             "Budget Side by Side (%)" : {
                 "table key" : "budget_comparison_percent",
-                "compatible graphs" : [self.CHART_TYPES[-2]]
+                "compatible graphs" : [self.CHART_TYPES[-1]]
             },
             "Actual Spending ($)" : {
                 "table key" : "actual_spending",
@@ -73,6 +71,24 @@ class Config():
             #     "table key" : "transactions",
             #     "compatible graphs" : [self.CHART_TYPES[2]]
             # }, 
+        }
+        self.COMPARISON_ANALYSIS_MAP = {
+            "net_income" : {
+                "columns" : ["Gross Income", "Gross Spending", "Net Income"],
+                "table keys" : "net", 
+            },
+            "budget_comparison" : {
+                "columns" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
+                "table keys" : ("actual_spending", "expected_spending"), 
+            },
+            "budget_comparison_percent" : {
+                "columns" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
+                "table keys" : ("actual_spending_percent", "expected_spending_percent"),
+            },
+            "income_comparison" : {
+                "columns" : ["Expected Income", "Actual Income", "Amount Over/Under Budget"],
+                "table keys" : "income"
+            }
         }
         self.ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
             "Income" : [

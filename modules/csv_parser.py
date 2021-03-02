@@ -103,7 +103,10 @@ class DataPointConstructor():
             "expected_spending_percent" : self.get_expected_spending_percent,
             "expected_spending" : self.get_expected_spending,
             "over_budget" : self.get_over_budget,
-            "net_income" : self.quick,
+            "net_income" : self.get_actual_spending,
+            "budget_comparison" : self.skip,
+            "budget_comparison_percent" : self.skip,
+            "income_comparison" : self.skip,
             "amount_over" : self.get_amount_over_expected,
             "amount_over_percent" : self.get_amount_over_expected_percent
         }
@@ -112,7 +115,7 @@ class DataPointConstructor():
         # create dataframe object for datapaoint
         self.point_df = self.point_to_df(analysis_type)
 
-    def quick(self, df, filt):
+    def skip(self, df, filt):
         pass
 
     ### calculation methods ###
@@ -237,22 +240,23 @@ class RowConstructor():
                 self.gross_gain += column_item.actual_spending
             elif column_item.actual_spending < 0:
                 self.gross_loss += column_item.actual_spending
-        self.net_gain_loss = self.gross_gain + self.gross_loss
 
-    def net_income_df(self):
-        self.data_frame = pd.DataFrame(
-            {
-                "Row ID" : [self.date_range],
-                "Start Date" : [self.datetime_range["start"]],
-                "End Date" : [self.datetime_range["end"]],
-                "Net Gain" : [self.gross_gain],
-                "Net Loss" : [self.gross_loss],
-                "Net Income" : [self.net_gain_loss]
-            }
-        )
-        self.columns = self.data_frame.columns.tolist()
-        return self.data_frame
-    
+    def net_income_row(self, df_template):
+        df_template["Row ID"] = self.date_range
+        df_template["Start Date"] = self.datetime_range["start"]
+        df_template["End Date"] = self.datetime_range["end"]
+        df_template["Gross Income"] = self.gross_gain
+        df_template["Gross Spending"] = self.gross_loss
+        df_template["Net Income"] = self.gross_gain - self.gross_loss 
+        print(df_template)
+        return df_template  
+
+    def income_row(self, df_template):
+        pass
+
+    def comparison_row(self, df_template, comparison_map):
+        pass
+
     def __add__(self, data_frame):
         assert list(self.data_frame.columns) == list(data_frame.columns)
         return self.data_frame.append(data_frame)
@@ -260,17 +264,13 @@ class RowConstructor():
 
 class TableConstructor():
     def __init__(
-        self, df, analysis_type, search_column,
+        self, controller, df, analysis_type, search_column,
         date_range_list, category_list, 
-        avg_monthly_income, budget=None
+        avg_monthly_income, budget=None, 
+        comparison=False
     ):
         # define key attributes
-        special_analysis = {
-            "net_income" : self.net_income_analysis, 
-            "budget_comparison" : self.budget_comparison_percent_analysis, 
-            "budget_comparison_percent" : self.budget_comparison_percent_analysis, 
-            "income_comparison" : self.income_comparison_analysis 
-        }
+        self.comparison_analysis_map = controller.config.COMPARISON_ANALYSIS_MAP
         self.df = df
         self.search_column = search_column
         self.avg_monthly_income = avg_monthly_income
@@ -293,26 +293,20 @@ class TableConstructor():
             self.data_frame = row + self.data_frame
             self.row_objects[date_range] = row
 
-        if self.analysis_type in special_analysis:
-            special_analysis[self.analysis_type]()
+        if comparison:
+            self.comparison_analysis(self.comparison_analysis_map[self.analysis_type])
 
         self.data_frame.sort_values(by=["Start Date"], inplace=True)
         self.data_frame.set_index("Start Date")
 
-    def net_income_analysis(self):
-        self.data_frame = pd.DataFrame(
-            columns=["Row ID", "Start Date", "End Date", "Net Gain", "Net Loss", "Net Income"]
-        )
-        for row in list(self.row_objects.keys()):
-            row_obj = self.row_objects[row]
-            self.data_frame = self.data_frame.append(row_obj.net_income_df())
-        print(self.data_frame)
-
-    def budget_comparison_analysis(self):
-        pass
-
-    def budget_comparison_percent_analysis(self):
-        pass
-
-    def income_comparison_analysis(self):
-        pass
+    def comparison_analysis(self, analysis_map):
+        df_constructor =  pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *analysis_map["columns"]])
+        self.data_frame = df_constructor.copy()
+        for row in self.row_objects:
+            if analysis_map["table keys"] == "net":
+                new_row = self.row_objects[row].net_income_row(df_constructor)
+            elif analysis_map["table keys"] == "income":
+                new_row = self.row_objects[row].income_row(df_constructor)
+            else:
+                new_row = self.row_objects[row].comparison_row(df_constructor, analysis_map)
+            # self.data_frame = self.data_frame.append(new_row)

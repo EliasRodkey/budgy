@@ -144,7 +144,7 @@ class CheckableComboBox(QtWidgets.QComboBox):
         super(CheckableComboBox, self).addItem(item)
         item = self.model().item(self.count()-1,0)
         item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-        item.setCheckState(QtCore.Qt.Checked)
+        item.setCheckState(QtCore.Qt.Unchecked)
         self.view().pressed.connect(self.handle_item_pressed)
     
     def addItems(self, items:list):

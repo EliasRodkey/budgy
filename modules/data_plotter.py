@@ -14,8 +14,7 @@ class DataPlotter():
             "Line Chart" : self.build_line_plot, 
             "Table": self.build_table, 
             "Bar Graph" : self.build_bar_graph,
-            "Net Income Chart" : self.build_net_income_chart,
-            "Budget Comparison Chart" : self.build_comparison_graph
+            "Comparison Chart" : self.build_comparison_chart,
         }
         self.COLOR_LIST = [
             (178, 33, 179),
@@ -162,10 +161,7 @@ class DataPlotter():
         bottom.set_index("Start Date")
         return labels, bottom
     
-    def build_net_income_chart(self):
-        pass
-    
-    def build_comparison_graph(self):
+    def build_comparison_chart(self):
         pass
 
     def generate_colors(self, num_of_plots):
