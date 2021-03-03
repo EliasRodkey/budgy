@@ -165,7 +165,7 @@ class Controller():
             return
         table = self.model.table_maker(
             **inputs,
-        ).data_frame
+        )
         # plot = self.plotter(
         #     table, self.chart_type, 
         #     self.breakdown, 

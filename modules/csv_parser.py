@@ -104,9 +104,9 @@ class DataPointConstructor():
             "Budgeted Spending ($)" : self.get_expected_spending,
             "Over Budget (T/F)" : self.get_over_budget,
             "Net Income" : self.get_actual_spending,
-            "Budget Side by Side ($)" : self.skip,
-            "Budget Side by Side (%)" : self.skip,
-            "Income Side by Side" : self.skip,
+            "Budget Side by Side ($)" : self.get_budget_sbs,
+            "Budget Side by Side (%)" : self.get_budget_sbs_percent,
+            "Income Side by Side" : self.get_income_sbs,
             "Amount Over/Under Budget ($)" : self.get_amount_over_expected,
             "Amount Over/Under Budget (%)" : self.get_amount_over_expected_percent
         }
@@ -115,8 +115,27 @@ class DataPointConstructor():
         # create dataframe object for datapaoint
         self.point_df = self.point_to_df(analysis_type)
 
-    def skip(self, df, filt):
-        pass
+    ### Comparison Methods ###
+    def get_comparisons(self, comparison_type):
+        return self.ANALYSIS_TYPES[comparison_type](self.df, self.filt)
+
+    def get_budget_sbs(self, df, filt):
+        expected = abs(self.get_expected_spending(df, filt))
+        actual = abs(self.get_actual_spending(df, filt))
+        diff = expected - actual
+        return expected, actual, diff
+
+    def get_budget_sbs_percent(self, df, filt):
+        expected = self.get_expected_spending_percent(df, filt) * 100
+        actual = self.get_actual_spending_percent(df, filt) * 100
+        diff = expected - actual
+        return expected, actual, diff
+    
+    def get_income_sbs(self, df, filt):
+        expected = self.get_expected_income(df, filt)
+        actual = None
+        diff = None
+        return expected, actual, diff
 
     ### calculation methods ###
     def get_transactions(self, df, filt):
@@ -140,7 +159,6 @@ class DataPointConstructor():
         actual_spending = self.get_actual_spending(df, filt)
         expected_income = self.get_expected_income(df, filt)
         percent = -actual_spending / expected_income
-        #TODO returns a -0.0 for zeros sometimes? must solve
         return round(percent, 2)
 
     def get_expected_spending_percent(self, df, filt):
@@ -241,28 +259,78 @@ class RowConstructor():
             elif column_item.actual_spending < 0:
                 self.gross_loss += column_item.actual_spending
 
-    def net_income_row(self):
-        row = pd.DataFrame({
-            "Row ID" : [self.date_range], 
-            "Start Date" : [self.datetime_range["start"]],
-            "End Date" : [self.datetime_range["end"]],
-            "Gross Income" : [self.gross_gain],
-            "Gross Spending" : [self.gross_loss],
-            "Net Income" : [self.gross_gain - self.gross_loss]
-        })
-        print(row)
-        return row  
-
-    def income_row(self, df_template):
-        pass
-
-    def comparison_row(self, df_template, comparison_map):
-        pass
-
     def __add__(self, data_frame):
         assert list(self.data_frame.columns) == list(data_frame.columns)
         return self.data_frame.append(data_frame)
 
+
+class ComparisonRowConstructor():
+    def __init__(
+        self, controller, df, category, search_column,
+        date_range, avg_monthly_income, analysis_type,
+        budget
+    ):
+        self.controller = controller
+        self.df = df
+        self.category = category
+        self.search_column = search_column
+        self.date_range = date_range
+        self.datetime_range = range_to_datetimes(date_range)
+        self.avg_monthly_income = avg_monthly_income
+        self.analysis_type = analysis_type
+
+        gross_gain = 0
+        gross_loss = 0
+        self.data_point_objects = {}
+        for typ in self.controller.config.ALL_CATEGORIES:
+            if budget != None and typ != "Income":
+                self.budget = budget
+            else:
+                self.budget = {typ : None}
+            column_item = DataPointConstructor(
+                self.df, "Actual Spending ($)", typ, search_column,
+                avg_monthly_income, date_range, 
+                budget_percent=self.budget[typ]
+            )
+            self.data_point_objects[typ] = column_item
+            if column_item.actual_spending > 0:
+                gross_gain += column_item.actual_spending
+            elif column_item.actual_spending < 0:
+                gross_loss += column_item.actual_spending
+
+        if self.analysis_type == "Net Income":
+            self.data_frame = self.build_net_income_row(gross_gain, abs(gross_loss))
+            return
+        
+        expected, actual, diff = self.data_point_objects[self.category].get_comparisons(
+            self.analysis_type
+        )
+        if actual == None:
+            actual = gross_gain
+            diff = actual - expected
+        self.data_frame = pd.DataFrame(
+            {
+                "Row ID" : [self.date_range], 
+                "Start Date" : [self.datetime_range["start"]],
+                "End Date" : [self.datetime_range["end"]],
+                f"{category} Budgeted" : expected,
+                f"{category} Actual" : actual,
+                "Amount Over/Under Budget" : diff
+            }
+        )
+
+    def build_net_income_row(self, gross_gain, gross_loss):
+        row = pd.DataFrame(
+            {
+                "Row ID" : [self.date_range], 
+                "Start Date" : [self.datetime_range["start"]],
+                "End Date" : [self.datetime_range["end"]],
+                "Gross Income" : [gross_gain],
+                "Gross Spending" : [gross_loss],
+                "Net Income" : [gross_gain - gross_loss]
+            }
+        )
+        return row  
 
 class TableConstructor():
     def __init__(
@@ -272,7 +340,7 @@ class TableConstructor():
         comparison
     ):
         # define key attributes
-        self.comparison_analysis_map = controller.config.COMPARISON_ANALYSIS_MAP
+        self.controller = controller
         self.df = df
         self.search_column = search_column
         self.avg_monthly_income = avg_monthly_income
@@ -281,36 +349,63 @@ class TableConstructor():
         self.date_range_list = date_range_list
         self.categories = category_list
 
-        # loop over date ranges and add rows together
+        # See if building comparison table or not
+        if not comparison:
+            self.build_normal_df()
+        else:
+            self.build_comparison_df()
+
+    def build_normal_df(self):
         self.row_objects = {}
         self.data_frame = pd.DataFrame(
             columns=["Row ID", "Start Date", "End Date", *self.categories]
         )
         for date_range in self.date_range_list:
             row = RowConstructor(
-                self.df, self.analysis_type, self.search_column,
-                self.categories, date_range, 
-                self.avg_monthly_income, self.budget
-            )
+                    self.df, self.analysis_type, self.search_column,
+                    self.categories, date_range, 
+                    self.avg_monthly_income, self.budget
+                )
             self.data_frame = row + self.data_frame
             self.row_objects[date_range] = row
-
-        # if comparison:
-        #     self.comparison_analysis(self.comparison_analysis_map[self.analysis_type])
-
         self.data_frame.sort_values(by=["Start Date"], inplace=True)
         self.data_frame.set_index("Start Date")
 
-    #TODO: make a new class for comparison chart that builds it from scratch with a
-    #TODO: filter to find total spending and income instead of using the row constructors
-    # def comparison_analysis(self, analysis_map):
-    #     df_constructor =  pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *analysis_map["columns"]])
-    #     self.data_frame = df_constructor.copy()
-    #     for row in self.row_objects:
-    #         if analysis_map["table keys"] == "net":
-    #             new_row = self.row_objects[row].net_income_row()
-    #         elif analysis_map["table keys"] == "income":
-    #             new_row = self.row_objects[row].income_row(df_constructor)
-    #         else:
-    #             new_row = self.row_objects[row].comparison_row(df_constructor, analysis_map)
-    #         # self.data_frame = self.data_frame.append(new_row)
+    def build_comparison_df(self):
+        self.data_frame = {}
+        if self.categories == [] and \
+        (self.analysis_type == "Net Income" or \
+        self.analysis_type == "Income Side by Side"):
+            self.categories = ["Income"]
+        for category in self.categories:
+            columns = self.find_comparison_columns(category)
+            temp_data_frame = pd.DataFrame(columns=columns)
+            for date_range in self.date_range_list:
+                row = ComparisonRowConstructor(
+                    self.controller, self.df, category,
+                    self.search_column, date_range,
+                    self.avg_monthly_income,  self.analysis_type,
+                    self.budget
+                )
+                temp_data_frame = pd.concat(
+                    [row.data_frame, temp_data_frame]
+                    )
+                temp_data_frame.sort_values(by=["Start Date"], inplace=True)
+                temp_data_frame.set_index("Start Date")
+            self.data_frame[category] = temp_data_frame
+        import pprint
+        pprint.pprint(self.data_frame)
+        
+    def find_comparison_columns(self, category):
+        COMPARISON_ANALYSIS_MAP = {
+            "Net Income" : ["Gross Income", "Gross Spending", "Net Income"],
+        }
+        if self.analysis_type in COMPARISON_ANALYSIS_MAP.keys():
+            return [
+                "Row ID", "Start Date", "End Date", 
+                *COMPARISON_ANALYSIS_MAP[self.analysis_type]
+            ]
+        column1 = f"{category} Budgeted"
+        column2 = f"{category} Actual"
+        column3 = "Amount Over/Under Budget"
+        return ["Row ID", "Start Date", "End Date", column1, column2, column3]

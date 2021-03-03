@@ -30,12 +30,6 @@ class Config():
             "Over Budget (T/F)" : self.CHART_TYPES[2:4]
             # "Transactions" :  [self.CHART_TYPES[2]]
         }
-        self.COMPARISON_ANALYSIS_MAP = {
-            "Net Income" : ["Gross Income", "Gross Spending", "Net Income"],
-            "Budget Side by Side ($)" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
-            "Budget Side by Side (%)" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
-            "Income Side by Side" : ["Expected Income", "Actual Income", "Amount Over/Under Budget"],
-        }
         self.ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
             "Income" : [
                 "Income", "Bonus", "Interest Income", "Paycheck", "Reimbursment", 
