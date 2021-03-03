@@ -268,8 +268,8 @@ class TableConstructor():
     def __init__(
         self, controller, df, analysis_type, search_column,
         date_range_list, category_list, 
-        avg_monthly_income, budget=None, 
-        comparison=False
+        avg_monthly_income, budget, 
+        comparison
     ):
         # define key attributes
         self.comparison_analysis_map = controller.config.COMPARISON_ANALYSIS_MAP
@@ -295,22 +295,22 @@ class TableConstructor():
             self.data_frame = row + self.data_frame
             self.row_objects[date_range] = row
 
-        if comparison:
-            self.comparison_analysis(self.comparison_analysis_map[self.analysis_type])
+        # if comparison:
+        #     self.comparison_analysis(self.comparison_analysis_map[self.analysis_type])
 
         self.data_frame.sort_values(by=["Start Date"], inplace=True)
         self.data_frame.set_index("Start Date")
 
     #TODO: make a new class for comparison chart that builds it from scratch with a
     #TODO: filter to find total spending and income instead of using the row constructors
-    def comparison_analysis(self, analysis_map):
-        df_constructor =  pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *analysis_map["columns"]])
-        self.data_frame = df_constructor.copy()
-        for row in self.row_objects:
-            if analysis_map["table keys"] == "net":
-                new_row = self.row_objects[row].net_income_row()
-            elif analysis_map["table keys"] == "income":
-                new_row = self.row_objects[row].income_row(df_constructor)
-            else:
-                new_row = self.row_objects[row].comparison_row(df_constructor, analysis_map)
-            # self.data_frame = self.data_frame.append(new_row)
+    # def comparison_analysis(self, analysis_map):
+    #     df_constructor =  pd.DataFrame(columns=["Row ID", "Start Date", "End Date", *analysis_map["columns"]])
+    #     self.data_frame = df_constructor.copy()
+    #     for row in self.row_objects:
+    #         if analysis_map["table keys"] == "net":
+    #             new_row = self.row_objects[row].net_income_row()
+    #         elif analysis_map["table keys"] == "income":
+    #             new_row = self.row_objects[row].income_row(df_constructor)
+    #         else:
+    #             new_row = self.row_objects[row].comparison_row(df_constructor, analysis_map)
+    #         # self.data_frame = self.data_frame.append(new_row)

@@ -2,6 +2,7 @@
 # controller.py - controls the interactions between the user and the 
 # model backend
 
+from pandas.core.base import DataError
 from view import View
 from model import Model
 from shelf.config import Config
@@ -20,20 +21,11 @@ class Controller():
         self.model = Model(self, self.config.LOC_TRANSACTION_PATH, self.config.ALL_CATEGORIES)
         self.plotter = self.model.plotter
         self.avg_monthly_income = self.find_avg_monthly_income()
+        self.search_column = "General Category"
 
         # view and page attributes
         self.view = View(self)
         self.page_history = []
-
-        #TODOL delete when I know I dont need it
-        # # default attributes for spending analysis
-        # self.analysis_type = "Net Income"
-        # self.search_column = "General Category"
-        # self.breakdown = "All"
-        # self.category_list = list(self.config.ALL_CATEGORIES.keys())
-        # self.dates_list = [self.model.all_time_transaction_dates]
-        # self.chart_type = "Comparison Chart"
-        # self.comparison = True
 
         # view loading and showing
         self.view.setup_ui()
@@ -99,10 +91,11 @@ class Controller():
         ).months
         incomes = self.model.table_maker(
             self, self.model.df, 
-            "actual_spending", 
+            "Actual Spending ($)", 
             "General Category", 
             row_ids,
-            ["Income"], 1
+            ["Income"], 1,
+            None, False
         ).data_frame
         decay_value = 0
         wavg = 0
@@ -139,7 +132,7 @@ class Controller():
             pass
 
     def sub_category_checked(self, state):
-        general_category_analysis = list(self.config.ANALYSIS_TYPES.keys())
+        general_category_analysis = list(self.config.ANALYSIS_CHART_MAP.keys())
         sub_category_incomp = [
             "Net Income", 
             "Budget Side by Side ($)", 
@@ -167,11 +160,11 @@ class Controller():
 
     ### Analysis Methods ###
     def analyze_spending(self):
-        inputs, budget, comparison = self.retrieve_inputs()
+        inputs, chart = self.retrieve_inputs()
+        if inputs == None:
+            return
         table = self.model.table_maker(
-            self, *inputs,
-            budget=budget,
-            comparison=comparison
+            **inputs,
         ).data_frame
         # plot = self.plotter(
         #     table, self.chart_type, 
@@ -182,50 +175,45 @@ class Controller():
     
     ### Input Retrieval Methods ###
     def retrieve_inputs(self):
-        # table = self.model.table_maker(
-        #     self, self.model.df,
-        #     self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
-        #     self.search_column, self.dates_list,
-        #     self.category_list, self.avg_monthly_income,
-        #     budget=budget,
-        #     comparison=self.comparison
         analysis_page = self.view.spending_analysis_page
         analysis_type = analysis_page.data_display_type_comboBox.currentText()
+        category_list = self.get_category_list()
+        dates_list = self.get_date_list()
+        chart = analysis_page.chart_type_comboBox.currentText()
+        comparison = False
+        if chart == "Comparison Chart":
+            comparison = True
         if self.search_column == "Category":
             budget = None
         else:
             budget = self.last_budget
-        self.finalize_categories()
-        self.get_date_list()
-        error = self.check_comparison()
-        inputs = [
-            self.model.df,
-            self.config.ANALYSIS_TYPES[self.analysis_type]["table key"],
-            self.search_column,
-            self.get_date_list(),
-            self.category_list, 
-            self.avg_monthly_income
-        ]
-        error, msg = self.check_input_error()
+
+        inputs = {
+            "controller" : self,
+            "df" : self.model.df,
+            "analysis_type" : analysis_type,
+            "search_column" : self.search_column,
+            "date_range_list" : dates_list,
+            "category_list" : category_list, 
+            "avg_monthly_income" : self.avg_monthly_income,
+            "budget" : budget,
+            "comparison" : comparison
+        }
+        error, msg = self.check_input_error(inputs)
         if error:
             self.view.error_popup(msg)
-            return
-        return inputs
+            return None, None
+        return inputs, chart
 
-    def get_sub_category(self, choice):
-        self.category_list = self.config.ALL_CATEGORIES[choice]
-    
-    def get_category(self):
-        choices = self.view.spending_analysis_page.category_combobox.checkedItems()
-        self.category_list = choices
-    
-    def get_chart_type(self, choice):
-        if choice == "" or choice == "Select One...":
-            return
+    def get_category_list(self):
+        analysis_page = self.view.spending_analysis_page
+        if self.search_column == "Category":
+            choice = analysis_page.sub_category_combobox.currentText()
+            category_list = self.config.ALL_CATEGORIES[choice]
         else:
-            self.chart_type = choice
-            compatible_breakdowns = self.config.CHART_BREAKDOWN_MAP[choice]
-            self.view.spending_analysis_page.update_breakdown_types(compatible_breakdowns)
+            choices = analysis_page.category_combobox.checkedItems()
+            category_list = choices
+        return category_list
 
     def get_date_list(self):
         start = self.view.spending_analysis_page.start_date.date().toPyDate()
@@ -244,42 +232,16 @@ class Controller():
             dates_list = self.dates_obj.all
         return dates_list
 
-    def finalize_categories(self):
-        if self.search_column == "General Category":
-            self.category_chosen()
-        if self.analysis_type == "Net Income":
-            self.category_list = list(self.config.ALL_CATEGORIES.keys())
-        if self.analysis_type == "Income Side by Side":
-            self.category_list = ["Income"]
-
     ### Error Handling Methods ###
-    def check_input_error(self):
-        if len(self.category_list) == 0:
-            self.view.error_popup(
-                "No Categories Chosen\nPlease Select at Least One"
-            )
-            return 
-
-    def check_comparison(self):
+    def check_input_error(self, inputs):
         error = False
-        if self.chart_type == "Comparison Chart":
-            if len(self.category_list) > 1:
-                self.view.error_popup(
-                    "Too Many Categories Chosen for Comaprison Chart"
-                )
+        msg = ""
+        if len(inputs["category_list"]) == 0:
+            if inputs["analysis_type"] != "Net Income" and \
+            inputs["analysis_type"] != "Income Side by Side":
                 error = True
-            if "Income" in self.category_list and self.chart_type != "Income Side by Side":
-                self.view.error_popup(
-"""To view Income Comparison Please Select
-'Income Side by Side' or 'Net Income' from Analysis Type.
-Otherwiser uncheck income"""
-                )
-                error = True
-            self.comparison = True
-        else:
-            self.comparison = False
-        return error
+                msg = "No Categories Chosen\nPlease Select at Least One"
+        return error, msg
             
-
 if __name__ == "__main__":
     app = Controller()

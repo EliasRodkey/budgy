@@ -200,7 +200,7 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.data_display_type_comboBox = QtWidgets.QComboBox(self)
         self.data_display_type_comboBox.setGeometry(QtCore.QRect(350, 250, 300, 50))
         self.data_display_type_comboBox.addItems(
-            list(self.controller.config.ANALYSIS_TYPES.keys())
+            list(self.controller.config.ANALYSIS_CHART_MAP.keys())
         )
         self.data_display_type_comboBox.currentTextChanged.connect(
             self.controller.input_changed
@@ -217,9 +217,9 @@ class SpendingAnalysisPage(QtWidgets.QWidget):
         self.chart_type_comboBox.setGeometry(QtCore.QRect(350, 370, 300, 50))
         self.chart_type_comboBox.setObjectName("chart_type_combobox")
         self.chart_type_comboBox.addItems(
-            self.controller.config.ANALYSIS_TYPES[
+            self.controller.config.ANALYSIS_CHART_MAP[
                 self.data_display_type_comboBox.currentText()
-                ]["compatible graphs"]
+                ]
         )
         self.chart_type_comboBox.currentTextChanged.connect(
             self.controller.input_changed

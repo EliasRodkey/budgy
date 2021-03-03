@@ -31,22 +31,10 @@ class Config():
             # "Transactions" :  [self.CHART_TYPES[2]]
         }
         self.COMPARISON_ANALYSIS_MAP = {
-            "net_income" : {
-                "columns" : ["Gross Income", "Gross Spending", "Net Income"],
-                "table keys" : "net", 
-            },
-            "budget_comparison" : {
-                "columns" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
-                "table keys" : ("actual_spending", "expected_spending"), 
-            },
-            "budget_comparison_percent" : {
-                "columns" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
-                "table keys" : ("actual_spending_percent", "expected_spending_percent"),
-            },
-            "income_comparison" : {
-                "columns" : ["Expected Income", "Actual Income", "Amount Over/Under Budget"],
-                "table keys" : "income"
-            }
+            "Net Income" : ["Gross Income", "Gross Spending", "Net Income"],
+            "Budget Side by Side ($)" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
+            "Budget Side by Side (%)" : ["Expected Spending", "Actual Spending", "Amount Over/Under Budget"],
+            "Income Side by Side" : ["Expected Income", "Actual Income", "Amount Over/Under Budget"],
         }
         self.ALL_CATEGORIES = {  #contains all possible categories from mint.com transactions
             "Income" : [
