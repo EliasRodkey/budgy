@@ -393,8 +393,6 @@ class TableConstructor():
                 temp_data_frame.sort_values(by=["Start Date"], inplace=True)
                 temp_data_frame.set_index("Start Date")
             self.data_frame[category] = temp_data_frame
-        import pprint
-        pprint.pprint(self.data_frame)
         
     def find_comparison_columns(self, category):
         COMPARISON_ANALYSIS_MAP = {

@@ -165,13 +165,23 @@ class Controller():
             return
         table = self.model.table_maker(
             **inputs,
-        )
-        # plot = self.plotter(
-        #     table, self.chart_type, 
-        #     self.breakdown, 
-        #     self.search_column
-        # )
-        # plot.show()
+        ).data_frame
+        breakdown = self.view.spending_analysis_page.time_period_combobox.currentText()
+        if type(table) == dict:
+            for category in table:
+                plot = self.plotter(
+                    table[category], chart,
+                    breakdown,
+                    inputs["search_column"]
+                )
+                plot.show()
+        else:
+            plot = self.plotter(
+                table, chart, 
+                breakdown, 
+                inputs["search_column"]
+            )
+            plot.show()
     
     ### Input Retrieval Methods ###
     def retrieve_inputs(self):

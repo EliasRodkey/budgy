@@ -162,7 +162,28 @@ class DataPlotter():
         return labels, bottom
     
     def build_comparison_chart(self):
-        pass
+        colors = ["g", "r"]
+        for i in range(2):
+            self.plot.plot(
+                self.df["Start Date"].astype("str"),
+                self.df.iloc[:, i+3], color=colors[i],
+                marker="x", label=self.columns[i]
+            )
+        
+        gmask = self.df[self.columns[2]] >= 0 
+        rmask = self.df[self.columns[2]] < 0
+
+        self.plot.bar(
+            self.df[gmask]["Start Date"].astype("str"),
+            self.df[gmask][self.columns[2]],
+            color="g", label=self.columns[-1]
+        )
+        self.plot.bar(
+            self.df[rmask]["Start Date"].astype("str"),
+            self.df[rmask][self.columns[2]],
+            color="r", label=self.columns[-1]
+        )
+        self.plot.legend()
 
     def generate_colors(self, num_of_plots):
         colors_256 = sample(self.COLOR_LIST, num_of_plots)
