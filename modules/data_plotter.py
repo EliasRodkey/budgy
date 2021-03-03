@@ -7,7 +7,6 @@ from matplotlib import pyplot as plt
 
 
 class DataPlotter():
-    # TODO: make parrallel graph comparing to budget
     def __init__(self, df, chart_type, breakdown, search_column):
         CHART_MAP = {
             "Pie Chart" : self.build_pie_chart,
@@ -43,6 +42,7 @@ class DataPlotter():
         self.columns = self.df.columns.tolist()[3:]
         self.dates_df = self.df["Start Date"].dt.strftime("%m/%d/%Y")
         
+        self.xticks = self.get_xticks(breakdown)
         self.plot = plt
         self.plot.style.use("ggplot")
         self.plot.figure(figsize=(20, 15))
@@ -105,6 +105,7 @@ class DataPlotter():
         self.plot.ylabel("Dollars", fontdict={"fontsize" : 16})
         self.plot.axhline(0, color="black")
         self.plot.legend(self.columns)
+        self.plot.xticks(self.xticks)
 
     def build_table(self):
         ax = self.plot.subplot(111, frame_on=False) 
@@ -146,6 +147,7 @@ class DataPlotter():
         self.plot.ylabel("Dollars", fontdict={"fontsize" : 16})
         self.plot.axhline(0, color="black")
         self.plot.legend()
+        self.plot.xticks(self.xticks)
 
     def clean_bar_data(self):
         labels = self.columns.copy()
@@ -184,6 +186,7 @@ class DataPlotter():
             color="r", label=self.columns[-1]
         )
         self.plot.legend()
+        self.plot.xticks(self.xticks)
 
     def generate_colors(self, num_of_plots):
         colors_256 = sample(self.COLOR_LIST, num_of_plots)
@@ -194,6 +197,15 @@ class DataPlotter():
                 temp.append(rgb / 256)
             colors.append(tuple(temp))
         return colors
+    
+    def get_xticks(self, breakdown):
+        init_list = self.df["Start Date"].astype("str").tolist()
+        if breakdown == "Months":
+            return init_list[::3]
+        elif breakdown == "Weeks":
+            return init_list[::14]
+        else:
+            return init_list
     
     def show(self):
         self.plot.show()
