@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 
 class DataPlotter():
     def __init__(self, df, chart_type, breakdown, search_column):
+        self.df = df
+        self.columns = self.df.columns.tolist()[3:]
         CHART_MAP = {
             "Pie Chart" : self.build_pie_chart,
             "Line Chart" : self.build_line_plot, 
@@ -33,19 +35,18 @@ class DataPlotter():
             (254, 69, 6),
             (54, 206, 219)
         ]
+
         if search_column == "Category":
             title_category = "Subcategories"
         else:
-            title_category = "General Categories"
-        self.title = f"{chart_type} of {title_category}\nBreakdown: {breakdown}"
-        self.df = df
-        self.columns = self.df.columns.tolist()[3:]
-        self.dates_df = self.df["Start Date"].dt.strftime("%m/%d/%Y")
+            title_category = "General"
+        self.title = self.generate_title(title_category, breakdown, chart_type)
         
         self.xticks = self.get_xticks(breakdown)
         self.plot = plt
         self.plot.style.use("ggplot")
         self.plot.figure(figsize=(20, 15))
+        self.plot.title(self.title)
         function = CHART_MAP[chart_type]
         function()
     
@@ -185,6 +186,7 @@ class DataPlotter():
             self.df[rmask][self.columns[2]],
             color="r", label=self.columns[-1]
         )
+        self.plot.axhline(0, color="black")
         self.plot.legend()
         self.plot.xticks(self.xticks)
 
@@ -197,6 +199,26 @@ class DataPlotter():
                 temp.append(rgb / 256)
             colors.append(tuple(temp))
         return colors
+    
+    def generate_title(self, title_category, breakdown, chart_type):
+        breakdownly = breakdown.replace("s", "") + "ly" if breakdown != "All" else "All Time"
+        category = self.columns[0].split(" ")[0]
+        if chart_type == "Comparison Chart":
+            if "Net Income" in  self.columns:
+                return f"{breakdownly} Net Income Summary"
+            else:
+                return f"{breakdownly} {category} Summary"
+        if chart_type == "Pie Chart":
+            rang = self.df['Row ID'].iloc[0]
+            if title_category == "General":
+                return f"{title_category} Spending Breakdown: {rang}"
+            else:
+                return f"{category} {title_category} Spending Breakdown: {rang}"
+        else:
+            if title_category == "General":
+                f"{title_category} {breakdownly} Spending Breakdown"
+            else:
+                f"{category} {title_category} {breakdownly} Spending Breakdown"
     
     def get_xticks(self, breakdown):
         init_list = self.df["Start Date"].astype("str").tolist()
