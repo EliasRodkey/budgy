@@ -5,7 +5,7 @@
 from pandas.core.base import DataError
 from view import View
 from model import Model
-from shelf.config import Config
+from config import Config
 import shelve
 import datetime
 

@@ -2,9 +2,9 @@
 # model.py - houses all model classes and passes information from
 # the controller ot the model
 
-from modules import csv_parser
-from modules import data_plotter
-from modules import date_finder
+from data_intake import csv_parser
+from reporting import data_plotter
+from data_analysis import date_finder
 
 class Model():
     def __init__(self, controller, local_path, category_breakdown):
