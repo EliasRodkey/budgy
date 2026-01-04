@@ -1,21 +1,32 @@
 #! python3
-# csv_parser.py - reads and sorts data from raw mint csv
-# using pandas dataframe
-import logging
+"""
+csv_parser.py
+reads data from raw SoFi CSV exports
+creates data table using pandas dataframe
+exports data table to local database
 
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+Classes:
+    - 
+Funcitons:
+    - 
+"""
+
+from budgy import ELF, Logger
+from ..utils.file_utils import EDirectories
+
+_logger = Logger("csv_parser", EDirectories.LOG_DIR)
+_logger.add_file_handler(ELF.FORMAT_LOGGER_NAME)
 
 import pandas as pd
 import datetime
+
 
 def range_to_datetimes(date_range):
     rang = date_range.split(" - ")
     old_date = datetime.datetime.strptime(rang[0], "%m/%d/%Y")
     new_date = datetime.datetime.strptime(rang[1], "%m/%d/%Y")
     return {"start" : old_date, "end" : new_date}
+
 
 
 class CSVAnalyzer():
