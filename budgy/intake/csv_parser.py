@@ -11,14 +11,20 @@ Funcitons:
     - 
 """
 
-from budgy import ELF, Logger
+# Standard library imports
+import datetime
+
+# Import logging utilities
+import logging
+from loggers import configure_logger
 from ..utils.file_utils import EDirectories
 
-_logger = Logger("csv_parser", EDirectories.LOG_DIR)
-_logger.add_file_handler(ELF.FORMAT_LOGGER_NAME)
-
+# Third party imports
 import pandas as pd
-import datetime
+
+# Initialize logger
+logger = logging.getLogger(__name__)
+configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 def range_to_datetimes(date_range):

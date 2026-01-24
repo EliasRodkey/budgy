@@ -3,16 +3,21 @@
 # useful date ranges such as past week, 2 weeks, month, 3 months
 # 6 months, all date ranges for weeks, months, and years that will
 # be used in the table constructor
-import logging
 
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
+# Standard library imports
 import calendar
 import datetime
 from random import randint
+
+# Import logging utilities
+import logging
+from loggers import configure_logger
+from budgy.utils.file_utils import EDirectories
+
+# Initialize logger
+logger = logging.getLogger(__name__)
+configure_logger(logger, EDirectories.LOG_DIR)
+
 
 def datetimes_to_range(datetimes):
     old_date = datetimes["start"].strftime("%m/%d/%Y")

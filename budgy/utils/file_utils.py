@@ -7,6 +7,7 @@ Contains:
 
 """
 
+# Standard library importss
 from enum import Enum
 import os
 
@@ -19,9 +20,10 @@ class EDirectories(str, Enum):
     Attributees:
         - LOG_DIR: Path to the logs directory.
     """
-    LOG_DIR = os.path.join(os.getcwd(), "budgy", "data", "logs")
-    CSV_DIR = os.path.join(os.getcwd(), "budgy", "data", "csv_downloads")
-    DB_DIR = os.path.join(os.getcwd(), "budgy", "data", "databases")
+    LOG_DIR = os.path.join(os.getcwd(), "data", "logs")
+    CSV_DIR = os.path.join(os.getcwd(), "data", "csv_downloads")
+    DB_DIR = os.path.join(os.getcwd(), "data", "databases")
+    DB_FILENAME = "database.db"
 
 
     def __str__(self):
@@ -29,10 +31,12 @@ class EDirectories(str, Enum):
 
 
 
-from budgy import ELF, Logger
+# Import logging utilities
+import logging
+from loggers import configure_logger, LoggingHandlerController
 
-_logger = Logger("file_utils", EDirectories.LOG_DIR)
-_logger.add_file_handler(ELF.FORMAT_LOGGER_NAME)
+logger = logging.getLogger(__name__)
+log_handlers: LoggingHandlerController = configure_logger(logger, EDirectories.LOG_DIR)
 
 
 def get_csv_filenames() -> list[str]:

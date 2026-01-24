@@ -1,9 +1,22 @@
 #! python3
 # data_plotter.py - reads data from csv_parser.py and plots
 # a variety of graphs for data visulization
-import pandas as pd
+
+# Standard library imports
 from random import sample
+
+# Import logging utilities
+import logging
+from loggers import configure_logger
+from budgy.utils.file_utils import EDirectories
+
+# Third party imports
+import pandas as pd
 from matplotlib import pyplot as plt
+
+# Initialize logger
+logger = logging.getLogger(__name__)
+configure_logger(logger, EDirectories.LOG_DIR)
 
 
 class DataPlotter():
