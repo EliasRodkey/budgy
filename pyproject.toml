@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "budgy"
+version = "2.0.0"
+description = "budget managing application"
+authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
+license = {text = "MIT"}
+dependencies = ["requests", "numpy"]  # List your package dependencies here
