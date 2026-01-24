@@ -8,11 +8,12 @@ Tests for budgy.utils.db_utils module.
 import datetime
 import os
 import pytest
+import sys
 
 # Import logging utilities
 import logging
 from loggers import configure_logger, LoggingHandlerController
-from ..file_utils import EDirectories
+from budgy.utils.file_utils import EDirectories
 
 # Local imports
 from budgy.utils.db_utils import transactions_table_manager, updates_table_manager
@@ -20,7 +21,7 @@ from local_db.utils import map_dtype_to_sql
 
 # Iniitialize logger
 logger = logging.getLogger(__name__)
-log_handlers: LoggingHandlerController = configure_logger(logger, EDirectories.LOG_DIR)
+log_handlers: LoggingHandlerController = configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 def test_db_file_creation():
