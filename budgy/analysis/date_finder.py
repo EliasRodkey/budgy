@@ -16,7 +16,7 @@ from budgy.utils.file_utils import EDirectories
 
 # Initialize logger
 logger = logging.getLogger(__name__)
-configure_logger(logger, EDirectories.LOG_DIR)
+configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 def datetimes_to_range(datetimes):

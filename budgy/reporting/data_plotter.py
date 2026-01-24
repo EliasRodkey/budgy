@@ -16,7 +16,7 @@ from matplotlib import pyplot as plt
 
 # Initialize logger
 logger = logging.getLogger(__name__)
-configure_logger(logger, EDirectories.LOG_DIR)
+configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 class DataPlotter():

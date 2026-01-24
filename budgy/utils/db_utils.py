@@ -15,7 +15,7 @@ from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes
 
 # Iniitialize logger
 logger = logging.getLogger(__name__)
-configure_logger(logger, EDirectories.LOG_DIR)
+configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 
