@@ -26,6 +26,13 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
+# Check whether or not the CSV data file has been uploaded to the database
+# Select CSV Files that have not yet been uploaded
+# Import CSV data
+# Define database structure and schema
+# Validate data for database insertion
+# Insert data into database, checking to make sure it is not a duplicate
+
 
 def range_to_datetimes(date_range):
     rang = date_range.split(" - ")
