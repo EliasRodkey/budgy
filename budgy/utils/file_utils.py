@@ -23,7 +23,7 @@ class EDirectories(str, Enum):
     LOG_DIR = os.path.join(os.getcwd(), "data", "logs")
     CSV_DIR = os.path.join(os.getcwd(), "data", "csv_downloads")
     DB_DIR = os.path.join(os.getcwd(), "data", "databases")
-    DB_FILENAME = "database.db"
+    DB_FILENAME = "budgy_financial_transaction.db"
 
 
     def __str__(self):

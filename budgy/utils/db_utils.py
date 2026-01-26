@@ -20,7 +20,25 @@ configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 class TransactionsTable(BaseTable):
-    """Class representing the Transactions table in the database."""
+    """
+    Class representing the Transactions table in the database.
+    This table stores all the transaction data imported from CSV files.
+    
+    Database Structure:
+    table name: transactions
+    Columns:
+        - id: Integer, Primary Key, Auto Increment (unique identifier for each transaction)
+        - authorized_date: DateTime
+        - posted_date: DateTime
+        - status: String
+        - account_name: String
+        - description: String
+        - primary_category: String
+        - detailed_category: String
+        - amount: Float
+        - repayment: Boolean
+        - exclude: Boolean
+    """
 
     __tablename__ = "transactions"
 
@@ -39,7 +57,18 @@ class TransactionsTable(BaseTable):
 
 
 class UpdatesTable(BaseTable):
-    """Class representing the transaction_updates table in the database."""
+    """
+    Class representing the transaction_updates table in the database.
+    This table stores metadata about CSV file imports and their statuses.
+    
+    Database Structure:
+    table name: transactions
+    Columns:
+        - id: Integer, Primary Key, Auto Increment (unique identifier for each update record)
+        - datetime: DateTime
+        - filename: String
+        - status: String
+    """
 
     __tablename__ = "transaction_updates"
 
