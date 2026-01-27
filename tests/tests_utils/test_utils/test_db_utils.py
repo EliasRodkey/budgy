@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.utils.tests.test_db_utils
+budgy.utils.tests.test_utils.test_db_utils
 
 Tests for budgy.utils.db_utils module.
 """
