@@ -11,12 +11,10 @@ from random import randint
 
 # Import logging utilities
 import logging
-from loggers import configure_logger
 from budgy.utils.file_utils import EDirectories
 
 # Initialize logger
 logger = logging.getLogger(__name__)
-configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 def datetimes_to_range(datetimes):

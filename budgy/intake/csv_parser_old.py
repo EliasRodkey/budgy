@@ -14,17 +14,13 @@ Funcitons:
 # Standard library imports
 import datetime
 
-# Import logging utilities
-import logging
-from loggers import configure_logger
-from ..utils.file_utils import EDirectories
-
 # Third party imports
 import pandas as pd
 
-# Initialize logger
+# Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
+
 
 # Check whether or not the CSV data file has been uploaded to the database
 # Select CSV Files that have not yet been uploaded

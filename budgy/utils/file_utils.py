@@ -31,12 +31,9 @@ class EDirectories(str, Enum):
 
 
 
-# Import logging utilities
+# Initialize module logger
 import logging
-from loggers import configure_logger, LoggingHandlerController
-
 logger = logging.getLogger(__name__)
-log_handlers: LoggingHandlerController = configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 def get_csv_filenames() -> list[str]:

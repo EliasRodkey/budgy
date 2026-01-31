@@ -13,18 +13,13 @@ import sys
 # Third-party imports
 import pandas as pd
 
-# Import logging utilities
-import logging
-from loggers import configure_logger, LoggingHandlerController, clear_logs
-from budgy.utils.file_utils import EDirectories
-
 # Local imports
 from budgy.utils.db_utils import updates_table_manager
 from local_db.utils import map_dtype_to_sql
 
-# Iniitialize logger
+# Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-log_handlers: LoggingHandlerController = configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 update_items = [

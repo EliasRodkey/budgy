@@ -1,6 +1,8 @@
-# Import specific functions or classes for direct access at a package level
-# from .module1 import function1, class1
-# from .module2 import function2
+# Configure root logger
+from loggers import configure_logging
+from .utils.file_utils import EDirectories
+
+handler_controller = configure_logging(log_directory=EDirectories.LOG_DIR)
 
 # Define package-level variables
 __version__ = "2.0.0"

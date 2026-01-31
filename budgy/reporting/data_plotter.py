@@ -5,18 +5,13 @@
 # Standard library imports
 from random import sample
 
-# Import logging utilities
-import logging
-from loggers import configure_logger
-from budgy.utils.file_utils import EDirectories
-
 # Third party imports
 import pandas as pd
 from matplotlib import pyplot as plt
 
-# Initialize logger
+# Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 class DataPlotter():
