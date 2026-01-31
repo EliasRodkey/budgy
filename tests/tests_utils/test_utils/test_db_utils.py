@@ -13,18 +13,13 @@ import sys
 # Third-party imports
 import pandas as pd
 
-# Import logging utilities
-import logging
-from loggers import configure_logger, LoggingHandlerController, clear_logs
-from budgy.utils.file_utils import EDirectories
-
 # Local imports
 from budgy.utils.db_utils import transactions_table_manager, updates_table_manager
 from local_db.utils import map_dtype_to_sql
 
-# Iniitialize logger
+# Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-log_handlers: LoggingHandlerController = configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 def test_db_file_creation():
@@ -54,7 +49,7 @@ def test_transactions_table_creation():
     items = transactions_table_manager.fetch_all_items()
     logger.debug(f"Fetched items from transaction_updates table:\n{items}")
     assert items is not None, "Failed to fetch items from Transactions table."
-    assert type(items) == pd.DataFrame, "Fetched items is not a dataframe."
+    assert isinstance(items, list), "Fetched items is not a dataframe."
 
     as_df = transactions_table_manager.to_dataframe()
     logger.info(f"Transactions table as dataframe:\n{as_df}")
@@ -77,7 +72,7 @@ def test_updates_table_creation():
     logger.debug(f"Fetched items from transaction_updates table:\n{items}")
     assert items is not None, "Failed to fetch items from transaction_updates table."
     assert items is not None, "Failed to fetch items from Transactions table."
-    assert type(items) == pd.DataFrame, "Fetched items is not a dataframe."
+    assert isinstance(items, list), "Fetched items is not a dataframe."
 
     as_df = updates_table_manager.to_dataframe()
     logger.info(f"Updates table as dataframe:\n{as_df}")

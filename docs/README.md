@@ -6,6 +6,31 @@
 
 ### Usage
 
+#### Database Structure
+
+File name: budgy_financial_transaction.db
+
+table name: transactions
+Columns:
+    - id: Integer, Primary Key, Auto Increment (unique identifier for each transaction)
+    - authorized_date: DateTime
+    - posted_date: DateTime
+    - status: String
+    - account_name: String
+    - description: String
+    - primary_category: String
+    - detailed_category: String
+    - amount: Float
+    - repayment: Boolean
+    - exclude: Boolean
+
+table name: transactions
+Columns:
+    - id: Integer, Primary Key, Auto Increment (unique identifier for each update record)
+    - datetime: DateTime
+    - filename: String
+    - status: String
+
 ## Challenges
 
 - pass

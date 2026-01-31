@@ -5,17 +5,15 @@ Contains funcitons for general database opteration.
 Creates database tables and files.
 """
 
-# Import logging utilities
-import logging
-from loggers import configure_logger
-from .file_utils import EDirectories
-
 # Import database management classes and enums from local_db module
 from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes
 
-# Iniitialize logger
+# Local imports
+from budgy.utils.file_utils import EDirectories
+
+# Initialize module logger
+import logging
 logger = logging.getLogger(__name__)
-configure_logger(logger, log_direcotry=EDirectories.LOG_DIR)
 
 
 
