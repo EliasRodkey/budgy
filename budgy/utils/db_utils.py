@@ -4,6 +4,8 @@ budgy.utils.db_utils.py
 Contains funcitons for general database opteration. 
 Creates database tables and files.
 """
+# Standard library imports
+from enum import Enum
 
 # Import database management classes and enums from local_db module
 from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes
@@ -54,6 +56,16 @@ class TransactionsTable(BaseTable):
 
 
 
+class TransactionTableStatus(str, Enum):
+    """Enum class with different possible status' for transaction records"""
+    POSTED = "Posted"
+    UNCHECKED = "Unchecked"
+
+    def __str__(self):
+        return str(self.value)
+
+
+
 class UpdatesTable(BaseTable):
     """
     Class representing the transaction_updates table in the database.
@@ -63,7 +75,7 @@ class UpdatesTable(BaseTable):
     table name: transactions
     Columns:
         - id: Integer, Primary Key, Auto Increment (unique identifier for each update record)
-        - datetime: DateTime
+        - timestamp: DateTime
         - filename: String
         - status: String
     """
@@ -71,11 +83,38 @@ class UpdatesTable(BaseTable):
     __tablename__ = "transaction_updates"
 
     id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    datetime = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
+    timestamp = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
     filename = ESQLDataTypes.Column(ESQLDataTypes.String)
     status = ESQLDataTypes.Column(ESQLDataTypes.String)
 
 
 
+class UpdatesTableStatus(str, Enum):
+    """Enum class with different possible status' for transaction records"""
+    COMPLETE = "complete"
+    INCOMPLETE = "incomplete"
+
+    def __str__(self):
+        return str(self.value)
+
+
+
 transactions_table_manager = DatabaseManager(TransactionsTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
 updates_table_manager = DatabaseManager(UpdatesTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
+
+
+def clear_tables(force: bool=False):
+    logger.warning(f"Database table clearing initiated. force: {force}")
+    if not force:
+        answer = input("Are you sure you would like to clear the database tables? (Y/n)")
+        if answer == "Y":
+            logger.info(f"Database table clearing accepted. Clearing database tables.")
+            transactions_table_manager.clear_table()
+            updates_table_manager.clear_table()
+
+        elif answer == "n":
+            logger.info(f"Database table clearing rejected. Aborting.")
+    
+    else:
+        transactions_table_manager.clear_table()
+        updates_table_manager.clear_table()

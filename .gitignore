@@ -1,5 +1,6 @@
-# Do not track database files
+# Do not track database files or csv transaction files
 *.db
+*.csv
 
 # Ignore vscode settings
 .vscode/

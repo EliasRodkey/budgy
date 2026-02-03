@@ -14,14 +14,14 @@ import sys
 import pandas as pd
 
 # Local imports
+from budgy.intake.csv import iter_csv_uploaded, iter_csv_file, columns
 from budgy.utils.db_utils import updates_table_manager
-from local_db.utils import map_dtype_to_sql
 
 # Initialize module logger
 import logging
 logger = logging.getLogger(__name__)
 
-
+TEST_CSV_DIR = os.path.join(os.getcwd(), "tests", "test_intake", "test_csv_download_files")
 update_items = [
     {
         "datetime": datetime.datetime(2024, 1, 1),
@@ -59,12 +59,29 @@ def clean_database():
         raise
 
     finally:
+        for item in update_items:
+            db_manager.delete_items_by_attribute(filename=item["filename"])
+
         # Teardown: Ensure the session is closed
         db_manager.end_session()
-        
 
-update_items = {
-        "datetime": datetime.datetime(2024, 1, 1),
-        "filename": "TEST_UPDATE.csv",
-        "status": "completed"
-    }
+
+def test_iter_csv_uploaded(clean_database):
+    """Tests the iter csv uploaded function to make sure it can correctly identify which file still needs uploading"""
+    db_manager = clean_database
+    uploaded_files = db_manager.to_dataframe()["filename"]
+    for csv in iter_csv_uploaded(csv_filepath=TEST_CSV_DIR):
+        assert csv not in uploaded_files
+
+
+def test_iter_csv():
+    for csv in iter_csv_uploaded(csv_filepath=TEST_CSV_DIR):
+        for record in iter_csv_file(csv):
+            for col in columns:
+                assert col.dest in record
+            if record["amount"] > 0:
+                assert record["status"] == "Unchecked"
+            if col.dest == "authorized_date" or col.dest == "posted_date":
+                assert isinstance(record[col.dest], datetime)
+
+# TODO: Write a test for the db upload, including edge cases. and error handling!
