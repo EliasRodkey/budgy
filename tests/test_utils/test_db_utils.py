@@ -14,13 +14,134 @@ import sys
 import pandas as pd
 
 # Local imports
-from budgy.utils.db_utils import transactions_table_manager, updates_table_manager
+from budgy.utils.db_utils import (
+    DatabaseManager, DatabaseFile,
+    TransactionTableStatus, UpdatesTableStatus, 
+    transactions_table_manager, updates_table_manager, 
+    TransactionsTable, UpdatesTable,
+    generate_update_entry,
+    DuplicateError
+)
 from local_db.utils import map_dtype_to_sql
 
 # Initialize module logger
 import logging
 logger = logging.getLogger(__name__)
 
+# Local imports NOTE: MOVE DATABASE PIPELINE TO DB MANAGER!!
+from budgy.intake.csv import iter_csv_uploaded, iter_csv_file, upload_csv_to_db, columns
+
+TEST_CSV_DIR = os.path.join(os.getcwd(), "tests", "test_intake", "test_csv_download_files")
+TEST_DB_DIR = os.path.join(os.getcwd(), "tests", "test_database")
+TEST_DB_FILENAME = "test_database.db"
+TEST_DB_FILEPATH = os.path.join(TEST_DB_DIR, TEST_DB_FILENAME)
+
+test_db_file = DatabaseFile(TEST_DB_FILEPATH, TEST_DB_DIR)
+test_transaction_manager = DatabaseManager(TransactionsTable, test_db_file)
+test_updates_manager = DatabaseManager(UpdatesTable, test_db_file)
+
+update_items = [
+    {
+        "timestamp": datetime.datetime(2024, 1, 1),
+        "filename": os.path.join(TEST_CSV_DIR, "TEST_UPDATE.csv"),
+        "status": "completed"
+    },
+    {
+        "timestamp": datetime.datetime(2024, 1, 2),
+        "filename": os.path.join(TEST_CSV_DIR, "transactions_1.csv"),
+        "status": "completed"
+    },
+    {
+        "timestamp": datetime.datetime(2024, 1, 3),
+        "filename": os.path.join(TEST_CSV_DIR, "transactions_2.csv"),
+        "status": "completed"
+    },
+    {
+        "timestamp": datetime.datetime(2024, 1, 5),
+        "filename": os.path.join(TEST_CSV_DIR, "hsbifunsdovns.csv"),
+        "status": "Error - hdchiboenc"
+    }
+]
+@pytest.fixture()
+def clean_updates_database():
+    """Fixture to clean the database before and after each test"""
+    db_manager = test_updates_manager
+
+    try:
+        # Setup: Clean the database
+        db_manager.add_multiple_items(update_items)
+        yield db_manager  # Provide the db_manager to the test
+
+    except Exception:
+        db_manager.session.rollback()  # Rollback the session if an exception occurs
+        raise
+
+    finally:
+        for item in update_items:
+            db_manager.delete_items_by_attribute(filename=item["filename"])
+
+        # Teardown: Ensure the session is closed
+        db_manager.end_session()
+
+
+def test_iter_csv_uploaded(clean_updates_database):
+    """Tests the iter csv uploaded function to make sure it can correctly identify which file still needs uploading"""
+    db_manager = clean_updates_database
+    uploaded_files = db_manager.to_dataframe()["filename"]
+    for csv in iter_csv_uploaded(csv_directory=TEST_CSV_DIR, update_table_manager=db_manager):
+        assert csv not in uploaded_files
+        assert csv not in [item["filename"] for item in update_items]
+
+
+def test_iter_csv(clean_updates_database):
+    for csv_filepath in iter_csv_uploaded(csv_directory=TEST_CSV_DIR, update_table_manager=clean_updates_database):
+        for record in iter_csv_file(csv_filepath, columns):
+            for col in columns:
+                assert col.dest in record
+            if record["amount"] > 0:
+                assert record["status"] == "Unchecked"
+            if col.dest == "authorized_date" or col.dest == "posted_date":
+                assert isinstance(record[col.dest], datetime)
+
+
+# TODO: Write a test for the db upload, including edge cases. and error handling!
+@pytest.fixture()
+def clean_transactions_database():
+    """Fixture to clean the database before and after each test"""
+    db_manager = test_transaction_manager
+
+    try:
+        yield db_manager  # Provide the db_manager to the test
+
+    except Exception:
+        db_manager.session.rollback()  # Rollback the session if an exception occurs
+        raise
+
+    finally:
+        db_manager.clear_table()
+
+        # Teardown: Ensure the session is closed
+        db_manager.end_session()
+
+
+def test_upload_csv_to_db(clean_transactions_database, clean_updates_database):
+    """Tests the upload_csv_to_db function on it's happy path."""
+    updates_db = clean_updates_database
+    transactions_db = clean_transactions_database
+    for csv in iter_csv_uploaded(csv_directory=TEST_CSV_DIR, update_table_manager=updates_db):
+        upload_csv_to_db(csv, record_db_manager=transactions_db)
+    
+    transactions_table = transactions_db.to_dataframe()
+
+    transactions_table.head()
+    assert not transactions_table.empty
+    assert "Posted" in transactions_table.status
+    assert "Unchecked" in transactions_table.status
+    assert "Checking - 9631" in transactions_table.account_name
+    assert transactions_table.shape[0] == 999
+
+
+# ==================NOTE: This is where the old test_db_utils starts, dumped db related csv tests in here. REORGANIZE and TEST EDGE CASES============== #
 
 def test_db_file_creation():
     """Test that the database files are created successfully."""
@@ -61,8 +182,8 @@ def test_transactions_table_creation():
 
 update_item = {
         "datetime": datetime.datetime(2024, 1, 1),
-        "filename": "TEST_UPDATE.csv",
-        "status": "completed"
+        "filepath": "TEST_UPDATE.csv",
+        "status": "COMPLETE"
     }
 def test_updates_table_creation():
     """Test that the transaction_updates table is created successfully and data could be retrieved from it."""
@@ -79,4 +200,28 @@ def test_updates_table_creation():
     assert not as_df.empty, "Dataframe conversion resulted in empty dataframe."
     assert list(as_df.columns) == ['id'] + list(update_item.keys()), "Dataframe columns do not match expected columns."
 
-    updates_table_manager.delete_items_by_attribute(**{"filename": "TEST_UPDATE.csv"})
+    updates_table_manager.delete_items_by_attribute(**{"filepath": "TEST_UPDATE.csv"})
+
+
+update_item = {
+        "datetime": datetime.datetime(2024, 1, 1),
+        "filepath": "TEST_UPDATE.csv",
+    }
+update_item_2 = {
+        "datetime": datetime.datetime(2024, 1, 1),
+        "filepath": "TEST_UPDATE_2.csv",
+    }
+def test_generate_update_entry():
+    """Tests the updates_table_manager to make sure that we are not creating multiple uploads for the same file"""
+    generate_update_entry(update_item["filepath"], UpdatesTableStatus.COMPLETE, update_table_manager=test_updates_manager)
+
+    try:
+        generate_update_entry(update_item["filepath"], UpdatesTableStatus.COMPLETE, update_table_manager=test_updates_manager)
+
+    except Exception as e:
+        assert isinstance(e, DuplicateError)
+    
+    finally:
+        generate_update_entry(update_item_2["filepath"], UpdatesTableStatus.INCOMPLETE, update_table_manager=test_updates_manager)
+
+        generate_update_entry(update_item_2["filepath"], UpdatesTableStatus.COMPLETE, update_table_manager=test_updates_manager)
