@@ -47,10 +47,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_csv_filenames(csv_filepath: str=EDirectories.CSV_DIR) -> list[str]:
+def get_csv_filenames(csv_directory: str=EDirectories.CSV_DIR) -> list[str]:
     """Reads the contents of the csv_downloads directory and returns a list of CSV filenames."""
-    filenames = os.listdir(EDirectories.CSV_DIR)
-    return [os.path.join(os.getcwd(), EDirectories.CSV_DIR, f) for f in filenames if f.endswith('.csv')]
+    filenames = os.listdir(csv_directory)
+    return [os.path.join(os.getcwd(), csv_directory, f) for f in filenames if f.endswith('.csv')]
 
 
 if __name__ == "__main__":

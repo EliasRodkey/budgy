@@ -5,15 +5,17 @@ Contains funcitons for general database opteration.
 Creates database tables and files.
 """
 # Standard library imports
+from datetime import datetime
 from enum import Enum
+import os
 
 # Import database management classes and enums from local_db module
-from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes
+from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes, DuplicateError
 
 # Local imports
-from budgy.utils.file_utils import EDirectories
+from budgy.utils.file_utils import EDirectories, LoggingExtras
 
-# Initialize module logger
+# initialize module logger
 import logging
 logger = logging.getLogger(__name__)
 
@@ -84,7 +86,7 @@ class UpdatesTable(BaseTable):
 
     id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
     timestamp = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    filename = ESQLDataTypes.Column(ESQLDataTypes.String)
+    filepath = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
     status = ESQLDataTypes.Column(ESQLDataTypes.String)
 
 
@@ -118,3 +120,30 @@ def clear_tables(force: bool=False):
     else:
         transactions_table_manager.clear_table()
         updates_table_manager.clear_table()
+
+
+def generate_update_entry(filepath: str, status: UpdatesTableStatus, update_table_manager: DatabaseManager=updates_table_manager):
+    """
+    Creates an update entry for the update table and handles potential errors.
+    
+    Args:
+        filepath (str): the filepath being uploaded to the transactions database
+        status (UpdatesTableStatus): The status to register the update with
+        update_table_manager (DatabaseManager): The table that the update is being pushed to (changed for testing)
+    """
+    matching_items = update_table_manager.fetch_items_by_attribute(filepath=filepath)
+
+    if matching_items:
+        if matching_items[0].status == UpdatesTableStatus.COMPLETE:
+            logger.error(f"File {filepath} already exists in {update_table_manager.table_name}", extra={LoggingExtras.FILE: filepath})
+            raise DuplicateError(filepath, UpdatesTable, message="Entry for filepath already exists in:")
+        
+        else:
+            update_table_manager.update_item(matching_items[0].id, status=status)
+    
+    else:
+        updates_table_manager.add_item(
+            timestamp=datetime.now(),
+            filepath=filepath,
+            status=status
+        )
