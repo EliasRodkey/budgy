@@ -39,39 +39,35 @@ test_updates_manager = DatabaseManager(UpdatesTable, test_db_file)
 update_items = [
     {
         "timestamp": datetime(2024, 1, 1),
-        "filename": os.path.join(TEST_CSV_DIR, "TEST_UPDATE.csv"),
-        "status": "completed"
+        "filepath": os.path.join(TEST_CSV_DIR, "TEST_UPDATE.csv"),
+        "status": TableStatus.COMPLETE
     },
     {
         "timestamp": datetime(2024, 1, 2),
-        "filename": os.path.join(TEST_CSV_DIR, "transactions_1.csv"),
-        "status": "completed"
+        "filepath": os.path.join(TEST_CSV_DIR, "transactions_1.csv"),
+        "status": TableStatus.COMPLETE
     },
     {
         "timestamp": datetime(2024, 1, 3),
-        "filename": os.path.join(TEST_CSV_DIR, "transactions_2.csv"),
+        "filepath": os.path.join(TEST_CSV_DIR, "transactions_2.csv"),
         "status": "completed"
     },
     {
         "timestamp": datetime(2024, 1, 5),
-        "filename": os.path.join(TEST_CSV_DIR, "hsbifunsdovns.csv"),
+        "filepath": os.path.join(TEST_CSV_DIR, "hsbifunsdovns.csv"),
         "status": "Error - hdchiboenc"
     }
 ]
 
-update_item = {
+duplicate_update_item = {
         "timestamp": datetime(2024, 1, 1),
-        "filepath": "TEST_UPDATE.csv",
-        "status": "COMPLETE"
+        "filepath": os.path.join(TEST_CSV_DIR, "TEST_UPDATE.csv"),
+        "status": TableStatus.COMPLETE
     }
 
-update_item_2 = {
+new_update_item = {
         "timestamp": datetime(2024, 1, 1),
-        "filepath": "TEST_UPDATE.csv",
-    }
-update_item_3 = {
-        "timestamp": datetime(2024, 1, 1),
-        "filepath": "TEST_UPDATE_2.csv",
+        "filepath": os.path.join(TEST_CSV_DIR, "TEST_UPDATE_2.csv"),
     }
 
 new_transaction_item = {
@@ -103,8 +99,7 @@ def clean_updates_database():
         raise
 
     finally:
-        for item in update_items:
-            db_manager.delete_items_by_attribute(filename=item["filename"])
+        db_manager.clear_table()
 
         # Teardown: Ensure the session is closed
         db_manager.end_session()
@@ -156,7 +151,7 @@ def test_transactions_table_creation():
 def test_updates_table_creation():
     """Test that the transaction_updates table is created successfully and data could be retrieved from it."""
     logger.debug("Starting test...")
-    updates_table_manager.add_item(**update_item)
+    updates_table_manager.add_item(**duplicate_update_item)
     items = updates_table_manager.fetch_all_items()
     logger.debug(f"Fetched items from transaction_updates table:\n{items}")
     assert items is not None, "Failed to fetch items from transaction_updates table."
@@ -166,7 +161,7 @@ def test_updates_table_creation():
     as_df = updates_table_manager.to_dataframe()
     logger.info(f"Updates table as dataframe:\n{as_df}")
     assert not as_df.empty, "Dataframe conversion resulted in empty dataframe."
-    assert list(as_df.columns) == ['id'] + list(update_item.keys()), "Dataframe columns do not match expected columns."
+    assert list(as_df.columns) == ['id'] + list(duplicate_update_item.keys()), "Dataframe columns do not match expected columns."
 
     updates_table_manager.delete_items_by_attribute(**{"filepath": "TEST_UPDATE.csv"})
 
@@ -174,25 +169,28 @@ def test_updates_table_creation():
 # ==================NOTE: This is where the basic schema tests end and the more sophisticated csv upload test cases begin.============== #
 
 
-# NOTE: The reason this is failing is because we actually don't have a clean database, we add a number of transactions and they all have the same name!
-def test_generate_update_entry():
+def test_generate_update_entry(clean_updates_database):
     """Tests the updates_table_manager to make sure that we are not creating multiple uploads for the same file"""
-    generate_update_entry(update_item_2["filepath"], TableStatus.COMPLETE, update_table_manager=test_updates_manager)
-
     try:
-        generate_update_entry(update_item_2["filepath"], TableStatus.COMPLETE, update_table_manager=test_updates_manager)
+        generate_update_entry(duplicate_update_item["filepath"], TableStatus.COMPLETE, update_table_manager=clean_updates_database)
 
     except Exception as e:
         assert isinstance(e, DuplicateError)
     
     finally:
-        generate_update_entry(update_item_3["filepath"], TableStatus.INCOMPLETE, update_table_manager=test_updates_manager)
-        generate_update_entry(update_item_3["filepath"], TableStatus.COMPLETE, update_table_manager=test_updates_manager)
+        # This should execute without an error since the status is changing
+        generate_update_entry(new_update_item["filepath"], TableStatus.INCOMPLETE, update_table_manager=clean_updates_database)
+        generate_update_entry(new_update_item["filepath"], TableStatus.COMPLETE, update_table_manager=clean_updates_database)
 
-        table_df = test_updates_manager.to_dataframe()
-        test_updates_manager.clear_table()
+        df = clean_updates_database.to_dataframe()
+        clean_updates_database.clear_table()
 
-    assert update_item_2["filepath"] in table_df.filepath
+    assert df.filepath.isin([duplicate_update_item["filepath"]]).any()
+
+    new_update_idx = df.index[df.filepath == new_update_item["filepath"]]
+
+    status = df.iloc[new_update_idx, :].status.iloc[0]
+    assert status == TableStatus.COMPLETE
 
 
 def test_iter_csv__not_uploaded(clean_updates_database):

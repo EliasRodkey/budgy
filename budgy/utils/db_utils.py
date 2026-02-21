@@ -71,7 +71,7 @@ class UpdatesTable(BaseTable):
     Columns:
         - id: Integer, Primary Key, Auto Increment (unique identifier for each update record)
         - timestamp: DateTime
-        - filename: String
+        - filepath: String
         - status: String
     """
 
@@ -123,6 +123,33 @@ columns = [
 
 #=======================NOTE: End of db / schema setup code, Start of db specific funcitons.==================================#
 
+# NOTE: We should be checking the updates BEFORE we actually want to generate a new entry! make check for filepath function.
+
+def generate_update_entry(filepath: str, status: TableStatus, update_table_manager: DatabaseManager=updates_table_manager):
+    """
+    Creates an update entry for the update table and handles potential errors.
+    
+    Args:
+        filepath (str): the filepath being uploaded to the transactions database
+        status (UpdatesTableStatus): The status to register the update with
+        update_table_manager (DatabaseManager): The table that the update is being pushed to (changed for testing)
+    """
+    matching_items = update_table_manager.fetch_items_by_attribute(filepath=filepath)
+
+    if matching_items:
+        if matching_items[0].status == TableStatus.COMPLETE:
+            logger.error(f"File {filepath} already exists in {update_table_manager.table_name}", extra={LoggingExtras.FILE: filepath})
+            raise DuplicateError(filepath, UpdatesTable, message="Entry for filepath already exists in:")
+        
+        else:
+            update_table_manager.update_item(matching_items[0].id, status=status)
+    
+    else:
+        update_table_manager.add_item(
+            timestamp=datetime.now(),
+            filepath=filepath,
+            status=status
+        )
 
 
 def set_status_unchecked(record: dict) -> dict:
@@ -146,50 +173,6 @@ def validate_transaction(csv_record: Dict, columns: List[Column]):
         db_record[col.dest] = col.convert(value)
             
     return set_status_unchecked(db_record)
-
-
-def clear_tables(force: bool=False):
-    logger.warning(f"Database table clearing initiated. force: {force}")
-    if not force:
-        answer = input("Are you sure you would like to clear the database tables? (Y/n)")
-        if answer == "Y":
-            logger.info(f"Database table clearing accepted. Clearing database tables.")
-            transactions_table_manager.clear_table()
-            updates_table_manager.clear_table()
-
-        elif answer == "n":
-            logger.info(f"Database table clearing rejected. Aborting.")
-    
-    else:
-        transactions_table_manager.clear_table()
-        updates_table_manager.clear_table()
-
-
-def generate_update_entry(filepath: str, status: TableStatus, update_table_manager: DatabaseManager=updates_table_manager):
-    """
-    Creates an update entry for the update table and handles potential errors.
-    
-    Args:
-        filepath (str): the filepath being uploaded to the transactions database
-        status (UpdatesTableStatus): The status to register the update with
-        update_table_manager (DatabaseManager): The table that the update is being pushed to (changed for testing)
-    """
-    matching_items = update_table_manager.fetch_items_by_attribute(filepath=filepath)
-
-    if matching_items:
-        if matching_items[0].status == TableStatus.COMPLETE:
-            logger.error(f"File {filepath} already exists in {update_table_manager.table_name}", extra={LoggingExtras.FILE: filepath})
-            raise DuplicateError(filepath, UpdatesTable, message="Entry for filepath already exists in:")
-        
-        else:
-            update_table_manager.update_item(matching_items[0].id, status=status)
-    
-    else:
-        updates_table_manager.add_item(
-            timestamp=datetime.now(),
-            filepath=filepath,
-            status=status
-        )
 
 
 # Check whether or not the CSV data file has been uploaded to the database and return filename
@@ -253,3 +236,20 @@ def upload_csv_to_db(csv_filepath: str, columns: List[Column]=columns, record_db
             logger.exception(f"Exception encountered during data upload to {record_db_manager}")
             return False
     return True
+
+
+def clear_tables(force: bool=False):
+    logger.warning(f"Database table clearing initiated. force: {force}")
+    if not force:
+        answer = input("Are you sure you would like to clear the database tables? (Y/n)")
+        if answer == "Y":
+            logger.info(f"Database table clearing accepted. Clearing database tables.")
+            transactions_table_manager.clear_table()
+            updates_table_manager.clear_table()
+
+        elif answer == "n":
+            logger.info(f"Database table clearing rejected. Aborting.")
+    
+    else:
+        transactions_table_manager.clear_table()
+        updates_table_manager.clear_table()
