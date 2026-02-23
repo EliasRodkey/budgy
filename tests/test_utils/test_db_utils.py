@@ -6,6 +6,7 @@ Tests for budgy.utils.db_utils module.
 """
 # Standard library imports
 from datetime import datetime
+from collections import defaultdict
 import os
 import pytest
 import sys
@@ -15,10 +16,11 @@ import pandas as pd
 
 # Local imports
 from budgy.utils.db_utils import (
-    DatabaseManager, DatabaseFile,
+    DatabaseManager, DatabaseFile, DuplicateError,
     TableStatus, transactions_table_manager, update_table_manager, 
     TransactionsTable, UpdatesTable, generate_update_entry,
-    DuplicateError, iter_csv_not_uploaded, iter_csv_file, 
+    generate_base_hash,
+    iter_csv_not_uploaded, iter_val_csv_file, 
     upload_csv_to_db, columns
 )
 from local_db.utils import map_dtype_to_sql
@@ -70,7 +72,7 @@ new_update_item = {
         "filepath": os.path.join(TEST_CSV_DIR, "TEST_UPDATE_2.csv"),
     }
 
-new_transaction_item = {
+record_1 = {
     "authorized_date": datetime(2024, 1, 1),
     "posted_date": datetime(2024, 1, 2),
     "status": "pending",
@@ -81,6 +83,36 @@ new_transaction_item = {
     "amount": 150.75,
     "repayment": False,
     "exclude": False
+}
+
+record_2 = {
+    "authorized_date": datetime(2026, 2, 5),
+    "posted_date": datetime(2026, 2, 8),
+    "account_name": "Bilt Rewards Credit Card",
+    "description": "TEST TRANSACTION 2",
+    "primary_category": "Food",
+    "detailed_category": "Dining and Drinks",
+    "amount": 68.79,
+}
+
+duplicate_record_1 = {
+    "authorized_date": datetime(2025, 9, 16),
+    "posted_date": datetime(2025, 9, 20),
+    "account_name": "American Express Credit Card",
+    "description": "TEST TRANSACTION DUPLICATE",
+    "primary_category": "Travel",
+    "detailed_category": "Hotels",
+    "amount": 475.99,
+}
+
+duplicate_record_2 = {
+    "authorized_date": datetime(2025, 9, 16),
+    "posted_date": datetime(2025, 9, 20),
+    "account_name": "American Express Credit Card",
+    "description": "TEST TRANSACTION DUPLICATE",
+    "primary_category": "Travel",
+    "detailed_category": "Hotels",
+    "amount": 475.99,
 }
 
 
@@ -117,7 +149,7 @@ def clean_transactions_database():
         raise
 
     finally:
-        # db_manager.clear_table()
+        db_manager.clear_table()
 
         # Teardown: Ensure the session is closed
         db_manager.end_session()
@@ -134,7 +166,7 @@ def test_db_file_creation():
 def test_transactions_table_creation():
     """Test that the Transactions table is created successfully and data could be retrieved from it."""
     logger.debug("Starting test...")
-    transactions_table_manager.add_item(**new_transaction_item)
+    transactions_table_manager.add_item(**record_1)
     items = transactions_table_manager.fetch_all_items()
     logger.debug(f"Fetched items from transaction_updates table:\n{items}")
     assert items is not None, "Failed to fetch items from Transactions table."
@@ -143,7 +175,7 @@ def test_transactions_table_creation():
     as_df = transactions_table_manager.to_dataframe()
     logger.info(f"Transactions table as dataframe:\n{as_df}")
     assert not as_df.empty, "Dataframe conversion resulted in empty dataframe."
-    assert list(as_df.columns) == ['id'] + list(new_transaction_item.keys()), "Dataframe columns do not match expected columns."
+    assert list(as_df.columns) == (['id'] + list(record_1.keys()) + ["uq_hash"]), "Dataframe columns do not match expected columns."
 
     transactions_table_manager.delete_items_by_attribute(**{"description": "TEST TRANSACTION"})
 
@@ -210,15 +242,40 @@ def test_iter_csv__not_uploaded(clean_updates_database):
             assert csv not in [item["filepath"] for item in update_items]
 
 
+def test_generate_base_hash():
+    """Tests the generate_base_hash function to make sure that it is generating the same hash for the same record and different hashes for different records"""
+
+    hash_1 = generate_base_hash(record_1)
+    hash_2 = generate_base_hash(record_2)
+    hash_3 = generate_base_hash(duplicate_record_1)
+    hash_4 = generate_base_hash(duplicate_record_2)
+
+    assert hash_1 != hash_2, f"Hashes for different records should not match: {hash_1} == {hash_2}"
+    assert hash_1 != hash_3, f"Hashes for different records should not match: {hash_1} == {hash_3}"
+    assert hash_3 == hash_4, f"Hashes for identical records do not match: {hash_1} != {hash_2}"
+
+
 def test_iter_csv(clean_updates_database):
+    """Tests the iter_csv_file function to make sure that it is correctly parsing the csv file and yielding the correct records with the correct types"""
     for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=clean_updates_database):
-        for record in iter_csv_file(csv_filepath, columns):
+        for record in iter_val_csv_file(csv_filepath, columns):
             for col in columns:
                 assert col.dest in record
             if record["amount"] > 0:
                 assert record["status"] == "Unchecked"
             if col.dest == "authorized_date" or col.dest == "posted_date":
                 assert isinstance(record[col.dest], datetime)
+
+
+def test_iter_csv_hash(clean_updates_database):
+    """Tests iter_csv_file function to make sure the hashes created are all unique"""
+    for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=clean_updates_database):
+        hashes = set()
+        for record in iter_val_csv_file(csv_filepath, columns):
+            assert record["uq_hash"] is not None, "Hash value is missing from record."
+            assert record["uq_hash"] not in hashes, f"Duplicate hash value found: {record['uq_hash']}"
+            hashes.add(record["uq_hash"])
+        assert len(hashes) == len(list(iter_val_csv_file(csv_filepath, columns))), f"Expected 999 unique hashes, but found {len(hashes)}."
 
 
 def test_upload_csv_to_db(clean_transactions_database, clean_updates_database):
@@ -234,6 +291,4 @@ def test_upload_csv_to_db(clean_transactions_database, clean_updates_database):
     assert "Posted" in transactions_table.status.values
     assert "Unchecked" in transactions_table.status.values
     assert "Checking - 9631" in transactions_table.account_name.values
-
-    # NOTE: Right now we are not checking for duplicates correctly, need to update TransactionsTable to have a unique constraint on the combination of all columns except for id and then make sure that we are correctly handling the duplicate error in the upload_csv_to_db function. For now, we are just checking to make sure that the correct number of records are being uploaded, which is 999 since there is one duplicate record in the test csv file.
     assert transactions_table.shape[0] == 999

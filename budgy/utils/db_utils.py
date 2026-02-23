@@ -45,23 +45,14 @@ class TransactionsTable(BaseTable):
         - amount: Float
         - repayment: Boolean
         - exclude: Boolean
+        - base_hash: a hash value generated based on the transaction information, tells us if 2 transactions have the same information.
+        - qu_hash: a unique hash value generated based on the transaction information and number of occurances to ensure that we can detect duplicates 
+                  without relying on the position of the transaction in the csv file. 
+                  This is important because some csv files have multiple transactions with the same information such as 
+                  split venmo transactions or multiple purchases from a bar on the same day.
     """
 
     __tablename__ = "transactions"
-    # NOTE: our unique constraint is potentially picking up duplicates that aren't duplicates such as venmo multiple split venmo transactions or multiple purchases from a bar on the same day... 
-    # Maybe the csv file needs some pre_processing to give each line a unique number?
-    # That would make it at least so that 2 transactions with the same information have one unique value.
-    # This doesn't work across multiple csv files though...
-    __table_args__ = (
-        UniqueConstraint(
-            "authorized_date",
-            "posted_date",
-            "account_name",
-            "description",
-            "amount",
-            name="uq_transaction_identity"
-        ),
-    )
 
     id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
     authorized_date =  ESQLDataTypes.Column(ESQLDataTypes.DateTime)
@@ -74,6 +65,8 @@ class TransactionsTable(BaseTable):
     amount = ESQLDataTypes.Column(ESQLDataTypes.Float)
     repayment = ESQLDataTypes.Column(ESQLDataTypes.Boolean)
     exclude = ESQLDataTypes.Column(ESQLDataTypes.Boolean)
+    base_hash = ESQLDataTypes.Column(ESQLDataTypes.String)
+    uq_hash = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
 
 
 
@@ -226,45 +219,53 @@ def validate_transaction(csv_record: Dict, columns: List[Column]):
 
 
 def generate_base_hash(record: dict) -> str:
-    """Hash based purely on transaction content — no position."""
-    unique_string = f"{record['account_id']}:{record['date']}:{record['amount']}:{record['vendor']}"
+    """
+    Hash based purely on transaction content — no position.
+    Uses authorized and posted date, account name, description, and amount to generate the hash.
+    NOTE: Do not use primary or detailed category as those are subject to change in future!
+    """
+    unique_string = f"\
+        {record[TransactionsTable.authorized_date.name]}:\
+        {record[TransactionsTable.posted_date.name]}:\
+        {record[TransactionsTable.account_name.name]}:\
+        {record[TransactionsTable.description.name]}:\
+        {record[TransactionsTable.amount.name]}"
     return hashlib.sha256(unique_string.encode()).hexdigest()
 
 
-def assign_occurrence_hashes(rows: list[dict]) -> list[str]:
+# TODO: There is another issue, when I upload a new file, it may have changed some of the old categories.
+# I need to identify if the base hash already exists in the database and if it does, update the record with the new categories without uploading the new record.
+
+# Iterate through the lines in the CSV and validate each line
+def iter_val_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
     """
-    For each row, generate a final hash that includes how many times
-    this identical transaction has appeared so far in the file.
-    
-    Two CSVs with the same transactions (even in different order) will 
-    produce the same set of final hashes.
+    Iterates through each line in the CSV file and provides them as a generator. 
+    Also validates each line against the schema and generates a unique hash based on the record information and number of occurances
+
+    Args:
+        csv_filepath (str): the filepath of the csv being uploaded
+        columns (List[Column]): the column mapping and conversion information for the csv upload
     """
+    logger.info(f"Iterating and validating CSV file: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
+
     # First pass: count total occurrences of each base hash
     occurrence_counter = defaultdict(int)
     final_hashes = []
-
-    for row in rows:
-        base = generate_base_hash(row)
-        count = occurrence_counter[base]  # 0-indexed: first occurrence = 0
-        
-        final_hash = hashlib.sha256(f"{base}:{count}".encode()).hexdigest()
-        final_hashes.append(final_hash)
-        
-        occurrence_counter[base] += 1
-
-    return final_hashes
-
-
-# Iterate through the lines in the CSV and validate each line
-def iter_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
-    """Iterates through each line in the CSV file and provides them as a generator."""
-    logger.info(f"Iterating and validating CSV file: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
 
     with open(csv_filepath, mode="r", encoding="utf-8") as f:
         transactions = csv.DictReader(f)
 
         for csv_record in transactions:
             db_record = validate_transaction(csv_record, columns)
+
+            # Generate a unique hash for each transaction record based on the info and occurance count
+            base_hash = generate_base_hash(db_record)
+            count = occurrence_counter[base_hash]  # 0-indexed: first occurrence = 0
+            final_hash = hashlib.sha256(f"{base_hash}:{count}".encode()).hexdigest()
+            occurrence_counter[base_hash] += 1
+            db_record["base_hash"] = base_hash
+            db_record["uq_hash"] = final_hash
+
             yield db_record
 
 
@@ -286,14 +287,15 @@ def upload_csv_to_db(
         record_db_manager (DatabaseManager): the database manager for the transactions table (changed for testing)
         update_table_manager (DatabaseManager): the database manager for the updates table
     """
-    errors = 0
-    for record in iter_csv_file(csv_filepath, columns):
+    logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
+
+    for record in iter_val_csv_file(csv_filepath, columns):
         try:
             transactions_db_manager.add_item(**record)
 
         # Gracefully handle duplicate errors, thank you program for detecting duplicates
         except DuplicateError as e:
-            logger.warning(f"Duplicate record encountered during data upload from {os.path.basename(csv_filepath)} to {transactions_db_manager}.", extra={LoggingExtras.RECORD: record})
+            pass
 
         # Unhandled exceptions should be logged so we can keep track of whether or not the upload was complete
         except Exception as e:
@@ -306,6 +308,7 @@ def upload_csv_to_db(
             raise e
     
     # Generate an update entry for the file uploaded with the status of complete if no errors were encountered
+    logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
     generate_update_entry(
         csv_filepath, 
         TableStatus.COMPLETE, 
