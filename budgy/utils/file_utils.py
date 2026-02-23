@@ -39,6 +39,7 @@ class EDirectories(str, Enum):
 class LoggingExtras(str, Enum):
     """Enum class that stores extra params used commonly in logging"""
     FILE = "file"
+    RECORD = "record"
 
 
 

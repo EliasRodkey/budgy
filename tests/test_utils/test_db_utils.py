@@ -16,7 +16,7 @@ import pandas as pd
 # Local imports
 from budgy.utils.db_utils import (
     DatabaseManager, DatabaseFile,
-    TableStatus, transactions_table_manager, updates_table_manager, 
+    TableStatus, transactions_table_manager, update_table_manager, 
     TransactionsTable, UpdatesTable, generate_update_entry,
     DuplicateError, iter_csv_not_uploaded, iter_csv_file, 
     upload_csv_to_db, columns
@@ -50,7 +50,7 @@ update_items = [
     {
         "timestamp": datetime(2024, 1, 3),
         "filepath": os.path.join(TEST_CSV_DIR, "transactions_2.csv"),
-        "status": "completed"
+        "status": TableStatus.INCOMPLETE
     },
     {
         "timestamp": datetime(2024, 1, 5),
@@ -117,7 +117,7 @@ def clean_transactions_database():
         raise
 
     finally:
-        db_manager.clear_table()
+        # db_manager.clear_table()
 
         # Teardown: Ensure the session is closed
         db_manager.end_session()
@@ -151,19 +151,19 @@ def test_transactions_table_creation():
 def test_updates_table_creation():
     """Test that the transaction_updates table is created successfully and data could be retrieved from it."""
     logger.debug("Starting test...")
-    updates_table_manager.add_item(**duplicate_update_item)
-    items = updates_table_manager.fetch_all_items()
+    update_table_manager.add_item(**duplicate_update_item)
+    items = update_table_manager.fetch_all_items()
     logger.debug(f"Fetched items from transaction_updates table:\n{items}")
     assert items is not None, "Failed to fetch items from transaction_updates table."
     assert items is not None, "Failed to fetch items from Transactions table."
     assert isinstance(items, list), "Fetched items is not a dataframe."
 
-    as_df = updates_table_manager.to_dataframe()
+    as_df = update_table_manager.to_dataframe()
     logger.info(f"Updates table as dataframe:\n{as_df}")
     assert not as_df.empty, "Dataframe conversion resulted in empty dataframe."
     assert list(as_df.columns) == ['id'] + list(duplicate_update_item.keys()), "Dataframe columns do not match expected columns."
 
-    updates_table_manager.delete_items_by_attribute(**{"filepath": "TEST_UPDATE.csv"})
+    update_table_manager.delete_items_by_attribute(**{"filepath": "TEST_UPDATE.csv"})
 
 
 # ==================NOTE: This is where the basic schema tests end and the more sophisticated csv upload test cases begin.============== #
@@ -172,15 +172,15 @@ def test_updates_table_creation():
 def test_generate_update_entry(clean_updates_database):
     """Tests the updates_table_manager to make sure that we are not creating multiple uploads for the same file"""
     try:
-        generate_update_entry(duplicate_update_item["filepath"], TableStatus.COMPLETE, update_table_manager=clean_updates_database)
+        generate_update_entry(duplicate_update_item["filepath"], TableStatus.COMPLETE, updates_db_manager=clean_updates_database)
 
     except Exception as e:
         assert isinstance(e, DuplicateError)
     
     finally:
         # This should execute without an error since the status is changing
-        generate_update_entry(new_update_item["filepath"], TableStatus.INCOMPLETE, update_table_manager=clean_updates_database)
-        generate_update_entry(new_update_item["filepath"], TableStatus.COMPLETE, update_table_manager=clean_updates_database)
+        generate_update_entry(new_update_item["filepath"], TableStatus.INCOMPLETE, updates_db_manager=clean_updates_database)
+        generate_update_entry(new_update_item["filepath"], TableStatus.COMPLETE, updates_db_manager=clean_updates_database)
 
         df = clean_updates_database.to_dataframe()
         clean_updates_database.clear_table()
@@ -196,26 +196,22 @@ def test_generate_update_entry(clean_updates_database):
 def test_iter_csv__not_uploaded(clean_updates_database):
     """Tests the iter csv uploaded function to make sure it can correctly identify which file still needs uploading"""
     db_manager = clean_updates_database
-    uploaded_files = db_manager.to_dataframe()["filename"]
-    for csv in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, update_table_manager=db_manager):
-        assert csv not in uploaded_files
-        assert csv not in [item["filename"] for item in update_items]
+    uploaded_files = db_manager.to_dataframe()["filepath"]
+    for csv in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=db_manager):
+        db_item = db_manager.fetch_items_by_attribute(filepath=csv)
+
+        # If an ORM object is returned, check to make sure that the status is set to incomplete.
+        if db_item:
+            assert db_item[0].status != TableStatus.COMPLETE
+        
+        # Otherwise the filepath should not appear in the retrieved db values
+        else:
+            assert csv not in uploaded_files
+            assert csv not in [item["filepath"] for item in update_items]
 
 
 def test_iter_csv(clean_updates_database):
-    for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, update_table_manager=clean_updates_database):
-        for record in iter_csv_file(csv_filepath, columns):
-            for col in columns:
-                assert col.dest in record
-            if record["amount"] > 0:
-                assert record["status"] == "Unchecked"
-            if col.dest == "authorized_date" or col.dest == "posted_date":
-                assert isinstance(record[col.dest], datetime)
-
-
-# TODO: This should only test CSV ripping and data validation! may want to think about wrapping all of this under db_utils or a new pipeline module!
-def test_iter_csv(clean_updates_database):
-    for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, update_table_manager=clean_updates_database):
+    for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=clean_updates_database):
         for record in iter_csv_file(csv_filepath, columns):
             for col in columns:
                 assert col.dest in record
@@ -229,14 +225,15 @@ def test_upload_csv_to_db(clean_transactions_database, clean_updates_database):
     """Tests the upload_csv_to_db function on it's happy path."""
     updates_db = clean_updates_database
     transactions_db = clean_transactions_database
-    for csv in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, update_table_manager=updates_db):
-        upload_csv_to_db(csv, record_db_manager=transactions_db)
+    for csv in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=updates_db):
+        upload_csv_to_db(csv, transactions_db_manager=transactions_db, updates_db_manager=updates_db)
     
     transactions_table = transactions_db.to_dataframe()
 
-    transactions_table.head()
     assert not transactions_table.empty
-    assert "Posted" in transactions_table.status
-    assert "Unchecked" in transactions_table.status
-    assert "Checking - 9631" in transactions_table.account_name
+    assert "Posted" in transactions_table.status.values
+    assert "Unchecked" in transactions_table.status.values
+    assert "Checking - 9631" in transactions_table.account_name.values
+
+    # NOTE: Right now we are not checking for duplicates correctly, need to update TransactionsTable to have a unique constraint on the combination of all columns except for id and then make sure that we are correctly handling the duplicate error in the upload_csv_to_db function. For now, we are just checking to make sure that the correct number of records are being uploaded, which is 999 since there is one duplicate record in the test csv file.
     assert transactions_table.shape[0] == 999

@@ -6,14 +6,16 @@ Creates database tables and files.
 """
 # Standard library imports
 import csv
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from datetime import datetime
 from enum import Enum
+import hashlib
 import os
 from typing import Dict, Generator, List
 
 # Import database management classes and enums from local_db module
 from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes, DuplicateError
+from local_db.base_table import UniqueConstraint
 
 # Local imports
 from budgy.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
@@ -46,6 +48,20 @@ class TransactionsTable(BaseTable):
     """
 
     __tablename__ = "transactions"
+    # NOTE: our unique constraint is potentially picking up duplicates that aren't duplicates such as venmo multiple split venmo transactions or multiple purchases from a bar on the same day... 
+    # Maybe the csv file needs some pre_processing to give each line a unique number?
+    # That would make it at least so that 2 transactions with the same information have one unique value.
+    # This doesn't work across multiple csv files though...
+    __table_args__ = (
+        UniqueConstraint(
+            "authorized_date",
+            "posted_date",
+            "account_name",
+            "description",
+            "amount",
+            name="uq_transaction_identity"
+        ),
+    )
 
     id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
     authorized_date =  ESQLDataTypes.Column(ESQLDataTypes.DateTime)
@@ -88,8 +104,8 @@ class TableStatus(str, Enum):
     """Enum class with different possible status' for the database records"""
     POSTED = "Posted"
     UNCHECKED = "Unchecked"
-    COMPLETE = "complete"
-    INCOMPLETE = "incomplete"
+    COMPLETE = "Complete"
+    INCOMPLETE = "Incomplete"
 
     def __str__(self):
         return str(self.value)
@@ -97,7 +113,7 @@ class TableStatus(str, Enum):
 
 
 transactions_table_manager = DatabaseManager(TransactionsTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
-updates_table_manager = DatabaseManager(UpdatesTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
+update_table_manager = DatabaseManager(UpdatesTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
 
 
 
@@ -125,7 +141,7 @@ columns = [
 
 # NOTE: We should be checking the updates BEFORE we actually want to generate a new entry! make check for filepath function.
 
-def generate_update_entry(filepath: str, status: TableStatus, update_table_manager: DatabaseManager=updates_table_manager):
+def generate_update_entry(filepath: str, status: TableStatus, updates_db_manager: DatabaseManager=update_table_manager):
     """
     Creates an update entry for the update table and handles potential errors.
     
@@ -134,22 +150,56 @@ def generate_update_entry(filepath: str, status: TableStatus, update_table_manag
         status (UpdatesTableStatus): The status to register the update with
         update_table_manager (DatabaseManager): The table that the update is being pushed to (changed for testing)
     """
-    matching_items = update_table_manager.fetch_items_by_attribute(filepath=filepath)
+    matching_items = updates_db_manager.fetch_items_by_attribute(filepath=filepath)
 
     if matching_items:
         if matching_items[0].status == TableStatus.COMPLETE:
-            logger.error(f"File {filepath} already exists in {update_table_manager.table_name}", extra={LoggingExtras.FILE: filepath})
+            logger.error(f"File {filepath} already exists in {updates_db_manager.table_name}", extra={LoggingExtras.FILE: filepath})
             raise DuplicateError(filepath, UpdatesTable, message="Entry for filepath already exists in:")
         
         else:
-            update_table_manager.update_item(matching_items[0].id, status=status)
+            updates_db_manager.update_item(matching_items[0].id, status=status)
     
     else:
-        update_table_manager.add_item(
+        updates_db_manager.add_item(
             timestamp=datetime.now(),
             filepath=filepath,
             status=status
         )
+
+
+# Check whether or not the CSV data file has been uploaded to the database and return filename
+def iter_csv_not_uploaded(csv_directory=EDirectories.CSV_DIR, updates_db_manager: DatabaseManager=update_table_manager) -> Generator:
+    """Iterates through the CSV files in the csv_downlaods directory and checks whether or not they have been uploaded to the database."""
+
+    # Iterate over CSV files in directory
+    for filepath in get_csv_filenames(csv_directory=csv_directory):
+        item = updates_db_manager.fetch_items_by_attribute(filepath=filepath)
+
+        # If no item is returned, yield the file path.
+        if not item:
+            logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
+            yield filepath
+
+        # If more than one value is returned, an error occured somewhere
+        elif len(item) >= 2:
+            filepath = item[0].filepath
+            logger.error(f"Multiple items found with the same filepath, {filepath}", extra={LoggingExtras.FILE: filepath})
+            raise DuplicateError(filepath, UpdatesTable)
+        
+        # If the returned item has it's status set to complete, do nothing
+        elif item[0].status == TableStatus.COMPLETE:
+            logger.info(f"CSV file {os.path.basename(filepath)} has already been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
+        
+        # If the returned item's status is not set to complete, then field the filepath
+        elif item[0].status != TableStatus.COMPLETE:
+            logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
+            yield filepath
+        
+        # Raise an error for unhandled case
+        else:
+            logger.error("Unahndled case encountered during CSV upload check", extra={LoggingExtras.FILE: filepath})
+
 
 
 def set_status_unchecked(record: dict) -> dict:
@@ -169,43 +219,40 @@ def validate_transaction(csv_record: Dict, columns: List[Column]):
     """Validates each record against the Schema to ensure that the data is correctly uploaded to the database."""
     db_record = {}
     for col in columns:
-        value = csv_record[col.src]
+        value = csv_record[col.src].strip()
         db_record[col.dest] = col.convert(value)
             
     return set_status_unchecked(db_record)
 
 
-# Check whether or not the CSV data file has been uploaded to the database and return filename
-def iter_csv_not_uploaded(csv_directory=EDirectories.CSV_DIR, update_table_manager: DatabaseManager=updates_table_manager) -> Generator:
-    """Iterates through the CSV files in the csv_downlaods directory and checks whether or not they have been uploaded to the database."""
+def generate_base_hash(record: dict) -> str:
+    """Hash based purely on transaction content — no position."""
+    unique_string = f"{record['account_id']}:{record['date']}:{record['amount']}:{record['vendor']}"
+    return hashlib.sha256(unique_string.encode()).hexdigest()
 
-    # Iterate over CSV files in directory
-    for filepath in get_csv_filenames(csv_directory=csv_directory):
-        item = update_table_manager.fetch_items_by_attribute(filename=filepath)
 
-        # If no item is returned, yield the file path.
-        if not item:
-            logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
-            yield filepath
+def assign_occurrence_hashes(rows: list[dict]) -> list[str]:
+    """
+    For each row, generate a final hash that includes how many times
+    this identical transaction has appeared so far in the file.
+    
+    Two CSVs with the same transactions (even in different order) will 
+    produce the same set of final hashes.
+    """
+    # First pass: count total occurrences of each base hash
+    occurrence_counter = defaultdict(int)
+    final_hashes = []
 
-        # If more than one value is returned, an error occured somewhere
-        elif len(item) >= 2:
-            filename = item[0].filename
-            logger.error(f"Multiple items found with the same filename, {filename}", extra={LoggingExtras.FILE: filename})
-            raise DuplicateError(filename, UpdatesTable)
+    for row in rows:
+        base = generate_base_hash(row)
+        count = occurrence_counter[base]  # 0-indexed: first occurrence = 0
         
-        # If the returned item has it's status set to complete, do nothing
-        elif item[0].status == TableStatus.COMPLETE:
-            logger.info(f"CSV file {os.path.basename(filepath)} has already been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
+        final_hash = hashlib.sha256(f"{base}:{count}".encode()).hexdigest()
+        final_hashes.append(final_hash)
         
-        # If the returned item's status is not set to complete, then field the filepath
-        elif item[0].status != TableStatus.COMPLETE:
-            logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
-            yield filepath
-        
-        # Raise an error for unhandled case
-        else:
-            logger.error()
+        occurrence_counter[base] += 1
+
+    return final_hashes
 
 
 # Iterate through the lines in the CSV and validate each line
@@ -222,20 +269,48 @@ def iter_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
 
 
 # Insert data into database, checking to make sure it is not a duplicate
-def upload_csv_to_db(csv_filepath: str, columns: List[Column]=columns, record_db_manager: DatabaseManager=transactions_table_manager) -> bool:
+def upload_csv_to_db(
+        csv_filepath: str, 
+        columns: List[Column]=columns, 
+        transactions_db_manager: DatabaseManager=transactions_table_manager, 
+        updates_db_manager: DatabaseManager=update_table_manager
+    ) -> bool:
     """
-    Initiates the search for new CSV files, 
-    converts and validates the new transactions line by line then uploads to the transactions database.
+    Converts and validates the new transactions line by line then uploads to the transactions database.
     Returns whether or not the file was uploaded successfully.
     Also enforces that no csv can be uploaded if it already has a posted upload with completed status.
+
+    Args:
+        csv_filepath (str): the filepath of the csv being uploaded
+        columns (List[Column]): the column mapping and conversion information for the csv upload
+        record_db_manager (DatabaseManager): the database manager for the transactions table (changed for testing)
+        update_table_manager (DatabaseManager): the database manager for the updates table
     """
+    errors = 0
     for record in iter_csv_file(csv_filepath, columns):
         try:
-            record_db_manager.add_item(**record)
+            transactions_db_manager.add_item(**record)
+
+        # Gracefully handle duplicate errors, thank you program for detecting duplicates
+        except DuplicateError as e:
+            logger.warning(f"Duplicate record encountered during data upload from {os.path.basename(csv_filepath)} to {transactions_db_manager}.", extra={LoggingExtras.RECORD: record})
+
+        # Unhandled exceptions should be logged so we can keep track of whether or not the upload was complete
         except Exception as e:
-            logger.exception(f"Exception encountered during data upload to {record_db_manager}")
-            return False
-    return True
+            logger.exception(f"Exception encountered during data upload to {transactions_db_manager}", extra={LoggingExtras.RECORD: record})
+            generate_update_entry(
+                csv_filepath, 
+                TableStatus.INCOMPLETE, 
+                updates_db_manager=updates_db_manager
+            )
+            raise e
+    
+    # Generate an update entry for the file uploaded with the status of complete if no errors were encountered
+    generate_update_entry(
+        csv_filepath, 
+        TableStatus.COMPLETE, 
+        updates_db_manager=updates_db_manager
+    )
 
 
 def clear_tables(force: bool=False):
@@ -245,11 +320,11 @@ def clear_tables(force: bool=False):
         if answer == "Y":
             logger.info(f"Database table clearing accepted. Clearing database tables.")
             transactions_table_manager.clear_table()
-            updates_table_manager.clear_table()
+            update_table_manager.clear_table()
 
         elif answer == "n":
             logger.info(f"Database table clearing rejected. Aborting.")
     
     else:
         transactions_table_manager.clear_table()
-        updates_table_manager.clear_table()
+        update_table_manager.clear_table()
