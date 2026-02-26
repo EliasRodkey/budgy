@@ -307,7 +307,7 @@ def upload_csv_to_db(
         columns: List[Column]=columns, 
         transactions_db_manager: DatabaseManager=transactions_table_manager, 
         updates_db_manager: DatabaseManager=update_table_manager
-    ) -> bool:
+    ):
     """
     Converts and validates the new transactions line by line then uploads to the transactions database.
     Returns whether or not the file was uploaded successfully.
@@ -359,6 +359,46 @@ def upload_csv_to_db(
 
     logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
+
+def upload_all_csv_to_db(
+        columns: List[Column]=columns, 
+        transactions_db_manager: DatabaseManager=transactions_table_manager, 
+        updates_db_manager: DatabaseManager=update_table_manager,
+        csv_dir: str=EDirectories.CSV_DIR
+    ):
+    """    
+    Iterates through all csv files in csv_dir.
+    Converts and validates the new transactions line by line then uploads to the transactions database.
+    Returns whether or not the file was uploaded successfully.
+    Also enforces that no csv can be uploaded if it already has a posted upload with completed status.
+
+    Args:
+        columns (List[Column]): the column mapping and conversion information for the csv upload
+        record_db_manager (DatabaseManager): the database manager for the transactions table (changed for testing)
+        update_table_manager (DatabaseManager): the database manager for the updates table
+        csv_dir (str): path to the direcotry where the function should search for csv files to upload
+    """
+    logger.info(f"Beggining upload of all csv files in {EDirectories.CSV_DIR} to {transactions_db_manager.table_name}")
+    failed_files = []
+
+    for csv_filepath in iter_csv_not_uploaded(csv_directory=csv_dir, updates_db_manager=updates_db_manager):
+        try:
+            upload_csv_to_db(
+                csv_filepath,
+                columns=columns,
+                transactions_db_manager=transactions_db_manager,
+                updates_db_manager=updates_db_manager
+            )
+        
+        except Exception as e:
+            logger.warning(f"Failed to upload {csv_filepath} to {transactions_db_manager.table_name}", extra={LoggingExtras.FILE: csv_filepath})
+            failed_files.append(csv_filepath)
+    
+    if failed_files:
+        logger.warning(f"Batch upload completed with {len(failed_files)} files failed")
+    else:
+        logger.info(f"New CSV file upload complete.")
+        
 
 def clear_tables(force: bool=False):
     logger.warning(f"Database table clearing initiated. force: {force}")

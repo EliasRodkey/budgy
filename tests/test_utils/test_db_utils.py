@@ -23,7 +23,6 @@ from budgy.utils.db_utils import (
     iter_csv_not_uploaded, iter_val_csv_file,
     update_categories_if_diff, upload_csv_to_db, columns
 )
-from local_db.utils import map_dtype_to_sql
 
 # Initialize module logger
 import logging
