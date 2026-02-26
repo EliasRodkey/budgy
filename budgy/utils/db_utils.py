@@ -233,9 +233,6 @@ def generate_base_hash(record: dict) -> str:
     return hashlib.sha256(unique_string.encode()).hexdigest()
 
 
-# TODO: There is another issue, when I upload a new file, it may have changed some of the old categories.
-# I need to identify if the base hash already exists in the database and if it does, update the record with the new categories without uploading the new record.
-
 # Iterate through the lines in the CSV and validate each line
 def iter_val_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
     """
@@ -269,6 +266,41 @@ def iter_val_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
             yield db_record
 
 
+# If a duplicate is detected in the database, we want to check and make sure the categories are up to date
+def update_categories_if_diff(record: dict, transactions_db_manager: DatabaseManager=transactions_table_manager):
+    """
+    If a duplicate transaction is detected based on the base hash, we want to check and make sure the categories are up to date.
+    This is because categories can be updated later on and we want to make sure the database holds the most up to date cateogry information.
+
+    Args:
+        record (dict): the record to check for duplicates and update categories for
+        transactions_db_manager (DatabaseManager): the database manager for the transactions table (changed for testing
+    """
+    logger.debug(f"Checking for cagegory different between duplicates based on base hash: {record[TransactionsTable.base_hash.name]}")
+    logger.debug(f"Updating primary and detailed categories for base hash: {record[TransactionsTable.base_hash.name]}")
+
+    db_records = transactions_db_manager.fetch_items_by_attribute(base_hash=record[TransactionsTable.base_hash.name])
+    base_hash = record[TransactionsTable.base_hash.name]
+
+    for db_record in db_records:
+        # If the detailed category matches, then the primary category must also be the same, pass.
+        if record[TransactionsTable.detailed_category.name] == db_record.detailed_category:
+            logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", extra={LoggingExtras.BASE_HASH: base_hash})
+            continue
+        
+        # Update the existing record or record with the new cateogry informaiton from the csv file if the categories don't match
+        else:
+            try:
+                transactions_db_manager.update_item(
+                    item_id=db_record.id, 
+                    primary_category=record[TransactionsTable.primary_category.name], 
+                    detailed_category=record[TransactionsTable.detailed_category.name]
+                )
+            except Exception as e:
+                logger.exception(f"Exception encountered during category update for base hash: {base_hash}", extra={LoggingExtras.BASE_HASH: base_hash})
+                raise e
+
+
 # Insert data into database, checking to make sure it is not a duplicate
 def upload_csv_to_db(
         csv_filepath: str, 
@@ -288,24 +320,34 @@ def upload_csv_to_db(
         update_table_manager (DatabaseManager): the database manager for the updates table
     """
     logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
+    logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
+
+    transactions_original_state = transactions_db_manager.to_dataframe()
 
     for record in iter_val_csv_file(csv_filepath, columns):
-        try:
-            transactions_db_manager.add_item(**record)
 
-        # Gracefully handle duplicate errors, thank you program for detecting duplicates
-        except DuplicateError as e:
-            pass
+        # Check to see if the base hash name of the transaction is already in the transactions table
+        if record[TransactionsTable.base_hash.name] in transactions_original_state[TransactionsTable.base_hash.name].values:
+            # if it is, update the catgories if they are different.
+            update_categories_if_diff(record, transactions_db_manager=transactions_db_manager)
+        
+        else:
+            try:
+                transactions_db_manager.add_item(**record)
 
-        # Unhandled exceptions should be logged so we can keep track of whether or not the upload was complete
-        except Exception as e:
-            logger.exception(f"Exception encountered during data upload to {transactions_db_manager}", extra={LoggingExtras.RECORD: record})
-            generate_update_entry(
-                csv_filepath, 
-                TableStatus.INCOMPLETE, 
-                updates_db_manager=updates_db_manager
-            )
-            raise e
+            # Gracefully handle duplicate errors, thank you program for detecting duplicates
+            except DuplicateError as e:
+                pass
+
+            # Unhandled exceptions should be logged so we can keep track of whether or not the upload was complete
+            except Exception as e:
+                logger.exception(f"Exception encountered during data upload to {transactions_db_manager}", extra={LoggingExtras.RECORD: record})
+                generate_update_entry(
+                    csv_filepath, 
+                    TableStatus.INCOMPLETE, 
+                    updates_db_manager=updates_db_manager
+                )
+                raise e
     
     # Generate an update entry for the file uploaded with the status of complete if no errors were encountered
     logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
@@ -314,6 +356,8 @@ def upload_csv_to_db(
         TableStatus.COMPLETE, 
         updates_db_manager=updates_db_manager
     )
+
+    logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
 
 def clear_tables(force: bool=False):
