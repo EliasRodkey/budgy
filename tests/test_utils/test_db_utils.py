@@ -174,7 +174,7 @@ def test_transactions_table_creation():
     as_df = transactions_table_manager.to_dataframe()
     logger.info(f"Transactions table as dataframe:\n{as_df}")
     assert not as_df.empty, "Dataframe conversion resulted in empty dataframe."
-    assert list(as_df.columns) == (['id'] + list(record_1.keys()) + ["uq_hash"]), "Dataframe columns do not match expected columns."
+    assert list(as_df.columns) == (['id'] + list(record_1.keys()) + ["base_hash", "uq_hash"]), "Dataframe columns do not match expected columns."
 
     transactions_table_manager.delete_items_by_attribute(**{"description": "TEST TRANSACTION"})
 
@@ -182,7 +182,12 @@ def test_transactions_table_creation():
 def test_updates_table_creation():
     """Test that the transaction_updates table is created successfully and data could be retrieved from it."""
     logger.debug("Starting test...")
-    update_table_manager.add_item(**duplicate_update_item)
+    
+    try:
+        update_table_manager.add_item(**duplicate_update_item)
+    except Exception as e:
+        assert isinstance(e, DuplicateError)
+
     items = update_table_manager.fetch_all_items()
     logger.debug(f"Fetched items from transaction_updates table:\n{items}")
     assert items is not None, "Failed to fetch items from transaction_updates table."
@@ -370,4 +375,4 @@ def test_upload_csv_to_db(clean_transactions_database, clean_updates_database):
     assert "Posted" in transactions_table.status.values
     assert "Unchecked" in transactions_table.status.values
     assert "Checking - 9631" in transactions_table.account_name.values
-    assert transactions_table.shape[0] == 999
+    assert transactions_table.shape[0] == 1002

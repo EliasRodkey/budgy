@@ -1,8 +1,53 @@
 """
-budgy.utils.db_utils.py
+Contains functions for general database operations. 
+Module Overview:
+===============
+Classes:
+--------
+    - TransactionsTable: ORM class representing the transactions table in the database.
+    - UpdatesTable: ORM class representing the transaction_updates table in the database.
+    - TableStatus: Enum class defining possible status values for database records.
 
-Contains funcitons for general database opteration. 
-Creates database tables and files.
+Functions:
+----------
+    - upload_all_csv_to_db(): Batch processes all CSV files in a directory, validates and uploads
+        transaction records to the database. Skips files that have already been successfully uploaded.
+    - upload_csv_to_db(): Converts and validates a single CSV file line by line, then uploads
+        transactions to the database. Handles duplicates by updating category information if needed.
+        Generates update entries to track upload status.
+    - iter_val_csv_file(): Generator function that iterates through CSV file records, validates
+        each against the schema, and generates unique hashes based on transaction content and
+        occurrence count to detect duplicates.
+    - update_categories_if_diff(): Checks for duplicate transactions by base hash and updates
+        category information if categories differ between the new record and existing database records.
+    - iter_csv_not_uploaded(): Generator function that yields CSV file paths from the specified
+        directory that have not yet been successfully uploaded to the database.
+    - generate_update_entry(): Creates or updates an entry in the updates table for a given CSV file.
+        Raises DuplicateError if the file has already been completely uploaded.
+    - validate_transaction(): Validates a single CSV record against the schema, performs type
+        conversions on each column, and sets the status based on transaction amount.
+    - generate_base_hash(): Generates a hash based on transaction content (authorized date, posted date,
+     account name, description, and amount) to identify transactions with identical information.
+    - parse_timestamp(): Parses timestamp strings in "%Y-%m-%d" format to datetime objects.
+    - set_status_unchecked(): Sets transaction status to UNCHECKED if the amount is greater than zero,
+        indicating it may need manual review for repayment or exclusion classification.
+    - clear_tables(): Clears all records from both the transactions and updates tables with optional
+        user confirmation prompt or force flag.
+Module-Level Variables:
+-----------------------
+    - transactions_table_manager: DatabaseManager instance for the TransactionsTable.
+        Manages all database operations on the transactions table.
+    - update_table_manager: DatabaseManager instance for the UpdatesTable.
+        Manages all database operations on the updates table.
+    - columns: List of Column namedtuples defining CSV column mappings, database column names,
+        and type conversion functions for transaction data import.
+    - logger: Module-level logger instance for recording info, debug, warning, and error messages.
+
+Dependencies:
+- local_db: Custom ORM module providing DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes,
+    DuplicateError, and UniqueConstraint classes.
+- budgy.utils.file_utils: Provides EDirectories enum, LoggingExtras class, and get_csv_filenames() function.
+    budgy.utils.db_utils.py
 """
 # Standard library imports
 import csv
@@ -130,7 +175,7 @@ columns = [
 ]
 
 
-#=======================NOTE: End of db / schema setup code, Start of db specific funcitons.==================================#
+#=======================NOTE: End of db / schema setup code, Start of db specific functions.==================================#
 
 # NOTE: We should be checking the updates BEFORE we actually want to generate a new entry! make check for filepath function.
 
@@ -398,7 +443,7 @@ def upload_all_csv_to_db(
         logger.warning(f"Batch upload completed with {len(failed_files)} files failed")
     else:
         logger.info(f"New CSV file upload complete.")
-        
+
 
 def clear_tables(force: bool=False):
     logger.warning(f"Database table clearing initiated. force: {force}")
