@@ -2,10 +2,13 @@
 """
 
 # Standard library imports
+from datetime import datetime
+import pandas as pd
 from typing import Dict, Generator, List
 
 # Local imports
-from budgy.utils.db_utils import DatabaseManager, BaseTable, transactions_table_manager
+from local_db import DatabaseManager
+from budgy.utils.db_models import TransactionsTable, transactions_table_manager
 from budgy.utils.file_utils import LoggingExtras
 
 # initialize module logger
@@ -13,47 +16,36 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def retrieve_records_by_primary_category(category: str, db_manager: DatabaseManager=transactions_table_manager) -> List[BaseTable]:
+# TODO: This is inefficient, db manager basically already does this, functions should combine functionality to return more helpful info.
+
+# Pull records by **kwargs, then convert to pandas dataframe.
+def retrieve_records_by_attribute_over_period(start_date: str, end_date: str, db_manager: DatabaseManager=transactions_table_manager, **kwargs) -> pd.DataFrame:
     """
-    Retrieves all records from a given primary category from the database associated with the given Database Manager
+    Retrieves all records from the database associated with the given Database Manager that match the specified attributes and fall within the specified date range.
 
     Args:
-        category (str): The primary category to filter records by.
+        start_date (str): The start date of the period to filter records by (inclusive).
+        end_date (str): The end date of the period to filter records by (inclusive).
         db_manager (DatabaseManager, optional): The Database Manager instance to use for querying the database. Defaults to transactions_table_manager.
+        **kwargs: Arbitrary keyword arguments representing the attributes to filter records by (e.g., primary_category='Food', detailed_category='Groceries').
+
+    Returns:
+        List[BaseTable]: A list of records that match the specified attributes and date range.
     """
-    logger.debug(f"Retrieving records for primary category: {category} from database using manager: {db_manager}", extra={LoggingExtras.PRIMARY_CATEGORY: category})
+    logger.debug(f"Retrieving records from {start_date} to {end_date} with attributes: {kwargs} using manager: {db_manager}", extra={LoggingExtras.START_DATE: start_date, LoggingExtras.END_DATE: end_date, LoggingExtras.ATTRIBUTES: kwargs})
+
+    attributes = {k: ("==", v) for k, v in kwargs.items()}
+    attributes[TransactionsTable.timestamp.name] = (">=", start_date)
+    attributes[TransactionsTable.timestamp.name] = ("<=", end_date)
 
     try:
-        records = db_manager.fetch_items_by_attribute(primary_category=category)
+        records = db_manager.filter_items(attributes)
 
-    except Exception as e:
-        logger.exception(f"Unhandled error retrieving records for category: {category}.")
-        return []
-
-    if not records:
-        logger.warning(f"No records found for primary category: {category}")
-    
-    return records
-
-
-def retrieve_records_by_detailed_category(category: str, db_manager: DatabaseManager=transactions_table_manager) -> List[BaseTable]:
-    """
-    Retrieves all records from a given detailed category from the database associated with the given Database Manager
-
-    Args:
-        category (str): The detailed category to filter records by.
-        db_manager (DatabaseManager, optional): The Database Manager instance to use for querying the database. Defaults to transactions_table_manager.
-    """
-    logger.debug(f"Retrieving records for detailed category: {category} from database using manager: {db_manager}", extra={LoggingExtras.DETAILED_CATEGORY: category})
-
-    try:
-        records = db_manager.fetch_items_by_attribute(detailed_category=category)
-
-    except Exception as e:
-        logger.exception(f"Unhandled error retrieving records for category: {category}.")
-        return []
+    except Exception:
+        logger.exception(f"Unhandled error retrieving records for attributes: {kwargs} over period: {start_date} to {end_date}.")
+        return pd.DataFrame()
 
     if not records:
-        logger.warning(f"No records found for detailed category: {category}")
+        logger.warning(f"No records found for attributes: {kwargs} over period: {start_date} to {end_date}.")
     
-    return records
+    return db_manager.convert_orm_list_to_dataframe(records)
