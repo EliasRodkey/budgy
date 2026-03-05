@@ -1,14 +1,9 @@
 #!python3
 """
-Contains functions for general database operations. 
+Contains functions for general database operations.
+
 Module Overview:
 ===============
-Classes:
---------
-    - TransactionsTable: ORM class representing the transactions table in the database.
-    - UpdatesTable: ORM class representing the transaction_updates table in the database.
-    - TableStatus: Enum class defining possible status values for database records.
-
 Functions:
 ----------
     - upload_all_csv_to_db(): Batch processes all CSV files in a directory, validates and uploads
@@ -28,43 +23,38 @@ Functions:
     - validate_transaction(): Validates a single CSV record against the schema, performs type
         conversions on each column, and sets the status based on transaction amount.
     - generate_base_hash(): Generates a hash based on transaction content (authorized date, posted date,
-     account name, description, and amount) to identify transactions with identical information.
+        account name, description, and amount) to identify transactions with identical information.
     - parse_timestamp(): Parses timestamp strings in "%Y-%m-%d" format to datetime objects.
     - set_status_unchecked(): Sets transaction status to UNCHECKED if the amount is greater than zero,
         indicating it may need manual review for repayment or exclusion classification.
     - clear_tables(): Clears all records from both the transactions and updates tables with optional
         user confirmation prompt or force flag.
-Module-Level Variables:
------------------------
-    - transactions_table_manager: DatabaseManager instance for the TransactionsTable.
-        Manages all database operations on the transactions table.
-    - update_table_manager: DatabaseManager instance for the UpdatesTable.
-        Manages all database operations on the updates table.
-    - columns: List of Column namedtuples defining CSV column mappings, database column names,
-        and type conversion functions for transaction data import.
-    - logger: Module-level logger instance for recording info, debug, warning, and error messages.
 
 Dependencies:
-- local_db: Custom ORM module providing DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes,
-    DuplicateError, and UniqueConstraint classes.
+- budgy.utils.db_models: Provides ORM table definitions, database managers, Column namedtuple,
+    and the columns mapping list.
+- local_db: Custom ORM module providing DatabaseManager and DuplicateError.
 - budgy.utils.file_utils: Provides EDirectories enum, LoggingExtras class, and get_csv_filenames() function.
     budgy.utils.db_utils.py
 """
 # Standard library imports
 import csv
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 from datetime import datetime
-from enum import Enum
 import hashlib
 import os
 from typing import Dict, Generator, List
 
-# Import database management classes and enums from local_db module
-from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes, DuplicateError
-from local_db.base_table import UniqueConstraint
+# Import database management classes from local_db module
+from local_db import DatabaseManager, DuplicateError
 
 # Local imports
 from budgy.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
+from budgy.utils.db_models import (
+    TransactionsTable, UpdatesTable, TableStatus,
+    transactions_table_manager, update_table_manager,
+    Column, columns
+)
 
 # initialize module logger
 import logging
@@ -72,118 +62,12 @@ logger = logging.getLogger(__name__)
 
 
 
-class TransactionsTable(BaseTable):
-    """
-    Class representing the Transactions table in the database.
-    This table stores all the transaction data imported from CSV files.
-    
-    Database Structure:
-    table name: transactions
-    Columns:
-        - id: Integer, Primary Key, Auto Increment (unique identifier for each transaction)
-        - authorized_date: DateTime
-        - posted_date: DateTime
-        - status: String
-        - account_name: String
-        - description: String
-        - primary_category: String
-        - detailed_category: String
-        - amount: Float
-        - repayment: Boolean
-        - exclude: Boolean
-        - base_hash: a hash value generated based on the transaction information, tells us if 2 transactions have the same information.
-        - qu_hash: a unique hash value generated based on the transaction information and number of occurances to ensure that we can detect duplicates 
-                  without relying on the position of the transaction in the csv file. 
-                  This is important because some csv files have multiple transactions with the same information such as 
-                  split venmo transactions or multiple purchases from a bar on the same day.
-    """
-
-    __tablename__ = "transactions"
-
-    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    authorized_date =  ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    posted_date = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    status = ESQLDataTypes.Column(ESQLDataTypes.String)
-    account_name = ESQLDataTypes.Column(ESQLDataTypes.String)
-    description = ESQLDataTypes.Column(ESQLDataTypes.String)
-    primary_category = ESQLDataTypes.Column(ESQLDataTypes.String)
-    detailed_category = ESQLDataTypes.Column(ESQLDataTypes.String)
-    amount = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    repayment = ESQLDataTypes.Column(ESQLDataTypes.Boolean)
-    exclude = ESQLDataTypes.Column(ESQLDataTypes.Boolean)
-    base_hash = ESQLDataTypes.Column(ESQLDataTypes.String)
-    uq_hash = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
-
-
-
-class UpdatesTable(BaseTable):
-    """
-    Class representing the transaction_updates table in the database.
-    This table stores metadata about CSV file imports and their statuses.
-    
-    Database Structure:
-    table name: transactions
-    Columns:
-        - id: Integer, Primary Key, Auto Increment (unique identifier for each update record)
-        - timestamp: DateTime
-        - filepath: String
-        - status: String
-    """
-
-    __tablename__ = "transaction_updates"
-
-    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    timestamp = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    filepath = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
-    status = ESQLDataTypes.Column(ESQLDataTypes.String)
-
-
-    
-class TableStatus(str, Enum):
-    """Enum class with different possible status' for the database records"""
-    POSTED = "Posted"
-    UNCHECKED = "Unchecked"
-    COMPLETE = "Complete"
-    INCOMPLETE = "Incomplete"
-
-    def __str__(self):
-        return str(self.value)
-
-
-
-transactions_table_manager = DatabaseManager(TransactionsTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
-update_table_manager = DatabaseManager(UpdatesTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
-
-
-
-Column = namedtuple('Column', 'src dest convert')
-
-
-
-def parse_timestamp(text) -> datetime:
-    return datetime.strptime(text, "%Y-%m-%d")
-
-
-columns = [
-    Column("Authorized Date", TransactionsTable.authorized_date.name, parse_timestamp),
-    Column("Posted Date", TransactionsTable.posted_date.name, parse_timestamp),
-    Column("Status", TransactionsTable.status.name, str),
-    Column("Account Name", TransactionsTable.account_name.name, str),
-    Column("Description", TransactionsTable.description.name, str),
-    Column("Primary Category", TransactionsTable.primary_category.name, str),
-    Column("Detailed Category", TransactionsTable.detailed_category.name, str),
-    Column("Amount", TransactionsTable.amount.name, float),
-]
-
-
-#=======================NOTE: End of db / schema setup code, Start of db specific functions.==================================#
-
 # NOTE: We should be checking the updates BEFORE we actually want to generate a new entry! make check for filepath function.
 
 def generate_update_entry(filepath: str, status: TableStatus, updates_db_manager: DatabaseManager=update_table_manager):
     """
     Creates an update entry for the update table and handles potential errors.
-    
+
     Args:
         filepath (str): the filepath being uploaded to the transactions database
         status (UpdatesTableStatus): The status to register the update with
@@ -195,10 +79,10 @@ def generate_update_entry(filepath: str, status: TableStatus, updates_db_manager
         if matching_items[0].status == TableStatus.COMPLETE:
             logger.error(f"File {filepath} already exists in {updates_db_manager.table_name}", extra={LoggingExtras.FILE: filepath})
             raise DuplicateError(filepath, UpdatesTable, message="Entry for filepath already exists in:")
-        
+
         else:
             updates_db_manager.update_item(matching_items[0].id, status=status)
-    
+
     else:
         updates_db_manager.add_item(
             timestamp=datetime.now(),
@@ -225,16 +109,16 @@ def iter_csv_not_uploaded(csv_directory=EDirectories.CSV_DIR, updates_db_manager
             filepath = item[0].filepath
             logger.error(f"Multiple items found with the same filepath, {filepath}", extra={LoggingExtras.FILE: filepath})
             raise DuplicateError(filepath, UpdatesTable)
-        
+
         # If the returned item has it's status set to complete, do nothing
         elif item[0].status == TableStatus.COMPLETE:
             logger.info(f"CSV file {os.path.basename(filepath)} has already been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
-        
+
         # If the returned item's status is not set to complete, then field the filepath
         elif item[0].status != TableStatus.COMPLETE:
             logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
             yield filepath
-        
+
         # Raise an error for unhandled case
         else:
             logger.error("Unahndled case encountered during CSV upload check", extra={LoggingExtras.FILE: filepath})
@@ -243,7 +127,7 @@ def iter_csv_not_uploaded(csv_directory=EDirectories.CSV_DIR, updates_db_manager
 
 def set_status_unchecked(record: dict) -> dict:
     """
-    If the amount of the transaction is greater than zero (i.e. transfer or income), 
+    If the amount of the transaction is greater than zero (i.e. transfer or income),
     we may want to check and see if it is a repayment or needs to be excluded
 
     Args:
@@ -260,7 +144,7 @@ def validate_transaction(csv_record: Dict, columns: List[Column]):
     for col in columns:
         value = csv_record[col.src].strip()
         db_record[col.dest] = col.convert(value)
-            
+
     return set_status_unchecked(db_record)
 
 
@@ -282,7 +166,7 @@ def generate_base_hash(record: dict) -> str:
 # Iterate through the lines in the CSV and validate each line
 def iter_val_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
     """
-    Iterates through each line in the CSV file and provides them as a generator. 
+    Iterates through each line in the CSV file and provides them as a generator.
     Also validates each line against the schema and generates a unique hash based on the record information and number of occurances
 
     Args:
@@ -293,7 +177,6 @@ def iter_val_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
 
     # First pass: count total occurrences of each base hash
     occurrence_counter = defaultdict(int)
-    final_hashes = []
 
     with open(csv_filepath, mode="r", encoding="utf-8") as f:
         transactions = csv.DictReader(f)
@@ -333,13 +216,13 @@ def update_categories_if_diff(record: dict, transactions_db_manager: DatabaseMan
         if record[TransactionsTable.detailed_category.name] == db_record.detailed_category:
             logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", extra={LoggingExtras.BASE_HASH: base_hash})
             continue
-        
+
         # Update the existing record or record with the new cateogry informaiton from the csv file if the categories don't match
         else:
             try:
                 transactions_db_manager.update_item(
-                    item_id=db_record.id, 
-                    primary_category=record[TransactionsTable.primary_category.name], 
+                    item_id=db_record.id,
+                    primary_category=record[TransactionsTable.primary_category.name],
                     detailed_category=record[TransactionsTable.detailed_category.name]
                 )
             except Exception as e:
@@ -349,9 +232,9 @@ def update_categories_if_diff(record: dict, transactions_db_manager: DatabaseMan
 
 # Insert data into database, checking to make sure it is not a duplicate
 def upload_csv_to_db(
-        csv_filepath: str, 
-        columns: List[Column]=columns, 
-        transactions_db_manager: DatabaseManager=transactions_table_manager, 
+        csv_filepath: str,
+        columns: List[Column]=columns,
+        transactions_db_manager: DatabaseManager=transactions_table_manager,
         updates_db_manager: DatabaseManager=update_table_manager
     ):
     """
@@ -376,7 +259,7 @@ def upload_csv_to_db(
         if record[TransactionsTable.base_hash.name] in transactions_original_state[TransactionsTable.base_hash.name].values:
             # if it is, update the catgories if they are different.
             update_categories_if_diff(record, transactions_db_manager=transactions_db_manager)
-        
+
         else:
             try:
                 transactions_db_manager.add_item(**record)
@@ -389,17 +272,17 @@ def upload_csv_to_db(
             except Exception as e:
                 logger.exception(f"Exception encountered during data upload to {transactions_db_manager}", extra={LoggingExtras.RECORD: record})
                 generate_update_entry(
-                    csv_filepath, 
-                    TableStatus.INCOMPLETE, 
+                    csv_filepath,
+                    TableStatus.INCOMPLETE,
                     updates_db_manager=updates_db_manager
                 )
                 raise e
-    
+
     # Generate an update entry for the file uploaded with the status of complete if no errors were encountered
     logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
     generate_update_entry(
-        csv_filepath, 
-        TableStatus.COMPLETE, 
+        csv_filepath,
+        TableStatus.COMPLETE,
         updates_db_manager=updates_db_manager
     )
 
@@ -407,12 +290,12 @@ def upload_csv_to_db(
 
 
 def upload_all_csv_to_db(
-        columns: List[Column]=columns, 
-        transactions_db_manager: DatabaseManager=transactions_table_manager, 
+        columns: List[Column]=columns,
+        transactions_db_manager: DatabaseManager=transactions_table_manager,
         updates_db_manager: DatabaseManager=update_table_manager,
         csv_dir: str=EDirectories.CSV_DIR
     ):
-    """    
+    """
     Iterates through all csv files in csv_dir.
     Converts and validates the new transactions line by line then uploads to the transactions database.
     Returns whether or not the file was uploaded successfully.
@@ -435,11 +318,11 @@ def upload_all_csv_to_db(
                 transactions_db_manager=transactions_db_manager,
                 updates_db_manager=updates_db_manager
             )
-        
+
         except Exception as e:
             logger.warning(f"Failed to upload {csv_filepath} to {transactions_db_manager.table_name}", extra={LoggingExtras.FILE: csv_filepath})
             failed_files.append(csv_filepath)
-    
+
     if failed_files:
         logger.warning(f"Batch upload completed with {len(failed_files)} files failed")
     else:
@@ -457,7 +340,7 @@ def clear_tables(force: bool=False):
 
         elif answer == "n":
             logger.info(f"Database table clearing rejected. Aborting.")
-    
+
     else:
         transactions_table_manager.clear_table()
         update_table_manager.clear_table()
