@@ -1,3 +1,4 @@
+#!python3
 """
 Contains functions for general database operations. 
 Module Overview:

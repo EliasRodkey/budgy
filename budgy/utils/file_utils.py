@@ -45,6 +45,9 @@ class LoggingExtras(str, Enum):
     UPLOAD = "csv_upload"
     BASE_HASH = "base_hash"
     UQ_HASH = "uq_hash"
+    START_DATE = "start_date"
+    END_DATE = "end_date"
+    ATTRIBUTES = "attributes"
 
 
 
