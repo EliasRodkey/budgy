@@ -16,7 +16,7 @@ from budgy.utils.db_utils import (
     iter_csv_not_uploaded, iter_val_csv_file,
     update_categories_if_diff, upload_csv_to_db, columns
 )
-from tests.test_utils.conftest import TEST_CSV_DIR
+from tests.conftest import TEST_CSV_DIR
 
 # Initialize module logger
 import logging
@@ -119,7 +119,7 @@ def test_iter_csv__not_uploaded(clean_updates_database):
         # Otherwise the filepath should not appear in the retrieved db values
         else:
             assert csv not in uploaded_files
-            from tests.test_utils.conftest import update_items
+            from tests.conftest import update_items
             assert csv not in [item["filepath"] for item in update_items]
 
 
