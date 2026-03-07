@@ -101,14 +101,15 @@ def full_transactions_database():
     """Fixture to provide and loaded transactions table before and after each test."""
     db_manager = test_transaction_manager
 
-    # Add transactions from the loaded csv to the test db
-    upload_csv_to_db(
-        TEST_FULL_TRANSACTIONS_CSV, 
-        transactions_db_manager=db_manager, 
-        updates_db_manager=test_updates_manager
-    )
+
 
     try:
+        # Add transactions from the loaded csv to the test db
+        upload_csv_to_db(
+            TEST_FULL_TRANSACTIONS_CSV, 
+            transactions_db_manager=db_manager, 
+            updates_db_manager=test_updates_manager
+        )
         yield db_manager
 
     except Exception:
@@ -116,5 +117,7 @@ def full_transactions_database():
         raise
 
     finally:
+        test_updates_manager.clear_table()
+        test_updates_manager.end_session()
         db_manager.clear_table()
         db_manager.end_session()

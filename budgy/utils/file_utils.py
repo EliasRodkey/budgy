@@ -48,6 +48,11 @@ class LoggingExtras(str, Enum):
     START_DATE = "start_date"
     END_DATE = "end_date"
     ATTRIBUTES = "attributes"
+    DATE_FORMAT = "%d-%m-%Y"
+    DATETIME_FORMAT = f"{DATE_FORMAT} %H:%M %Ss"
+
+    def __str__(self):
+        return str(self.value)
 
 
 

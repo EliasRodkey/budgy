@@ -145,6 +145,10 @@ def validate_transaction(csv_record: Dict, columns: List[Column]):
         value = csv_record[col.src].strip()
         db_record[col.dest] = col.convert(value)
 
+    # Initialize repayment and exclude status to false for all transactions, we can update these later if needed
+    db_record[TransactionsTable.repayment.name] = False
+    db_record[TransactionsTable.exclude.name] = False
+
     return set_status_unchecked(db_record)
 
 
