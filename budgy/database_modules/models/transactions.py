@@ -2,39 +2,20 @@
 """
 Contains ORM table definitions, database managers, and CSV column mappings for budgy.
 
-Module Overview:
-===============
 Classes:
---------
     - TransactionsTable: ORM class representing the transactions table in the database.
     - UpdatesTable: ORM class representing the transaction_updates table in the database.
     - TableStatus: Enum class defining possible status values for database records.
 
-Module-Level Variables:
------------------------
-    - transactions_table_manager: DatabaseManager instance for the TransactionsTable.
-        Manages all database operations on the transactions table.
-    - update_table_manager: DatabaseManager instance for the UpdatesTable.
-        Manages all database operations on the updates table.
-    - Column: Named tuple defining CSV-to-database column mappings (src, dest, convert).
+Variables:
     - columns: List of Column namedtuples mapping CSV headers to TransactionsTable columns
         with type conversion functions for transaction data import.
-
-Dependencies:
-- local_db: Custom ORM module providing DatabaseFile, BaseTable, DatabaseManager,
-    ESQLDataTypes, DuplicateError, and UniqueConstraint classes.
-- budgy.utils.file_utils: Provides EDirectories enum for standard directory paths.
-    budgy.utils.db_models.py
 """
-# Standard library imports
-from datetime import datetime
-
 # Custom imports
-from local_db import DatabaseFile, BaseTable, DatabaseManager, ESQLDataTypes
+from local_db import BaseTable, ESQLDataTypes
 
 # Local imports
-from .common import Column
-from budgy.utils.file_utils import EDirectories
+from .common import Column, parse_date
 
 # initialize module logger
 import logging
@@ -86,6 +67,19 @@ class TransactionsTable(BaseTable):
 
 
 
+columns = [
+    Column("Authorized Date", TransactionsTable.authorized_date.name, parse_date),
+    Column("Posted Date", TransactionsTable.posted_date.name, parse_date),
+    Column("Status", TransactionsTable.status.name, str),
+    Column("Account Name", TransactionsTable.account_name.name, str),
+    Column("Description", TransactionsTable.description.name, str),
+    Column("Primary Category", TransactionsTable.primary_category.name, str),
+    Column("Detailed Category", TransactionsTable.detailed_category.name, str),
+    Column("Amount", TransactionsTable.amount.name, float),
+]
+
+
+
 class UpdatesTable(BaseTable):
     """
     Class representing the transaction_updates table in the database.
@@ -106,25 +100,3 @@ class UpdatesTable(BaseTable):
     timestamp = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
     filepath = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
     status = ESQLDataTypes.Column(ESQLDataTypes.String)
-
-
-
-transactions_table_manager = DatabaseManager(TransactionsTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
-update_table_manager = DatabaseManager(UpdatesTable, DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR))
-
-
-
-def parse_timestamp(text) -> datetime:
-    return datetime.strptime(text, "%Y-%m-%d")
-
-
-columns = [
-    Column("Authorized Date", TransactionsTable.authorized_date.name, parse_timestamp),
-    Column("Posted Date", TransactionsTable.posted_date.name, parse_timestamp),
-    Column("Status", TransactionsTable.status.name, str),
-    Column("Account Name", TransactionsTable.account_name.name, str),
-    Column("Description", TransactionsTable.description.name, str),
-    Column("Primary Category", TransactionsTable.primary_category.name, str),
-    Column("Detailed Category", TransactionsTable.detailed_category.name, str),
-    Column("Amount", TransactionsTable.amount.name, float),
-]
