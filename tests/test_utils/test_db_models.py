@@ -34,7 +34,7 @@ record_1 = {
 
 duplicate_update_item = {
     "timestamp": datetime(2024, 1, 1),
-    "filepath": os.path.join(os.getcwd(), "tests", "test_utils", "test_csv_download_files", "TEST_UPDATE.csv"),
+    "filepath": os.path.join(os.getcwd(), "tests", "test_csv_download_files", "TEST_UPDATE.csv"),
     "status": TableStatus.COMPLETE
 }
 
