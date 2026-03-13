@@ -57,6 +57,10 @@ class PrimaryCategories(str, Enum):
 
     def __str__(self):
         return str(self.value)
+    
+    @property
+    def as_headers(self) -> list:
+        return [member.value.lower().replace("&", "and").replace(" ", "_") for member in self.__]
 
 
 
@@ -72,17 +76,17 @@ class DetailedCategories(str, Enum):
     OTHER_INCOME = "Other income"
 
     # Transfers subcategories
-    ACCOUNT_TRANSFERS = "Account transfers"
-    INVESTMENT_TRANSFERS = "Investment transfers"
-    SAVINGS_TRANSFERS = "Savings transfers"
-    CASH_DEPOSITS = "Cash deposits"
-    CASH_WITHDRAWALS = "Cash withdrawals"
-    LOANS_AND_CASH_ADVANCES = "Loans & cash advances"
-    PERSON_TO_PERSON_PAYMENTS = "Person to person payments"
+    ACCOUNT_TRANSFERS = "Account transfers" # Exclude
+    INVESTMENT_TRANSFERS = "Investment transfers" # Exclude but track
+    SAVINGS_TRANSFERS = "Savings transfers" # Exclude
+    CASH_DEPOSITS = "Cash deposits" # Income?
+    CASH_WITHDRAWALS = "Cash withdrawals" 
+    LOANS_AND_CASH_ADVANCES = "Loans & cash advances" 
+    PERSON_TO_PERSON_PAYMENTS = "Person to person payments" # Observe NET? Tie to other transactions?
     OTHER_TRANSFERS = "Other transfers"
 
     # Debt payments subcategories
-    CREDIT_CARD_PAYMENTS = "Credit card payments"
+    CREDIT_CARD_PAYMENTS = "Credit card payments" # Exclude
     AUTO_LOAN_PAYMENTS = "Auto loan payments"
     STUDENT_LOAN_PAYMENTS = "Student loan payments"
     PERSONAL_LOAN_PAYMENTS = "Personal loan payments"
@@ -197,6 +201,10 @@ class DetailedCategories(str, Enum):
 
     def __str__(self):
         return str(self.value)
+    
+    @property
+    def as_headers(self) -> list:
+        return [member.value.lower().replace("&", "and").replace(" ", "_") for member in self.__]
 
 
 # Mapping of primary categories to the detailed categories that fall under them

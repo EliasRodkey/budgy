@@ -26,8 +26,8 @@ def configure_test_logging():
     configure_logging(log_directory=EDirectories.LOG_DIR)
 
 
-TEST_CSV_DIR = os.path.join(os.getcwd(), "tests", "test_utils", "test_csv_download_files")
-TEST_DB_DIR = os.path.join(os.getcwd(), "tests", "test_utils", "test_database")
+TEST_CSV_DIR = os.path.join(os.getcwd(), "tests", "test_csv_download_files")
+TEST_DB_DIR = os.path.join(os.getcwd(), "tests", "test_databases")
 TEST_DB_FILENAME = "test_database.db"
 TEST_DB_FILEPATH = os.path.join(TEST_DB_DIR, TEST_DB_FILENAME)
 
