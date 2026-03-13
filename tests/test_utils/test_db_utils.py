@@ -10,7 +10,8 @@ import os
 
 # Local imports
 from local_db import DuplicateError
-from budgy.utils.db_models import TransactionsTable, TableStatus
+from budgy.database_modules.models.transactions import TransactionsTable
+from budgy.database_modules.models.common import TableStatus
 from budgy.utils.db_utils import (
     generate_update_entry, generate_base_hash,
     iter_csv_not_uploaded, iter_val_csv_file,

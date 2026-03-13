@@ -50,7 +50,7 @@ from local_db import DatabaseManager, DuplicateError
 
 # Local imports
 from budgy.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
-from budgy.utils.db_models import (
+from budgy.database_modules.models.transactions import (
     TransactionsTable, UpdatesTable, TableStatus,
     transactions_table_manager, update_table_manager,
     Column, columns
