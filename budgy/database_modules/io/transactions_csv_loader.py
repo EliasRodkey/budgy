@@ -35,8 +35,8 @@ from local_db import DatabaseManager, DuplicateError
 
 # Local imports
 from budgy.database_modules.models.common import Column, TableStatus
-from budgy.database_modules.models.transactions import TransactionsTable
-from budgy.database_modules.managers.transaction_manager import generate_update_entry, iter_csv_not_uploaded, columns, transactions_table_manager, update_table_manager
+from budgy.database_modules.models.transactions import TransactionsTable, columns
+from budgy.database_modules.managers.transaction_manager import generate_update_entry, iter_csv_not_uploaded, transactions_table_manager, update_table_manager
 from budgy.utils.file_utils import EDirectories, LoggingExtras
 
 # initialize module logger

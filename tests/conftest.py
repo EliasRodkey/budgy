@@ -9,16 +9,22 @@ Provides:
     - clean_transactions_database fixture: yields an empty transactions table, tears down after each test
     - full_transactions_database fixture: populates the transactions table with data from a test CSV, tears down after each test
 """
+# Standard library imports
 import os
 from datetime import datetime
 
+# Third party imports
 import pytest
+
+# Custom imports
 from local_db import DatabaseFile, DatabaseManager
 from loggers import configure_logging
 
-from budgy.utils.db_models import TransactionsTable, UpdatesTable, TableStatus
+# Local imports
+from budgy.database_modules.io.transactions_csv_loader import upload_csv_to_db
+from budgy.database_modules.models.transactions import TransactionsTable, UpdatesTable
+from budgy.database_modules.models.common import TableStatus
 from budgy.utils.file_utils import EDirectories
-from budgy.utils.db_utils import upload_csv_to_db
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -100,8 +106,6 @@ def clean_transactions_database():
 def full_transactions_database():
     """Fixture to provide and loaded transactions table before and after each test."""
     db_manager = test_transaction_manager
-
-
 
     try:
         # Add transactions from the loaded csv to the test db

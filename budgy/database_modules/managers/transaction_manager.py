@@ -29,7 +29,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Table managers
-DB_FILE = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_FILEPATH)
+DB_FILE = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
 transactions_table_manager = DatabaseManager(TransactionsTable, DB_FILE)
 update_table_manager = DatabaseManager(UpdatesTable, DB_FILE)
 

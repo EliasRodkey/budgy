@@ -1,6 +1,7 @@
 
 # Standard library imports
 from collections import namedtuple
+from datetime import datetime
 from enum import Enum
 
 
@@ -18,3 +19,9 @@ class TableStatus(str, Enum):
 
     def __str__(self):
         return str(self.value)
+
+
+
+def parse_date(text) -> datetime:
+    """Turns date in format "%Y-%m-%d" into datetime"""
+    return datetime.strptime(text, "%Y-%m-%d")

@@ -11,7 +11,8 @@ from local_db import DatabaseManager
 
 # Local imports
 from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CATEGORY_MAPPING, REVERSE_CATEGORY_MAPPING
-from budgy.database_modules.models.transactions import TransactionsTable, transactions_table_manager
+from budgy.database_modules.managers.transaction_manager import transactions_table_manager
+from budgy.database_modules.models.transactions import TransactionsTable
 from budgy.utils.file_utils import LoggingExtras
 
 # initialize module logger

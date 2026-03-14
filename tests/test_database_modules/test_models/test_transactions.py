@@ -4,16 +4,17 @@ tests.test_database_modules.test_models.test_transactions
 
 Tests for budgy.database_modules.models.transactions module — ORM table definitions and database managers.
 """
+# Standard library imports
 import os
 from datetime import datetime
 
+# Third party imports
 import pytest
 from local_db import DuplicateError
 
-from budgy.database_modules.models.transactions import (
-    TransactionsTable, UpdatesTable, TableStatus,
-    transactions_table_manager, update_table_manager
-)
+# Local imports
+from budgy.database_modules.managers.transaction_manager import transactions_table_manager, update_table_manager
+from budgy.database_modules.models.common import TableStatus
 
 import logging
 logger = logging.getLogger(__name__)

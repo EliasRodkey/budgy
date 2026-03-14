@@ -4,7 +4,7 @@ file_utils.py
 Contains:
     - utility functions for file operations.
     - directory path enum
-
+    - log parsing identifier string enum
 """
 
 # Standard library importss
