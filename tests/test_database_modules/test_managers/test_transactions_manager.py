@@ -8,11 +8,14 @@ Tests for budgy.database_modules.managers.transactions_manager.py module — Dat
 from datetime import datetime
 import os
 
+# Third party imports
+import pandas as pd
+
 # Local imports
 from budgy.database_modules.models.common import TableStatus
-from budgy.database_modules.managers.transaction_manager import DuplicateError, generate_update_entry, iter_csv_not_uploaded
-from tests.conftest import TEST_CSV_DIR
-
+from budgy.database_modules.managers.transaction_manager import DuplicateError, generate_update_entry, iter_csv_not_uploaded, generate_monthly_category_report
+from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
+from tests.conftest import TEST_CSV_DIR, full_transactions_database
 
 # Initialize module logger
 import logging
@@ -71,3 +74,18 @@ def test_iter_csv__not_uploaded(clean_updates_database):
             assert csv not in uploaded_files
             from tests.conftest import update_items
             assert csv not in [item["filepath"] for item in update_items]
+
+
+def test_generate_monthly_category_report(full_transactions_database):
+    """Test the generate_monthly_category_report function for a specific month and year."""
+    month = 12
+    year = 2025
+
+    report_df = generate_monthly_category_report(month, year, full_transactions_database)
+
+    # Check that the report is a DataFrame and has the expected columns
+    assert isinstance(report_df, pd.DataFrame), "Report should be a pandas DataFrame."
+    expected_columns = [member.name.lower().replace(" ", "_") for member in PrimaryCategories] + \
+                       [member.name.lower().replace(" ", "_") for member in DetailedCategories] + \
+                       ["total_amount"]
+    assert all(col in report_df.columns for col in expected_columns), f"Report should contain the expected columns: {expected_columns}"
