@@ -355,3 +355,9 @@ EXCLUDE_CATEGORIES = [
     DetailedCategories.INVESTMENT_TRANSFERS,
     DetailedCategories.SAVINGS_TRANSFERS
 ]
+
+# for member in PrimaryCategories:
+#     print(member.value.strip().replace(" ", "_").replace("&", "and").lower())
+
+# for member in DetailedCategories:
+#     print(member.value.strip().replace(" ", "_").replace("&", "and").lower())
