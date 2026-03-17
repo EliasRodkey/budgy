@@ -35,7 +35,7 @@ from local_db import DatabaseManager, DuplicateError
 
 # Local imports
 from budgy.database_modules.models.common import Column, TableStatus
-from budgy.database_modules.models.transactions import TransactionsTable, columns
+from budgy.database_modules.models.transactions import TransactionsTable, transaction_columns
 from budgy.database_modules.managers.transaction_manager import generate_update_entry, iter_csv_not_uploaded, transactions_table_manager, update_table_manager
 from budgy.utils.file_utils import EDirectories, LoggingExtras
 
@@ -160,7 +160,7 @@ def update_categories_if_diff(record: dict, transactions_db_manager: DatabaseMan
 # Insert data into database, checking to make sure it is not a duplicate
 def upload_csv_to_db(
         csv_filepath: str,
-        columns: List[Column]=columns,
+        columns: List[Column]=transaction_columns,
         transactions_db_manager: DatabaseManager=transactions_table_manager,
         updates_db_manager: DatabaseManager=update_table_manager
     ):
@@ -217,7 +217,7 @@ def upload_csv_to_db(
 
 
 def upload_all_csv_to_db(
-        columns: List[Column]=columns,
+        columns: List[Column]=transaction_columns,
         transactions_db_manager: DatabaseManager=transactions_table_manager,
         updates_db_manager: DatabaseManager=update_table_manager,
         csv_dir: str=EDirectories.CSV_DIR

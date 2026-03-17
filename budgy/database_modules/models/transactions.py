@@ -29,7 +29,7 @@ class TransactionsTable(BaseTable):
     This table stores all the transaction data imported from CSV files.
 
     Database Structure:
-    table name: transactions
+        table name: transactions
     Columns:
         - id: Integer, Primary Key, Auto Increment (unique identifier for each transaction)
         - authorized_date: DateTime
@@ -67,7 +67,7 @@ class TransactionsTable(BaseTable):
 
 
 
-columns = [
+transaction_columns = [
     Column("Authorized Date", TransactionsTable.authorized_date.name, parse_date),
     Column("Posted Date", TransactionsTable.posted_date.name, parse_date),
     Column("Status", TransactionsTable.status.name, str),
@@ -86,7 +86,7 @@ class UpdatesTable(BaseTable):
     This table stores metadata about CSV file imports and their statuses.
 
     Database Structure:
-    table name: transaction_updates
+        table name: transaction_updates
     Columns:
         - id: Integer, Primary Key, Auto Increment (unique identifier for each update record)
         - timestamp: DateTime

@@ -11,7 +11,7 @@ import os
 # Local imports
 from budgy.database_modules.io.transactions_csv_loader import generate_base_hash, iter_val_csv_file, upload_csv_to_db
 from budgy.database_modules.managers.transaction_manager import iter_csv_not_uploaded
-from budgy.database_modules.models.transactions import TransactionsTable, columns
+from budgy.database_modules.models.transactions import TransactionsTable, transaction_columns
 from tests.conftest import TEST_CSV_DIR
 
 # Initialize module logger
@@ -79,8 +79,8 @@ def test_generate_base_hash():
 def test_iter_csv(clean_updates_database):
     """Tests the iter_csv_file function to make sure that it is correctly parsing the csv file and yielding the correct records with the correct types"""
     for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=clean_updates_database):
-        for record in iter_val_csv_file(csv_filepath, columns):
-            for col in columns:
+        for record in iter_val_csv_file(csv_filepath, transaction_columns):
+            for col in transaction_columns:
                 assert col.dest in record
             if record["amount"] > 0:
                 assert record["status"] == "Unchecked"
@@ -92,11 +92,11 @@ def test_iter_csv_hash(clean_updates_database):
     """Tests iter_csv_file function to make sure the hashes created are all unique"""
     for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=clean_updates_database):
         hashes = set()
-        for record in iter_val_csv_file(csv_filepath, columns):
+        for record in iter_val_csv_file(csv_filepath, transaction_columns):
             assert record["uq_hash"] is not None, "Hash value is missing from record."
             assert record["uq_hash"] not in hashes, f"Duplicate hash value found: {record['uq_hash']}"
             hashes.add(record["uq_hash"])
-        assert len(hashes) == len(list(iter_val_csv_file(csv_filepath, columns))), f"Expected 999 unique hashes, but found {len(hashes)}."
+        assert len(hashes) == len(list(iter_val_csv_file(csv_filepath, transaction_columns))), f"Expected 999 unique hashes, but found {len(hashes)}."
 
 
 def test_update_categories_if_diff(clean_transactions_database, clean_updates_database):
