@@ -36,7 +36,23 @@ logger = logging.getLogger(__name__)
 
 
 
-class PrimaryCategories(str, Enum):
+class CategoriesEnum(str, Enum):
+    """Parent class for category enum objects"""
+
+    def __str__(self):
+        return str(self.value)
+    
+    @property
+    def as_snake_case_headers(self) -> list:
+        return [member.value.lower().replace("&", "and").replace(" ", "_") for member in self]
+    
+    @property
+    def as_list(self) -> list:
+        return [member.value for member in self]
+
+
+
+class PrimaryCategories(CategoriesEnum):
     """Enum class for primary categories of transactions."""
     INCOME = "Income"
     TRANSFERS = "Transfers"
@@ -55,16 +71,9 @@ class PrimaryCategories(str, Enum):
     GOVERNMENT_AND_CHARITY = "Government & charity"
     OTHER = "Other"
 
-    def __str__(self):
-        return str(self.value)
-    
-    @property
-    def as_headers(self) -> list:
-        return [member.value.lower().replace("&", "and").replace(" ", "_") for member in self.__]
 
 
-
-class DetailedCategories(str, Enum):
+class DetailedCategories(CategoriesEnum):
     """Enum class for detailed categories of transactions."""
     # Income subcategories
     WAGES = "Wages"
@@ -198,13 +207,6 @@ class DetailedCategories(str, Enum):
 
     # Other subcategories
     OTHER = "Other"
-
-    def __str__(self):
-        return str(self.value)
-    
-    @property
-    def as_headers(self) -> list:
-        return [member.value.lower().replace("&", "and").replace(" ", "_") for member in self.__]
 
 
 # Mapping of primary categories to the detailed categories that fall under them
@@ -346,3 +348,10 @@ CATEGORY_MAPPING = {
 
 # The opposite of the above mapping, for looking up primary categories by detailed category
 REVERSE_CATEGORY_MAPPING = {detailed: primary for primary, detailed_list in CATEGORY_MAPPING.items() for detailed in detailed_list}
+
+EXCLUDE_CATEGORIES = [
+    DetailedCategories.ACCOUNT_TRANSFERS, 
+    DetailedCategories.CREDIT_CARD_PAYMENTS, 
+    DetailedCategories.INVESTMENT_TRANSFERS,
+    DetailedCategories.SAVINGS_TRANSFERS
+]
