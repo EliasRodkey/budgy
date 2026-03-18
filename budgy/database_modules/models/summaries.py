@@ -1,13 +1,25 @@
 #!python3
 """
+budgy.database_modules.models.summaries.py -
+Contains ORM table definitions, database managers, and CSV column mappings for budgy summaries db table.
+
+Classes:
+    - SummariesTable: ORM class representing the summaries table in the database.
+
+Variables:
+    - summary_columns: List of Column namedtuples mapping CSV headers to TransactionsTable columns
+        with type conversion functions for transaction data import.
 """
 # Standard library imports
 
 # Custom imports
+# TODO: Add ForeignKey to local_db import ESQLDataTypes
+from sqlalchemy import ForeignKey
 from local_db import BaseTable, ESQLDataTypes
 
 # Local imports
 from .common import Column, parse_date
+from .budgets import BudgetsTable
 
 # initialize module logger
 import logging
@@ -15,15 +27,21 @@ logger = logging.getLogger(__name__)
 
 
 
-class SummaryTable(BaseTable):
+class SummariesTable(BaseTable):
     """
-    Class representing the Summaries table in the database.
+    Class representing the summaries table in the database.
     This table stores all the summary spending data calculated from the transactions database.
 
     Database Structure:
-        table name: transactions
+        table name: summaries
     Columns:
-    - 
+        - id: primary key, autoincremented. unique per row
+        - date: DateTime
+        - month: integer (1-12)
+        - year: integer
+        - budget_id: integer, tied to budgets table
+        - PrimaryCateogry category names using as_snake_case_headers method
+        - DetailedCateogry category names using as_snake_case_headers method
     """
 
     __tablename__ = "summaries"
@@ -32,6 +50,7 @@ class SummaryTable(BaseTable):
     date = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
     month = ESQLDataTypes.Column(ESQLDataTypes.Integer)
     year = ESQLDataTypes.Column(ESQLDataTypes.Interval)
+    budget_id = ESQLDataTypes.Column(ESQLDataTypes.Integer, ForeignKey("budgets.id"), nullable=False)
     income = ESQLDataTypes.Column(ESQLDataTypes.Float)
     transfers = ESQLDataTypes.Column(ESQLDataTypes.Float)
     debt_payments = ESQLDataTypes.Column(ESQLDataTypes.Float)
