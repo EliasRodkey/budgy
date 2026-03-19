@@ -4,10 +4,13 @@ Shared pytest fixtures and test database setup for test_utils.
 
 Provides:
     - Test database path constants (TEST_CSV_DIR, TEST_DB_DIR, etc.)
-    - Test DatabaseManager instances (test_transaction_manager, test_updates_manager)
+    - Test DatabaseManager instances (test_transaction_manager, test_updates_manager,
+      test_budgets_manager, test_summaries_manager)
     - clean_updates_database fixture: populates the updates table with sample data, tears down after each test
     - clean_transactions_database fixture: yields an empty transactions table, tears down after each test
     - full_transactions_database fixture: populates the transactions table with data from a test CSV, tears down after each test
+    - clean_budgets_database fixture: yields an empty budgets table, tears down after each test
+    - clean_summaries_database fixture: yields an empty summaries table (with budget row), tears down after each test
 """
 # Standard library imports
 import os
@@ -23,6 +26,8 @@ from loggers import configure_logging
 # Local imports
 from budgy.database_modules.io.transactions_csv_loader import upload_csv_to_db
 from budgy.database_modules.models.transactions import TransactionsTable, UpdatesTable
+from budgy.database_modules.models.budgets import BudgetsTable
+from budgy.database_modules.models.summaries import SummariesTable
 from budgy.database_modules.models.common import TableStatus
 from budgy.utils.file_utils import EDirectories
 
@@ -40,6 +45,8 @@ TEST_DB_FILEPATH = os.path.join(TEST_DB_DIR, TEST_DB_FILENAME)
 test_db_file = DatabaseFile(TEST_DB_FILEPATH, TEST_DB_DIR)
 test_transaction_manager = DatabaseManager(TransactionsTable, test_db_file)
 test_updates_manager = DatabaseManager(UpdatesTable, test_db_file)
+test_budgets_manager = DatabaseManager(BudgetsTable, test_db_file)
+test_summaries_manager = DatabaseManager(SummariesTable, test_db_file)
 
 TEST_FULL_TRANSACTIONS_CSV = os.path.join(TEST_CSV_DIR, "SoFi-Relay-All-Transactions_2025-12-31.csv")
 
@@ -123,5 +130,41 @@ def full_transactions_database():
     finally:
         test_updates_manager.clear_table()
         test_updates_manager.end_session()
+        db_manager.clear_table()
+        db_manager.end_session()
+
+
+@pytest.fixture()
+def clean_budgets_database():
+    """Fixture to provide and clean the budgets table before and after each test."""
+    db_manager = test_budgets_manager
+
+    try:
+        yield db_manager
+
+    except Exception:
+        db_manager.session.rollback()
+        raise
+
+    finally:
+        db_manager.clear_table()
+        db_manager.end_session()
+
+
+@pytest.fixture()
+def clean_summaries_database(clean_budgets_database):
+    """Fixture to provide and clean the summaries table before and after each test.
+    Depends on clean_budgets_database since SummariesTable has a FK to budgets.
+    """
+    db_manager = test_summaries_manager
+
+    try:
+        yield db_manager, clean_budgets_database
+
+    except Exception:
+        db_manager.session.rollback()
+        raise
+
+    finally:
         db_manager.clear_table()
         db_manager.end_session()

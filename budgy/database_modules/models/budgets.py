@@ -61,6 +61,4 @@ class BudgetsTable(BaseTable):
 
 
 
-budget_columns = [
-    Column()
-]
+budget_columns = []

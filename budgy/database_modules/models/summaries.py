@@ -49,7 +49,7 @@ class SummariesTable(BaseTable):
     id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
     date = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
     month = ESQLDataTypes.Column(ESQLDataTypes.Integer)
-    year = ESQLDataTypes.Column(ESQLDataTypes.Interval)
+    year = ESQLDataTypes.Column(ESQLDataTypes.Integer)
     budget_id = ESQLDataTypes.Column(ESQLDataTypes.Integer, ForeignKey("budgets.id"), nullable=False)
     income = ESQLDataTypes.Column(ESQLDataTypes.Float)
     transfers = ESQLDataTypes.Column(ESQLDataTypes.Float)
@@ -167,10 +167,7 @@ class SummariesTable(BaseTable):
     government_fees = ESQLDataTypes.Column(ESQLDataTypes.Float)
     charity = ESQLDataTypes.Column(ESQLDataTypes.Float)
     other_government_and_charity = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    other = ESQLDataTypes.Column(ESQLDataTypes.Float)
 
 
 
-summary_columns = [
-    Column()
-]
+summary_columns = []
