@@ -4,7 +4,7 @@ Shared pytest fixtures and test database setup for test_utils.
 
 Provides:
     - Test database path constants (TEST_CSV_DIR, TEST_DB_DIR, etc.)
-    - Test DatabaseManager instances (test_transaction_manager, test_updates_manager,
+    - Test manager instances (test_transaction_manager, test_updates_manager,
       test_budgets_manager, test_summaries_manager)
     - clean_updates_database fixture: populates the updates table with sample data, tears down after each test
     - clean_transactions_database fixture: yields an empty transactions table, tears down after each test
@@ -20,14 +20,14 @@ from datetime import datetime
 import pytest
 
 # Custom imports
-from local_db import DatabaseFile, DatabaseManager
+from local_db import DatabaseFile
 from loggers import configure_logging
 
 # Local imports
 from budgy.database_modules.io.transactions_csv_loader import upload_csv_to_db
-from budgy.database_modules.models.transactions import TransactionsTable, UpdatesTable
-from budgy.database_modules.models.budgets import BudgetsTable
-from budgy.database_modules.models.summaries import SummariesTable
+from budgy.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
+from budgy.database_modules.managers.budget_manager import BudgetsTableManager
+from budgy.database_modules.managers.summary_manager import SummariesTableManager
 from budgy.database_modules.models.common import TableStatus
 from budgy.utils.file_utils import EDirectories
 
@@ -43,10 +43,10 @@ TEST_DB_FILENAME = "test_database.db"
 TEST_DB_FILEPATH = os.path.join(TEST_DB_DIR, TEST_DB_FILENAME)
 
 test_db_file = DatabaseFile(TEST_DB_FILEPATH, TEST_DB_DIR)
-test_transaction_manager = DatabaseManager(TransactionsTable, test_db_file)
-test_updates_manager = DatabaseManager(UpdatesTable, test_db_file)
-test_budgets_manager = DatabaseManager(BudgetsTable, test_db_file)
-test_summaries_manager = DatabaseManager(SummariesTable, test_db_file)
+test_transaction_manager = TransactionsTableManager(test_db_file)
+test_updates_manager = UpdatesTableManager(test_db_file)
+test_budgets_manager = BudgetsTableManager(test_db_file)
+test_summaries_manager = SummariesTableManager(test_db_file)
 
 TEST_FULL_TRANSACTIONS_CSV = os.path.join(TEST_CSV_DIR, "SoFi-Relay-All-Transactions_2025-12-31.csv")
 
@@ -117,8 +117,8 @@ def full_transactions_database():
     try:
         # Add transactions from the loaded csv to the test db
         upload_csv_to_db(
-            TEST_FULL_TRANSACTIONS_CSV, 
-            transactions_db_manager=db_manager, 
+            TEST_FULL_TRANSACTIONS_CSV,
+            transactions_db_manager=db_manager,
             updates_db_manager=test_updates_manager
         )
         yield db_manager

@@ -13,7 +13,7 @@ import pytest
 from local_db import DuplicateError
 
 # Local imports
-from budgy.database_modules.managers.transaction_manager import transactions_table_manager, update_table_manager
+from budgy.database_modules.managers.transaction_manager import transactions_manager as transactions_table_manager, updates_manager as update_table_manager
 from budgy.database_modules.models.common import TableStatus
 
 import logging

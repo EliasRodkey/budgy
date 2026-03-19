@@ -10,7 +10,6 @@ import os
 
 # Local imports
 from budgy.database_modules.io.transactions_csv_loader import generate_base_hash, iter_val_csv_file, upload_csv_to_db
-from budgy.database_modules.managers.transaction_manager import iter_csv_not_uploaded
 from budgy.database_modules.models.transactions import TransactionsTable, transaction_columns
 from tests.conftest import TEST_CSV_DIR
 
@@ -78,7 +77,7 @@ def test_generate_base_hash():
 
 def test_iter_csv(clean_updates_database):
     """Tests the iter_csv_file function to make sure that it is correctly parsing the csv file and yielding the correct records with the correct types"""
-    for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=clean_updates_database):
+    for csv_filepath in clean_updates_database.iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR):
         for record in iter_val_csv_file(csv_filepath, transaction_columns):
             for col in transaction_columns:
                 assert col.dest in record
@@ -90,7 +89,7 @@ def test_iter_csv(clean_updates_database):
 
 def test_iter_csv_hash(clean_updates_database):
     """Tests iter_csv_file function to make sure the hashes created are all unique"""
-    for csv_filepath in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=clean_updates_database):
+    for csv_filepath in clean_updates_database.iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR):
         hashes = set()
         for record in iter_val_csv_file(csv_filepath, transaction_columns):
             assert record["uq_hash"] is not None, "Hash value is missing from record."
@@ -183,7 +182,7 @@ def test_upload_csv_to_db(clean_transactions_database, clean_updates_database):
     """Tests the upload_csv_to_db function on it's happy path."""
     updates_db = clean_updates_database
     transactions_db = clean_transactions_database
-    for csv in iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR, updates_db_manager=updates_db):
+    for csv in updates_db.iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR):
         upload_csv_to_db(csv, transactions_db_manager=transactions_db, updates_db_manager=updates_db)
 
     transactions_table = transactions_db.to_dataframe()
