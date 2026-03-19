@@ -6,16 +6,18 @@ Module contianing functions for reading, writing, and updating values in the sum
 
 """
 # Standard library imports
+from datetime import datetime
 
 # Third party imports
 import pandas as pd
 
 # Custom imports
-from local_db import DatabaseFile, DatabaseManager
+from local_db import DatabaseFile, DatabaseManager, DuplicateError
 
 # Local imports
-from ..models.summaries import SummariesTable
-from .transaction_manager import TransactionsTableManager
+from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CATEGORY_MAPPING
+from ..models.summaries import SummariesTable, summary_columns
+
 
 # initialize module logger
 import logging
@@ -29,7 +31,7 @@ class SummariesTableManager(DatabaseManager):
         super().__init__(SummariesTable, db_file)
 
     
-    def upload_monthly_summary(self, month: int, year: int, summary: pd.DataFrame) -> None:
+    def upload_monthly_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int=None) -> None:
         """
         Initiates a cleaning and upload of a provided summary from the transactions table from a the given month and year.
 
@@ -37,26 +39,94 @@ class SummariesTableManager(DatabaseManager):
             month (int): month given as an integer
             year (int): year given as an integer
             summary (pd.DataFrame): Monthly summary output from transactions table manager.
-        """ 
+            budget_id (int): the id of the budget used to compare spending to, defaults to most recent if None
+        """
         logger.info(f"Uploading monthly summary for {month} / {year} to {self.table_name}")
 
         if self._check_summary_exists(month, year):
             logger.warning(f"Entry for month = {month} and year = {year} already exists in {self.table_name}")
         
         else:
-            clean_summary = self._clean_monthly_summary(summary)
+            clean_summary = self._clean_monthly_summary(month, year, summary, budget_id=budget_id)
+        
+            try:
+                self.add_item(**clean_summary)
+
+            except DuplicateError:
+                logger.warning(f"Trying to upload a duplicate summary for {month} / {year}, skipping")
+
+
+    def update_summary(self, month: int, year: int, summary: pd.DataFrame):
+        """
+        Updates a summary entry in the summaries table. 
+        Should be called when new transaction categories are updated in transactions db.
+
+        Args:
+            month (int): month given as an integer
+            year (int): year given as an integer
+            summary (pd.DataFrame): Monthly summary output from transactions table manager.
+        """
+        logger.info(f"Updating monthly summary for {month} / {year} in {self.table_name}")
+
+        if not self._check_summary_exists(month, year):
+            logger.warning(f"Entry for month = {month} and year = {year} doesn't exists in {self.table_name}")
+
+        else:
+            clean_summary = self._clean_monthly_summary(month, year, summary)
+
+            try:
+                self.update_item(self._get_summary_id(month, year))
+
+            except DuplicateError as e:
+                logger.error(f"Summary table not updaes for {month} / {year}: {e}")
+                
+
+    def _clean_monthly_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int=None) -> dict:
+        """Cleans and validates monthly summary for upload, returns validated dict"""
+        logger.debug(f"Cleaning monthly summary for uplaod...")
+        columns = summary.columns
+        if sum([col not in SummariesTable.column_names for col in columns]) > 0:
+            raise KeyError(f"Invalid column name in raw summary table {columns}")
+        
+        summary[SummariesTable.date.name] = datetime(year, month, 1)
+        summary[SummariesTable.month.name] = month
+        summary[SummariesTable.year.name] = year
+        # summary[SummariesTable.budget_id.name] = budget_id
+
+        summary_record = {}
+
+        for col in summary_columns:
+            if col.dest not in columns:
+                logger.debug(f"Summary missing {col.dest}, adding...")
+                summary[col.dest] = 0
+
+            validated_entry = col.convert(summary[col.dest].max())
             
 
-    
-    def update_summary(self, month: int, year: int):
-        """
-        """
-        pass
+            if col.dest == SummariesTable.month.name:
+                assert 1 <= validated_entry <= 12, f"Invalid month entered into summary table record month = {validated_entry}"
+            
+            elif col.dest == SummariesTable.year.name:
+                assert 2000 <= validated_entry <= datetime.now().year, f"Invalid year entered into summary table record month = {validated_entry}"
+            
+            elif col.dest == SummariesTable.date.name:
+                assert isinstance(validated_entry, datetime), f"Invalid date entry for summary table: {validated_entry}, type: {type(validated_entry)}"
 
+            # elif col.dest == SummariesTable.budget_id.name:
+            #     pass
 
-    def _clean_monthly_summary(self, summary: pd.DataFrame) -> dict:
-        """Cleans and validates monthly summary for upload"""
-        columns = summary.columns
+            elif col.dest == SummariesTable.income.name or col.dest in [detailed.as_snake_case() for detailed in CATEGORY_MAPPING[PrimaryCategories.INCOME]]:
+                assert validated_entry >= 0, f"Invalid value for {col.dest}: {validated_entry}"
+                assert isinstance(validated_entry, float),f"Invalid value for {col.dest}: {validated_entry}, type: {type(validated_entry)}"
+            
+            else:
+                assert isinstance(validated_entry, float),f"Invalid value for {col.dest}: {validated_entry}, type: {type(validated_entry)}"
+
+            # TODO: Everything else besides maybe some transfers should be negative?
+            summary_record[col.dest] = validated_entry
+        
+        return summary_record
+        
 
 
     def _check_summary_exists(self, month: int, year: int) -> bool:
@@ -64,5 +134,12 @@ class SummariesTableManager(DatabaseManager):
         logger.debug(f"Checking {self.table_name} for record from month = {month}, year = {year}")
 
         return_item = self.fetch_items_by_attribute(month=month, year=year)
-
         return return_item != []
+    
+
+    def _get_summary_id(self, month: int, year: int) -> bool:
+        """Retrives the summary id of the assocaited month / year combo"""
+        logger.debug(f"Fetching summaries.id for month = {month}, year = {year}")
+
+        return_item = self.fetch_items_by_attribute(month=month, year=year)
+        return return_item.id

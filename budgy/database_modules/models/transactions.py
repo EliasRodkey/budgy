@@ -67,7 +67,7 @@ class TransactionsTable(BaseTable):
     uq_hash = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
 
 
-
+# first arg comes from CSF input col names, consider changing to Enum
 transaction_columns = [
     Column("Authorized Date", TransactionsTable.authorized_date.name, parse_date),
     Column("Posted Date", TransactionsTable.posted_date.name, parse_date),

@@ -42,6 +42,10 @@ class CategoriesEnum(str, Enum):
     def __str__(self):
         return str(self.value)
     
+
+    def as_snake_case(self) -> str:
+        return str(self.value).lower().replace("&", "and").replace(" ", "_")
+    
     @property
     def as_snake_case_headers(self) -> list:
         return [member.value.lower().replace("&", "and").replace(" ", "_") for member in self]
@@ -205,9 +209,6 @@ class DetailedCategories(CategoriesEnum):
     CHARITY = "Charity"
     OTHER_GOVERNMENT_AND_CHARITY = "Other government & charity"
 
-    # Other subcategories
-    OTHER = "Other"
-
 
 # Mapping of primary categories to the detailed categories that fall under them
 CATEGORY_MAPPING = {
@@ -340,9 +341,6 @@ CATEGORY_MAPPING = {
         DetailedCategories.GOVERNMENT_FEES,
         DetailedCategories.CHARITY,
         DetailedCategories.OTHER_GOVERNMENT_AND_CHARITY
-    ],
-    PrimaryCategories.OTHER: [
-        DetailedCategories.OTHER
     ]
 }
 
@@ -355,9 +353,3 @@ EXCLUDE_CATEGORIES = [
     DetailedCategories.INVESTMENT_TRANSFERS,
     DetailedCategories.SAVINGS_TRANSFERS
 ]
-
-# for member in PrimaryCategories:
-#     print(member.value.strip().replace(" ", "_").replace("&", "and").lower())
-
-# for member in DetailedCategories:
-#     print(member.value.strip().replace(" ", "_").replace("&", "and").lower())

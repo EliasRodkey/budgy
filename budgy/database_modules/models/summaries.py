@@ -46,11 +46,16 @@ class SummariesTable(BaseTable):
 
     __tablename__ = "summaries"
 
+    # Enforce unique combination across (user_id, project_id)
+    __table_args__ = (
+        ESQLDataTypes.UniqueConstraint('month', 'year', name='month_of_summary'),
+    )
+
     id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
     date = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
     month = ESQLDataTypes.Column(ESQLDataTypes.Integer)
     year = ESQLDataTypes.Column(ESQLDataTypes.Integer)
-    budget_id = ESQLDataTypes.Column(ESQLDataTypes.Integer, ForeignKey("budgets.id"), nullable=False)
+    # budget_id = ESQLDataTypes.Column(ESQLDataTypes.Integer, ForeignKey("budgets.id"), nullable=False)
     income = ESQLDataTypes.Column(ESQLDataTypes.Float)
     transfers = ESQLDataTypes.Column(ESQLDataTypes.Float)
     debt_payments = ESQLDataTypes.Column(ESQLDataTypes.Float)
@@ -170,4 +175,6 @@ class SummariesTable(BaseTable):
 
 
 
-summary_columns = []
+summary_columns = [
+    Column(column_name, column_name, column_type) for column_name, column_type in SummariesTable.get_column_types().items()
+]
