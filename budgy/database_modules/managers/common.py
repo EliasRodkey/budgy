@@ -20,6 +20,7 @@ import pandas as pd
 from local_db import DatabaseFile
 
 # Local imports
+from budgy.utils.analysis_utils import CategoriesEnum
 from budgy.utils.file_utils import EDirectories
 
 # initialize module logger
@@ -28,9 +29,9 @@ logger = logging.getLogger(__name__)
 
 
 DB_FILE = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
+    
 
-
-def convert_datetime_nums_to_range(month: int, year: int) -> Tuple[datetime, datetime]:
+def convert_datetime_nums_to_range(month: int | None, year: int | None) -> Tuple[datetime, datetime]:
     """
     Converts a given month and year integer into a datetime start and end range.
     
@@ -39,23 +40,37 @@ def convert_datetime_nums_to_range(month: int, year: int) -> Tuple[datetime, dat
         year (int): The year as an integer (e.g., 2024).
     
     Returns:
-        Tuple[datetime, datetime]: A tuple containing the start and end datetime objects for the specified month and year.
+        Tuple[datetime, datetime, str]: A tuple containing the start and end datetime objects for the specified month and year.
     """
-    start_date = datetime(year, month, 1)
+    # Check to make sure the month and year are valid if not None
+    if (month < 1 or month > 12) and month != None:
+        logger.error(f"Invalid month value: {month}. Month should be between 1 and 12.")
+        raise ValueError(f"Invalid month value: {month}. Month should be between 1 and 12.")
+
+    elif (year < 2000 or year > datetime.now().year) and year != None:
+        logger.error(f"Invalid year value: {year}. Year should be between 2000 and the current year.")
+        raise ValueError(f"Invalid year value: {year}. Year should be between 2000 and the current year.")
+    
+    # If month and year are not present return datetime from 2000 to now
+    if not year and not month:
+        return datetime(2000), datetime.now()
+    
+    # If no year is present use the current year
+    if not year:
+        year = datetime.now().year
+    
+    # If there is no month, set the start and end date to cover the whole year
+    if not month:
+        start_date = datetime(year, 1, 1)
+        end_date = datetime(year + 1) - timedelta(seconds=1)
 
     if month == 12:
+        start_date = datetime(year, month, 1)
         end_date = datetime(year + 1, 1, 1) - timedelta(seconds=1)
     
     else:
+        start_date = datetime(year, month, 1)
         end_date = datetime(year, month + 1, 1) - timedelta(seconds=1)
-    
-    if month < 1 or month > 12:
-        logger.error(f"Invalid month value: {month}. Month should be between 1 and 12.")
-        raise ValueError(f"Invalid month value: {month}. Month should be between 1 and 12.")
-    
-    elif year < 2000 or year > datetime.now().year:
-        logger.error(f"Invalid year value: {year}. Year should be between 2000 and the current year.")
-        raise ValueError(f"Invalid year value: {year}. Year should be between 2000 and the current year.")
 
     return start_date, end_date
 

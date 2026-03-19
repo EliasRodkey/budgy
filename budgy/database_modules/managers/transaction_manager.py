@@ -27,7 +27,7 @@ from local_db import DatabaseFile, DatabaseManager, DuplicateError
 from budgy.database_modules.managers.common import DB_FILE, convert_datetime_nums_to_range, format_column_names
 from budgy.database_modules.models.common import TableStatus
 from budgy.database_modules.models.transactions import TransactionsTable, UpdatesTable
-from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
+from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
 from budgy.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
 
 # initialize module logger
@@ -105,12 +105,16 @@ def iter_csv_not_uploaded(csv_directory=EDirectories.CSV_DIR, updates_db_manager
 
 
 # Pull records by **kwargs, then convert to pandas dataframe.
-def retrieve_records_by_attribute_over_period(month: int, year: int, 
+def retrieve_records_by_attribute_over_period(month: int=None, year: int=None, 
                                               db_manager: DatabaseManager=transactions_table_manager, 
                                                **kwargs) -> pd.DataFrame:
     """
     Retrieves all records from the database associated with the given Database Manager that match the specified attributes and fall within the specified date range.
     Avoids pulling excluded transactions by filtering them out.
+    By default month and year are none, so the function will return all transactions between the year 2000 and present. 
+    Adding a month will return the transactions for that month in the current year. 
+    Adding a year and a month will return the transactions for the specified year / month, and adding just a year will
+    return the total for that year.
 
     Args:
         month (int): The month as an integer (1-12).
@@ -121,6 +125,7 @@ def retrieve_records_by_attribute_over_period(month: int, year: int,
     Returns:
         List[BaseTable]: A list of records that match the specified attributes and date range.
     """
+    
     start_date, end_date = convert_datetime_nums_to_range(month, year)
 
     logger.debug(
@@ -173,40 +178,54 @@ def generate_monthly_category_report(month: int, year: int, db_manager: Database
         logger.info(f"No transactions found for month/year: {month}/{year}. Returning empty report.")
         return pd.DataFrame(columns=columns)
 
-    # Group the records by primary category and detailed category seperately and sum.
-    primary_category_report = records_df.groupby(TransactionsTable.primary_category.name)[TransactionsTable.amount.name].sum().reset_index()
-    detailed_category_report = records_df.groupby(TransactionsTable.detailed_category.name)[TransactionsTable.amount.name].sum().reset_index()
+    try:
+        # Group the records by primary category and detailed category seperately and sum.
+        primary_category_report = records_df.groupby(TransactionsTable.primary_category.name)[TransactionsTable.amount.name].sum().reset_index()
+        detailed_category_report = records_df.groupby(TransactionsTable.detailed_category.name)[TransactionsTable.amount.name].sum().reset_index()
 
-    # Prepare both dataframes for concatenation by aligning the columns
-    primary_category_report.columns = ["category", "total"]
-    detailed_category_report.columns = ["category", "total"]
+        # Prepare both dataframes for concatenation by aligning the columns
+        primary_category_report.columns = ["category", "total"]
+        detailed_category_report.columns = ["category", "total"]
 
-    # Concat two DFs along vertical axis
-    category_report = pd.concat([primary_category_report, detailed_category_report], axis=0).reset_index()
+        # Concat two DFs along vertical axis
+        category_report = pd.concat([primary_category_report, detailed_category_report], axis=0).reset_index()
 
-    # from pprint import pprint
+        # Convert category names to python friendly column names
+        category_report.category = format_column_names(category_report.category)
+        category_report.set_index("category", inplace=True)
 
-    # print("records orient")
-    # records_dict = category_report.to_dict(orient="records")
-    # pprint(records_dict)
+        # Transpose df and drop index row
+        category_report = category_report.T
+        category_report.drop(index="index", inplace=True)
 
-    # print("list orient")
-    # list_dict = category_report.to_dict(orient="list")
-    # pprint(list_dict)
-
-    # print("index orient")
-    # index_dict = category_report.to_dict(orient="index")
-    # pprint(index_dict)
-
-    # Convert category names to python friendly column names
-    category_report.category = format_column_names(category_report.category)
-    category_report.set_index("category", inplace=True)
-    category_report = category_report.T
-    category_report["new_category"] = 0
-    # Transpose df and map column names to correct values (I think I have to do this ahead of time somehow)
-
-    # Really should be doing all of this in jupyter!!
-
-    logger.debug(f"Generated monthly category report for {month}/{year}:\n{category_report}")
+    except Exception as e:
+        logger.exception(f"Error encountered while summarizing transactions from {month} / {year}.")
+        raise e
 
     return category_report
+
+
+def return_category_count(category: CategoriesEnum, month: int=None, year: int=None, db_manager: DatabaseManager=transactions_table_manager) -> int:
+    """
+    Returns an integer representing the number of transactions from the given caategory over a period of time.
+    By default month and year are none, so the function will return all time counts. Adding a month will return the count for that month
+    in the current year. Adding a year and a month will return the count for the specified year / month, and adding just a year will
+    return the total for that year.
+
+    Args:
+        category (CategoriesEnum): The cateogry to count
+        month (int): integer between 1-12 representing the month to search
+        year (int): integer representing the year to search
+    """
+
+    if category in PrimaryCategories:
+        records_df = retrieve_records_by_attribute_over_period(month, year, db_manager=db_manager, primary_cateogry=category.value)
+    
+    elif category in DetailedCategories:
+        records_df = retrieve_records_by_attribute_over_period(month, year, db_manager=db_manager, detailed_category=category.value)
+    
+    else:
+        raise KeyError(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", extra={LoggingExtras.CATEGORY: category.value})
+    
+    logger.info(f"Counting number of transactions for {category}")
+    return records_df.shape[0]

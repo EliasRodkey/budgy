@@ -40,6 +40,7 @@ class LoggingExtras(str, Enum):
     """Enum class that stores extra params used commonly in logging"""
     DETAILED_CATEGORY = "detailed_category"
     PRIMARY_CATEGORY = "primary_category"
+    CATEGORY = "category"
     FILE = "file"
     RECORD = "record"
     UPLOAD = "csv_upload"
