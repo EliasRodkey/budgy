@@ -219,13 +219,14 @@ def return_category_count(category: CategoriesEnum, month: int=None, year: int=N
     """
 
     if category in PrimaryCategories:
-        records_df = retrieve_records_by_attribute_over_period(month, year, db_manager=db_manager, primary_cateogry=category.value)
+        records_df = retrieve_records_by_attribute_over_period(month, year, db_manager=db_manager, primary_category=category.value)
     
     elif category in DetailedCategories:
         records_df = retrieve_records_by_attribute_over_period(month, year, db_manager=db_manager, detailed_category=category.value)
     
     else:
-        raise KeyError(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", extra={LoggingExtras.CATEGORY: category.value})
+        logger.error(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", extra={LoggingExtras.CATEGORY: category.value})
+        raise KeyError(f"The category {category} was not found in either PrimaryCategories or DetailedCategories")
     
     logger.info(f"Counting number of transactions for {category}")
     return records_df.shape[0]
