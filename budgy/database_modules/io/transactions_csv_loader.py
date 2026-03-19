@@ -13,8 +13,6 @@ Functions:
         occurrence count to detect duplicates.
     - update_categories_if_diff(): Checks for duplicate transactions by base hash and updates
         category information if categories differ between the new record and existing database records.
-    - iter_csv_not_uploaded(): Generator function that yields CSV file paths from the specified
-        directory that have not yet been successfully uploaded to the database.
     - validate_transaction(): Validates a single CSV record against the schema, performs type
         conversions on each column, and sets the status based on transaction amount.
     - generate_base_hash(): Generates a hash based on transaction content (authorized date, posted date,
@@ -36,7 +34,10 @@ from local_db import DatabaseManager, DuplicateError
 # Local imports
 from budgy.database_modules.models.common import Column, TableStatus
 from budgy.database_modules.models.transactions import TransactionsTable, transaction_columns
-from budgy.database_modules.managers.transaction_manager import generate_update_entry, iter_csv_not_uploaded, transactions_table_manager, update_table_manager
+from budgy.database_modules.managers.transaction_manager import (
+    TransactionsTableManager, UpdatesTableManager,
+    transactions_manager, updates_manager
+)
 from budgy.utils.file_utils import EDirectories, LoggingExtras
 
 # initialize module logger
@@ -123,14 +124,14 @@ def iter_val_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
 #========================= Database update functions ========================
 
 # If a duplicate is detected in the database, we want to check and make sure the categories are up to date
-def update_categories_if_diff(record: dict, transactions_db_manager: DatabaseManager=transactions_table_manager):
+def update_categories_if_diff(record: dict, transactions_db_manager: TransactionsTableManager=transactions_manager):
     """
     If a duplicate transaction is detected based on the base hash, we want to check and make sure the categories are up to date.
     This is because categories can be updated later on and we want to make sure the database holds the most up to date cateogry information.
 
     Args:
         record (dict): the record to check for duplicates and update categories for
-        transactions_db_manager (DatabaseManager): the database manager for the transactions table (changed for testing
+        transactions_db_manager (TransactionsTableManager): the database manager for the transactions table (changed for testing)
     """
     logger.debug(f"Checking for cagegory different between duplicates based on base hash: {record[TransactionsTable.base_hash.name]}")
     logger.debug(f"Updating primary and detailed categories for base hash: {record[TransactionsTable.base_hash.name]}")
@@ -161,8 +162,8 @@ def update_categories_if_diff(record: dict, transactions_db_manager: DatabaseMan
 def upload_csv_to_db(
         csv_filepath: str,
         columns: List[Column]=transaction_columns,
-        transactions_db_manager: DatabaseManager=transactions_table_manager,
-        updates_db_manager: DatabaseManager=update_table_manager
+        transactions_db_manager: TransactionsTableManager=transactions_manager,
+        updates_db_manager: UpdatesTableManager=updates_manager
     ):
     """
     Converts and validates the new transactions line by line then uploads to the transactions database.
@@ -172,8 +173,8 @@ def upload_csv_to_db(
     Args:
         csv_filepath (str): the filepath of the csv being uploaded
         columns (List[Column]): the column mapping and conversion information for the csv upload
-        record_db_manager (DatabaseManager): the database manager for the transactions table (changed for testing)
-        update_table_manager (DatabaseManager): the database manager for the updates table
+        transactions_db_manager (TransactionsTableManager): the database manager for the transactions table (changed for testing)
+        updates_db_manager (UpdatesTableManager): the database manager for the updates table
     """
     logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
     logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
@@ -198,28 +199,20 @@ def upload_csv_to_db(
             # Unhandled exceptions should be logged so we can keep track of whether or not the upload was complete
             except Exception as e:
                 logger.exception(f"Exception encountered during data upload to {transactions_db_manager}", extra={LoggingExtras.RECORD: record})
-                generate_update_entry(
-                    csv_filepath,
-                    TableStatus.INCOMPLETE,
-                    updates_db_manager=updates_db_manager
-                )
+                updates_db_manager.generate_update_entry(csv_filepath, TableStatus.INCOMPLETE)
                 raise e
 
     # Generate an update entry for the file uploaded with the status of complete if no errors were encountered
     logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
-    generate_update_entry(
-        csv_filepath,
-        TableStatus.COMPLETE,
-        updates_db_manager=updates_db_manager
-    )
+    updates_db_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
 
     logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
 
 def upload_all_csv_to_db(
         columns: List[Column]=transaction_columns,
-        transactions_db_manager: DatabaseManager=transactions_table_manager,
-        updates_db_manager: DatabaseManager=update_table_manager,
+        transactions_db_manager: TransactionsTableManager=transactions_manager,
+        updates_db_manager: UpdatesTableManager=updates_manager,
         csv_dir: str=EDirectories.CSV_DIR
     ):
     """
@@ -230,14 +223,14 @@ def upload_all_csv_to_db(
 
     Args:
         columns (List[Column]): the column mapping and conversion information for the csv upload
-        record_db_manager (DatabaseManager): the database manager for the transactions table (changed for testing)
-        update_table_manager (DatabaseManager): the database manager for the updates table
+        transactions_db_manager (TransactionsTableManager): the database manager for the transactions table (changed for testing)
+        updates_db_manager (UpdatesTableManager): the database manager for the updates table
         csv_dir (str): path to the direcotry where the function should search for csv files to upload
     """
     logger.info(f"Beggining upload of all csv files in {EDirectories.CSV_DIR} to {transactions_db_manager.table_name}")
     failed_files = []
 
-    for csv_filepath in iter_csv_not_uploaded(csv_directory=csv_dir, updates_db_manager=updates_db_manager):
+    for csv_filepath in updates_db_manager.iter_csv_not_uploaded(csv_directory=csv_dir):
         try:
             upload_csv_to_db(
                 csv_filepath,
