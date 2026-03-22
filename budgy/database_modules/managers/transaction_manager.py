@@ -22,7 +22,15 @@ import os
 import pandas as pd
 
 # Custom imports
-from local_db import DatabaseFile, DatabaseManager, DuplicateError
+from local_db import DatabaseFile, DatabaseManager
+
+
+class DuplicateError(Exception):
+    """Raised when a duplicate filepath is detected in the updates table."""
+    def __init__(self, filepath, table, message="Duplicate entry:"):
+        self.filepath = filepath
+        self.table = table
+        super().__init__(f"{message} {filepath}")
 
 # Local imports
 from budgy.database_modules.managers.common import DB_FILE, convert_datetime_nums_to_range, format_column_names
