@@ -17,7 +17,7 @@ from typing import Tuple, List
 import pandas as pd
 
 # Custom imports
-from local_db import DatabaseFile
+from pleasant_database import DatabaseFile
 
 # Local imports
 from budgy.utils.analysis_utils import CategoriesEnum

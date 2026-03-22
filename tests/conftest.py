@@ -20,8 +20,8 @@ from datetime import datetime
 import pytest
 
 # Custom imports
-from local_db import DatabaseFile
-from loggers import configure_logging, LoggingMode
+from pleasant_database import DatabaseFile
+from pleasant_loggers import configure_logging, LoggingMode
 
 # Local imports
 from budgy.database_modules.io.transactions_csv_loader import upload_csv_to_db

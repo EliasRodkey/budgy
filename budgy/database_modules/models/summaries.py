@@ -15,7 +15,7 @@ Variables:
 # Custom imports
 # TODO: Add ForeignKey to local_db import ESQLDataTypes
 from sqlalchemy import ForeignKey, UniqueConstraint, Column, Float, Integer, DateTime
-from local_db import BaseTable
+from pleasant_database import BaseTable
 
 # Local imports
 from .common import Field, parse_date

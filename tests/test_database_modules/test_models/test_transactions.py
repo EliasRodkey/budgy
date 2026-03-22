@@ -10,7 +10,7 @@ from datetime import datetime
 
 # Third party imports
 import pytest
-from local_db import DatabaseIntegrityError
+from pleasant_database import DatabaseIntegrityError
 
 # Local imports
 from budgy.database_modules.managers.transaction_manager import transactions_manager as transactions_table_manager, updates_manager as update_table_manager

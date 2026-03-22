@@ -12,7 +12,7 @@ from datetime import datetime
 import pandas as pd
 
 # Custom imports
-from local_db import DatabaseFile, DatabaseManager, DatabaseIntegrityError
+from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityError
 
 # Local imports
 from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CATEGORY_MAPPING

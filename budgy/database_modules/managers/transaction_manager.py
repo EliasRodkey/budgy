@@ -22,7 +22,7 @@ import os
 import pandas as pd
 
 # Custom imports
-from local_db import DatabaseFile, DatabaseManager
+from pleasant_database import DatabaseFile, DatabaseManager
 
 
 class DuplicateError(Exception):

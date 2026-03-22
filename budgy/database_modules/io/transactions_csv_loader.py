@@ -29,7 +29,7 @@ import os
 from typing import Dict, Generator, List
 
 # Custom imports
-from local_db import DatabaseManager, DatabaseIntegrityError
+from pleasant_database import DatabaseManager, DatabaseIntegrityError
 
 # Local imports
 from budgy.database_modules.models.common import Field, TableStatus

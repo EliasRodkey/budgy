@@ -14,7 +14,7 @@ Variables:
 
 # Custom importss
 from sqlalchemy import Column, Integer, DateTime, Float, String
-from local_db import BaseTable
+from pleasant_database import BaseTable
 
 # Local imports
 from .common import Field, parse_date

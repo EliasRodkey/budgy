@@ -14,7 +14,7 @@ Variables:
 # Third party imports
 
 # Custom imports
-from local_db import DatabaseFile, DatabaseManager
+from pleasant_database import DatabaseFile, DatabaseManager
 
 # Local imports
 from budgy.database_modules.managers.common import DB_FILE
