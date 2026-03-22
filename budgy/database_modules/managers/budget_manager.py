@@ -31,6 +31,22 @@ class BudgetsTableManager(DatabaseManager):
     def __init__(self, db_file: DatabaseFile):
         super().__init__(BudgetsTable, db_file)
 
+    
+    def upload_budget(budget: dict) -> None:
+        """Verifies budget values and uploads to database table"""
+        pass
+
+    # def _create_entry_hash(self) -> :
+    #     """return"""
+    #     unique_string = f"\
+    #     {record[BudgetsTable..name]}:\
+    #     {record[BudgetsTable..name]}:\
+    #     {record[BudgetsTable..name]}:\
+    #     {record[BudgetsTable..name]}:\
+    #     {record[BudgetsTable..name]}"
+    #     return hashlib.sha256(unique_string.encode()).hexdigest()
+        
+
 
 # Module-level instance for production use
 budgets_manager = BudgetsTableManager(DB_FILE)

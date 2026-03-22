@@ -1,12 +1,14 @@
 
 # Standard library imports
 from collections import namedtuple
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 
+# Initialize module logger
+import logging
+logger = logging.getLogger(__name__)
 
-
-Column = namedtuple('Column', 'src dest convert')
+Field = namedtuple('Column', 'src dest convert')
 
 
 

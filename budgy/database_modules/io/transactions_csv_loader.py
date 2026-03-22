@@ -29,10 +29,10 @@ import os
 from typing import Dict, Generator, List
 
 # Custom imports
-from local_db import DatabaseManager, DuplicateError
+from local_db import DatabaseManager, DatabaseIntegrityError
 
 # Local imports
-from budgy.database_modules.models.common import Column, TableStatus
+from budgy.database_modules.models.common import Field, TableStatus
 from budgy.database_modules.models.transactions import TransactionsTable, transaction_columns
 from budgy.database_modules.managers.transaction_manager import (
     TransactionsTableManager, UpdatesTableManager,
@@ -60,7 +60,7 @@ def set_status_unchecked(record: dict) -> dict:
     return record
 
 
-def validate_transaction(csv_record: Dict, columns: List[Column]):
+def validate_transaction(csv_record: Dict, columns: List[Field]):
     """Validates each record against the Schema to ensure that the data is correctly uploaded to the database."""
     db_record = {}
     for col in columns:
@@ -90,7 +90,7 @@ def generate_base_hash(record: dict) -> str:
 
 
 # Iterate through the lines in the CSV and validate each line
-def iter_val_csv_file(csv_filepath: str, columns: List[Column]) -> Generator:
+def iter_val_csv_file(csv_filepath: str, columns: List[Field]) -> Generator:
     """
     Iterates through each line in the CSV file and provides them as a generator.
     Also validates each line against the schema and generates a unique hash based on the record information and number of occurances
@@ -161,7 +161,7 @@ def update_categories_if_diff(record: dict, transactions_db_manager: Transaction
 # Insert data into database, checking to make sure it is not a duplicate
 def upload_csv_to_db(
         csv_filepath: str,
-        columns: List[Column]=transaction_columns,
+        columns: List[Field]=transaction_columns,
         transactions_db_manager: TransactionsTableManager=transactions_manager,
         updates_db_manager: UpdatesTableManager=updates_manager
     ):
@@ -193,7 +193,7 @@ def upload_csv_to_db(
                 transactions_db_manager.add_item(**record)
 
             # Gracefully handle duplicate errors, thank you program for detecting duplicates
-            except DuplicateError as e:
+            except DatabaseIntegrityError as e:
                 pass
 
             # Unhandled exceptions should be logged so we can keep track of whether or not the upload was complete
@@ -210,7 +210,7 @@ def upload_csv_to_db(
 
 
 def upload_all_csv_to_db(
-        columns: List[Column]=transaction_columns,
+        columns: List[Field]=transaction_columns,
         transactions_db_manager: TransactionsTableManager=transactions_manager,
         updates_db_manager: UpdatesTableManager=updates_manager,
         csv_dir: str=EDirectories.CSV_DIR

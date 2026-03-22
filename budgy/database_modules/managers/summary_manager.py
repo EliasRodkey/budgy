@@ -12,7 +12,7 @@ from datetime import datetime
 import pandas as pd
 
 # Custom imports
-from local_db import DatabaseFile, DatabaseManager, DuplicateError
+from local_db import DatabaseFile, DatabaseManager, DatabaseIntegrityError
 
 # Local imports
 from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CATEGORY_MAPPING
@@ -26,7 +26,13 @@ logger = logging.getLogger(__name__)
 
 
 class SummariesTableManager(DatabaseManager):
-    """"""
+    """
+    Class that allows interfacing with the summaries database table.
+
+    Methods:
+        - upload_monthly_summary: Initiates a cleaning and upload of a provided summary from the transactions table from a the given month and year.
+        - update_summary: Updates a summary entry in the summaries table.
+    """
     def __init__(self, db_file: DatabaseFile):
         super().__init__(SummariesTable, db_file)
 
@@ -52,7 +58,7 @@ class SummariesTableManager(DatabaseManager):
             try:
                 self.add_item(**clean_summary)
 
-            except DuplicateError:
+            except DatabaseIntegrityError:
                 logger.warning(f"Trying to upload a duplicate summary for {month} / {year}, skipping")
 
 
@@ -75,24 +81,25 @@ class SummariesTableManager(DatabaseManager):
             clean_summary = self._clean_monthly_summary(month, year, summary)
 
             try:
-                self.update_item(self._get_summary_id(month, year))
+                self.update_item(self._get_summary_id(month, year), **clean_summary)
 
-            except DuplicateError as e:
+            except DatabaseIntegrityError as e:
                 logger.error(f"Summary table not updaes for {month} / {year}: {e}")
-                
+
 
     def _clean_monthly_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int=None) -> dict:
         """Cleans and validates monthly summary for upload, returns validated dict"""
         logger.debug(f"Cleaning monthly summary for uplaod...")
-        columns = summary.columns
-        if sum([col not in SummariesTable.column_names for col in columns]) > 0:
-            raise KeyError(f"Invalid column name in raw summary table {columns}")
-        
+        input_columns = summary.columns
+        if sum([col not in SummariesTable.get_column_names() for col in input_columns]) > 0:
+            raise KeyError(f"Invalid column name in raw summary table {input_columns}")
+
         summary[SummariesTable.date.name] = datetime(year, month, 1)
         summary[SummariesTable.month.name] = month
         summary[SummariesTable.year.name] = year
         # summary[SummariesTable.budget_id.name] = budget_id
 
+        columns = summary.columns  # Capture after adding date/month/year so they're not overwritten
         summary_record = {}
 
         for col in summary_columns:
@@ -100,7 +107,11 @@ class SummariesTableManager(DatabaseManager):
                 logger.debug(f"Summary missing {col.dest}, adding...")
                 summary[col.dest] = 0
 
-            validated_entry = col.convert(summary[col.dest].max())
+            raw_value = summary[col.dest].max()
+            if col.dest == SummariesTable.date.name:
+                validated_entry = raw_value.to_pydatetime() if hasattr(raw_value, "to_pydatetime") else raw_value
+            else:
+                validated_entry = col.convert(raw_value)
             
 
             if col.dest == SummariesTable.month.name:
@@ -128,7 +139,6 @@ class SummariesTableManager(DatabaseManager):
         return summary_record
         
 
-
     def _check_summary_exists(self, month: int, year: int) -> bool:
         """Checks to see if a summary already exists in the summaries table from the given month and year"""
         logger.debug(f"Checking {self.table_name} for record from month = {month}, year = {year}")
@@ -142,4 +152,4 @@ class SummariesTableManager(DatabaseManager):
         logger.debug(f"Fetching summaries.id for month = {month}, year = {year}")
 
         return_item = self.fetch_items_by_attribute(month=month, year=year)
-        return return_item.id
+        return return_item[0].id
