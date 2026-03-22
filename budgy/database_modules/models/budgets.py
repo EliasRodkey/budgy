@@ -13,10 +13,11 @@ Variables:
 # Standard library imports
 
 # Custom importss
-from local_db import BaseTable, ESQLDataTypes
+from sqlalchemy import Column, Integer, DateTime, Float, String
+from local_db import BaseTable
 
 # Local imports
-from .common import Column, parse_date
+from .common import Field, parse_date
 
 # initialize module logger
 import logging
@@ -40,24 +41,25 @@ class BudgetsTable(BaseTable):
 
     __tablename__ = "budgets"
 
-    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    date_created = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    income = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    transfers = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    debt_payments = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    investments = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    bank_fees = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    food_and_drink = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    shopping = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    housing_and_utilities = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    health_and_wellness = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    entertainment = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    insurance = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    services = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    transportation = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    travel = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    government_and_charity = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    other = ESQLDataTypes.Column(ESQLDataTypes.Float)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    date_created = Column(DateTime)
+    income = Column(Float)
+    transfers = Column(Float)
+    debt_payments = Column(Float)
+    investments = Column(Float)
+    bank_fees = Column(Float)
+    food_and_drink = Column(Float)
+    shopping = Column(Float)
+    housing_and_utilities = Column(Float)
+    health_and_wellness = Column(Float)
+    entertainment = Column(Float)
+    insurance = Column(Float)
+    services = Column(Float)
+    transportation = Column(Float)
+    travel = Column(Float)
+    government_and_charity = Column(Float)
+    other = Column(Float)
+    uq_hash = Column(String, unique=True)
 
 
 

@@ -13,10 +13,11 @@ Variables:
         with type conversion functions for transaction data import.
 """
 # Custom imports
-from local_db import BaseTable, ESQLDataTypes
+from sqlalchemy import Column, Integer, DateTime, String, Float, Boolean
+from local_db import BaseTable
 
 # Local imports
-from .common import Column, parse_date
+from .common import Field, parse_date
 
 # initialize module logger
 import logging
@@ -52,31 +53,31 @@ class TransactionsTable(BaseTable):
 
     __tablename__ = "transactions"
 
-    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    authorized_date =  ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    posted_date = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    status = ESQLDataTypes.Column(ESQLDataTypes.String)
-    account_name = ESQLDataTypes.Column(ESQLDataTypes.String)
-    description = ESQLDataTypes.Column(ESQLDataTypes.String)
-    primary_category = ESQLDataTypes.Column(ESQLDataTypes.String)
-    detailed_category = ESQLDataTypes.Column(ESQLDataTypes.String)
-    amount = ESQLDataTypes.Column(ESQLDataTypes.Float)
-    repayment = ESQLDataTypes.Column(ESQLDataTypes.Boolean)
-    exclude = ESQLDataTypes.Column(ESQLDataTypes.Boolean)
-    base_hash = ESQLDataTypes.Column(ESQLDataTypes.String)
-    uq_hash = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    authorized_date = Column(DateTime)
+    posted_date = Column(DateTime)
+    status = Column(String)
+    account_name = Column(String)
+    description = Column(String)
+    primary_category = Column(String)
+    detailed_category = Column(String)
+    amount = Column(Float)
+    repayment = Column(Boolean)
+    exclude = Column(Boolean)
+    base_hash = Column(String)
+    uq_hash = Column(String, unique=True)
 
 
 # first arg comes from CSF input col names, consider changing to Enum
 transaction_columns = [
-    Column("Authorized Date", TransactionsTable.authorized_date.name, parse_date),
-    Column("Posted Date", TransactionsTable.posted_date.name, parse_date),
-    Column("Status", TransactionsTable.status.name, str),
-    Column("Account Name", TransactionsTable.account_name.name, str),
-    Column("Description", TransactionsTable.description.name, str),
-    Column("Primary Category", TransactionsTable.primary_category.name, str),
-    Column("Detailed Category", TransactionsTable.detailed_category.name, str),
-    Column("Amount", TransactionsTable.amount.name, float),
+    Field("Authorized Date", TransactionsTable.authorized_date.name, parse_date),
+    Field("Posted Date", TransactionsTable.posted_date.name, parse_date),
+    Field("Status", TransactionsTable.status.name, str),
+    Field("Account Name", TransactionsTable.account_name.name, str),
+    Field("Description", TransactionsTable.description.name, str),
+    Field("Primary Category", TransactionsTable.primary_category.name, str),
+    Field("Detailed Category", TransactionsTable.detailed_category.name, str),
+    Field("Amount", TransactionsTable.amount.name, float),
 ]
 
 
@@ -97,7 +98,7 @@ class UpdatesTable(BaseTable):
 
     __tablename__ = "transaction_updates"
 
-    id = ESQLDataTypes.Column(ESQLDataTypes.Integer, primary_key=True, autoincrement=True)
-    timestamp = ESQLDataTypes.Column(ESQLDataTypes.DateTime)
-    filepath = ESQLDataTypes.Column(ESQLDataTypes.String, unique=True)
-    status = ESQLDataTypes.Column(ESQLDataTypes.String)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime)
+    filepath = Column(String, unique=True)
+    status = Column(String)
