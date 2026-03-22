@@ -21,7 +21,7 @@ import pytest
 
 # Custom imports
 from local_db import DatabaseFile
-from loggers import configure_logging
+from loggers import configure_logging, LoggingMode
 
 # Local imports
 from budgy.database_modules.io.transactions_csv_loader import upload_csv_to_db
@@ -34,7 +34,10 @@ from budgy.utils.file_utils import EDirectories
 
 @pytest.fixture(scope="session", autouse=True)
 def configure_test_logging():
-    configure_logging(log_directory=EDirectories.LOG_DIR)
+    configure_logging(
+        log_directory=EDirectories.LOG_DIR,
+        mode=LoggingMode.DAILY_DIRECTORY,
+        )
 
 
 TEST_CSV_DIR = os.path.join(os.getcwd(), "tests", "test_csv_download_files")

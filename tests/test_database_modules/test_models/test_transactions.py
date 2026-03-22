@@ -10,7 +10,7 @@ from datetime import datetime
 
 # Third party imports
 import pytest
-from local_db import DuplicateError
+from local_db import DatabaseIntegrityError
 
 # Local imports
 from budgy.database_modules.managers.transaction_manager import transactions_manager as transactions_table_manager, updates_manager as update_table_manager
@@ -72,7 +72,7 @@ def test_updates_table_creation():
     try:
         update_table_manager.add_item(**duplicate_update_item)
     except Exception as e:
-        assert isinstance(e, DuplicateError)
+        assert isinstance(e, DatabaseIntegrityError)
 
     items = update_table_manager.fetch_all_items()
     logger.debug(f"Fetched items from transaction_updates table:\n{items}")

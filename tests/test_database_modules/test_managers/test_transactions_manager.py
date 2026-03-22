@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 # Local imports
-from local_db import DuplicateError
+from budgy.database_modules.managers.transaction_manager import DuplicateError
 from budgy.database_modules.models.common import TableStatus
 from budgy.database_modules.managers.common import format_column_names
 from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories

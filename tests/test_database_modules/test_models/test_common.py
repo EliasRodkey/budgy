@@ -11,7 +11,7 @@ from datetime import datetime
 import pytest
 
 # Local imports
-from budgy.database_modules.models.common import Column, TableStatus, parse_date
+from budgy.database_modules.models.common import Field, TableStatus, parse_date
 
 # Initialize module logger
 import logging
@@ -90,7 +90,7 @@ def test_table_status_is_string_subclass():
 
 def test_column_namedtuple_creation():
     """Column namedtuple can be created with src, dest, and convert fields."""
-    col = Column("Source Header", "dest_column", str)
+    col = Field("Source Header", "dest_column", str)
     assert col.src == "Source Header"
     assert col.dest == "dest_column"
     assert col.convert == str
@@ -99,25 +99,25 @@ def test_column_namedtuple_creation():
 def test_column_namedtuple_with_lambda():
     """Column namedtuple works with a lambda as the converter."""
     converter = lambda x: int(x)
-    col = Column("Amount", "amount", converter)
+    col = Field("Amount", "amount", converter)
     assert col.convert("42") == 42
 
 
 def test_column_namedtuple_with_float():
     """Column namedtuple with float converter correctly converts strings."""
-    col = Column("Amount", "amount", float)
+    col = Field("Amount", "amount", float)
     assert col.convert("99.95") == pytest.approx(99.95)
 
 
 def test_column_namedtuple_missing_args():
     """Column namedtuple raises TypeError when created with missing arguments."""
     with pytest.raises(TypeError):
-        Column("only_one_arg")
+        Field("only_one_arg")
 
 
 def test_column_namedtuple_indexing():
     """Column namedtuple fields are accessible by both name and index."""
-    col = Column("src_val", "dest_val", int)
+    col = Field("src_val", "dest_val", int)
     assert col[0] == "src_val"
     assert col[1] == "dest_val"
     assert col[2] == int

@@ -37,6 +37,7 @@ EXPECTED_BUDGET_COLUMNS = [
     "travel",
     "government_and_charity",
     "other",
+    "uq_hash",
 ]
 
 sample_budget = {
