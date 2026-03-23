@@ -31,6 +31,16 @@ logger = logging.getLogger(__name__)
 DB_FILE = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
     
 
+
+class DuplicateError(Exception):
+    """Raised when a duplicate filepath is detected in the table."""
+    def __init__(self, entry, table, message="Duplicate entry:"):
+        self.entry = entry
+        self.table = table
+        super().__init__(f"{message} {entry}")
+
+
+
 def convert_datetime_nums_to_range(month: int | None, year: int | None) -> Tuple[datetime, datetime]:
     """
     Converts a given month and year integer into a datetime start and end range.

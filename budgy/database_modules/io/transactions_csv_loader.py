@@ -1,23 +1,15 @@
 #!python3
 """
-Contains functions for general database operations.
+Contains functions for parsing and validating CSV transaction data.
 
 Functions:
-    - upload_all_csv_to_db(): Batch processes all CSV files in a directory, validates and uploads
-        transaction records to the database. Skips files that have already been successfully uploaded.
-    - upload_csv_to_db(): Converts and validates a single CSV file line by line, then uploads
-        transactions to the database. Handles duplicates by updating category information if needed.
-        Generates update entries to track upload status.
     - iter_val_csv_file(): Generator function that iterates through CSV file records, validates
         each against the schema, and generates unique hashes based on transaction content and
         occurrence count to detect duplicates.
-    - update_categories_if_diff(): Checks for duplicate transactions by base hash and updates
-        category information if categories differ between the new record and existing database records.
     - validate_transaction(): Validates a single CSV record against the schema, performs type
         conversions on each column, and sets the status based on transaction amount.
     - generate_base_hash(): Generates a hash based on transaction content (authorized date, posted date,
         account name, description, and amount) to identify transactions with identical information.
-    - parse_timestamp(): Parses timestamp strings in "%Y-%m-%d" format to datetime objects.
     - set_status_unchecked(): Sets transaction status to UNCHECKED if the amount is greater than zero,
         indicating it may need manual review for repayment or exclusion classification.
 """
@@ -28,17 +20,10 @@ import hashlib
 import os
 from typing import Dict, Generator, List
 
-# Custom imports
-from pleasant_database import DatabaseManager, DatabaseIntegrityError
-
 # Local imports
 from budgy.database_modules.models.common import Field, TableStatus
-from budgy.database_modules.models.transactions import TransactionsTable, transaction_columns
-from budgy.database_modules.managers.transaction_manager import (
-    TransactionsTableManager, UpdatesTableManager,
-    transactions_manager, updates_manager
-)
-from budgy.utils.file_utils import EDirectories, LoggingExtras
+from budgy.database_modules.models.transactions import TransactionsTable
+from budgy.utils.file_utils import LoggingExtras
 
 # initialize module logger
 import logging
@@ -119,131 +104,3 @@ def iter_val_csv_file(csv_filepath: str, columns: List[Field]) -> Generator:
             db_record["uq_hash"] = final_hash
 
             yield db_record
-
-
-#========================= Database update functions ========================
-
-# If a duplicate is detected in the database, we want to check and make sure the categories are up to date
-def update_categories_if_diff(record: dict, transactions_db_manager: TransactionsTableManager=transactions_manager):
-    """
-    If a duplicate transaction is detected based on the base hash, we want to check and make sure the categories are up to date.
-    This is because categories can be updated later on and we want to make sure the database holds the most up to date cateogry information.
-
-    Args:
-        record (dict): the record to check for duplicates and update categories for
-        transactions_db_manager (TransactionsTableManager): the database manager for the transactions table (changed for testing)
-    """
-    logger.debug(f"Checking for cagegory different between duplicates based on base hash: {record[TransactionsTable.base_hash.name]}")
-    logger.debug(f"Updating primary and detailed categories for base hash: {record[TransactionsTable.base_hash.name]}")
-
-    db_records = transactions_db_manager.fetch_items_by_attribute(base_hash=record[TransactionsTable.base_hash.name])
-    base_hash = record[TransactionsTable.base_hash.name]
-
-    for db_record in db_records:
-        # If the detailed category matches, then the primary category must also be the same, pass.
-        if record[TransactionsTable.detailed_category.name] == db_record.detailed_category:
-            logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", extra={LoggingExtras.BASE_HASH: base_hash})
-            continue
-
-        # Update the existing record or record with the new cateogry informaiton from the csv file if the categories don't match
-        else:
-            try:
-                transactions_db_manager.update_item(
-                    item_id=db_record.id,
-                    primary_category=record[TransactionsTable.primary_category.name],
-                    detailed_category=record[TransactionsTable.detailed_category.name]
-                )
-            except Exception as e:
-                logger.exception(f"Exception encountered during category update for base hash: {base_hash}", extra={LoggingExtras.BASE_HASH: base_hash})
-                raise e
-
-
-# Insert data into database, checking to make sure it is not a duplicate
-def upload_csv_to_db(
-        csv_filepath: str,
-        columns: List[Field]=transaction_columns,
-        transactions_db_manager: TransactionsTableManager=transactions_manager,
-        updates_db_manager: UpdatesTableManager=updates_manager
-    ):
-    """
-    Converts and validates the new transactions line by line then uploads to the transactions database.
-    Returns whether or not the file was uploaded successfully.
-    Also enforces that no csv can be uploaded if it already has a posted upload with completed status.
-
-    Args:
-        csv_filepath (str): the filepath of the csv being uploaded
-        columns (List[Column]): the column mapping and conversion information for the csv upload
-        transactions_db_manager (TransactionsTableManager): the database manager for the transactions table (changed for testing)
-        updates_db_manager (UpdatesTableManager): the database manager for the updates table
-    """
-    logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
-    logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
-
-    transactions_original_state = transactions_db_manager.to_dataframe()
-
-    for record in iter_val_csv_file(csv_filepath, columns):
-
-        # Check to see if the base hash name of the transaction is already in the transactions table
-        if record[TransactionsTable.base_hash.name] in transactions_original_state[TransactionsTable.base_hash.name].values:
-            # if it is, update the catgories if they are different.
-            update_categories_if_diff(record, transactions_db_manager=transactions_db_manager)
-
-        else:
-            try:
-                transactions_db_manager.add_item(**record)
-
-            # Gracefully handle duplicate errors, thank you program for detecting duplicates
-            except DatabaseIntegrityError as e:
-                pass
-
-            # Unhandled exceptions should be logged so we can keep track of whether or not the upload was complete
-            except Exception as e:
-                logger.exception(f"Exception encountered during data upload to {transactions_db_manager}", extra={LoggingExtras.RECORD: record})
-                updates_db_manager.generate_update_entry(csv_filepath, TableStatus.INCOMPLETE)
-                raise e
-
-    # Generate an update entry for the file uploaded with the status of complete if no errors were encountered
-    logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
-    updates_db_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
-
-    logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
-
-
-def upload_all_csv_to_db(
-        columns: List[Field]=transaction_columns,
-        transactions_db_manager: TransactionsTableManager=transactions_manager,
-        updates_db_manager: UpdatesTableManager=updates_manager,
-        csv_dir: str=EDirectories.CSV_DIR
-    ):
-    """
-    Iterates through all csv files in csv_dir.
-    Converts and validates the new transactions line by line then uploads to the transactions database.
-    Returns whether or not the file was uploaded successfully.
-    Also enforces that no csv can be uploaded if it already has a posted upload with completed status.
-
-    Args:
-        columns (List[Column]): the column mapping and conversion information for the csv upload
-        transactions_db_manager (TransactionsTableManager): the database manager for the transactions table (changed for testing)
-        updates_db_manager (UpdatesTableManager): the database manager for the updates table
-        csv_dir (str): path to the direcotry where the function should search for csv files to upload
-    """
-    logger.info(f"Beggining upload of all csv files in {EDirectories.CSV_DIR} to {transactions_db_manager.table_name}")
-    failed_files = []
-
-    for csv_filepath in updates_db_manager.iter_csv_not_uploaded(csv_directory=csv_dir):
-        try:
-            upload_csv_to_db(
-                csv_filepath,
-                columns=columns,
-                transactions_db_manager=transactions_db_manager,
-                updates_db_manager=updates_db_manager
-            )
-
-        except Exception as e:
-            logger.warning(f"Failed to upload {csv_filepath} to {transactions_db_manager.table_name}", extra={LoggingExtras.FILE: csv_filepath})
-            failed_files.append(csv_filepath)
-
-    if failed_files:
-        logger.warning(f"Batch upload completed with {len(failed_files)} files failed")
-    else:
-        logger.info(f"New CSV file upload complete.")

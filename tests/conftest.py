@@ -24,7 +24,6 @@ from pleasant_database import DatabaseFile
 from pleasant_loggers import configure_logging, LoggingMode
 
 # Local imports
-from budgy.database_modules.io.transactions_csv_loader import upload_csv_to_db
 from budgy.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
 from budgy.database_modules.managers.budget_manager import BudgetsTableManager
 from budgy.database_modules.managers.summary_manager import SummariesTableManager
@@ -119,9 +118,8 @@ def full_transactions_database(clean_updates_database):
 
     try:
         # Add transactions from the loaded csv to the test db
-        upload_csv_to_db(
+        db_manager.upload_csv(
             TEST_FULL_TRANSACTIONS_CSV,
-            transactions_db_manager=db_manager,
             updates_db_manager=clean_updates_database
         )
         yield db_manager

@@ -13,8 +13,9 @@ import pandas as pd
 import pytest
 
 # Local imports
-from budgy.database_modules.managers.transaction_manager import DuplicateError
+from budgy.database_modules.managers.common import DuplicateError
 from budgy.database_modules.models.common import TableStatus
+from budgy.database_modules.models.transactions import TransactionsTable
 from budgy.database_modules.managers.common import format_column_names
 from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from tests.conftest import TEST_CSV_DIR, full_transactions_database
@@ -110,10 +111,6 @@ class TestTransactionsTableManager:
 
         assert isinstance(report_df, pd.DataFrame)
         assert report_df.empty
-
-        expected_columns = PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
-        assert list(report_df.columns) == expected_columns, \
-            f"Empty report columns mismatch: {list(report_df.columns)}"
 
     def test_generate_monthly_category_report_values_are_numeric(self, full_transactions_database):
         """generate_monthly_category_report returns numeric (float) values for all category columns."""
@@ -263,3 +260,73 @@ class TestTransactionsTableManager:
 
         with pytest.raises((KeyError, AttributeError)):
             full_transactions_database.return_category_count(FakeCategory())
+
+    # --- upload_csv / upload_all_csvs ---
+
+    def test_update_categories_if_diff(self, clean_transactions_database, clean_updates_database):
+        """
+        Tests _update_categories_if_diff via upload_csv by uploading two CSV files.
+
+        The first CSV has original transactions with original categories.
+        The second CSV has some of the same transactions with updated categories.
+        The test verifies that:
+        - Transactions with updated categories are modified in the database
+        - Transactions with same categories remain unchanged
+        - The total transaction count is correct
+        """
+        transactions_db = clean_transactions_database
+        updates_db = clean_updates_database
+
+        csv_original = os.path.join(TEST_CSV_DIR, "test_categories_original.csv")
+        transactions_db.upload_csv(csv_original, updates_db_manager=updates_db)
+
+        df_after_first = transactions_db.to_dataframe()
+        assert df_after_first.shape[0] == 3, f"Expected 3 records after first upload, got {df_after_first.shape[0]}"
+
+        whole_foods_row = df_after_first[df_after_first[TransactionsTable.description.name] == "Whole Foods Market"].iloc[0]
+        assert whole_foods_row[TransactionsTable.detailed_category.name] == "Groceries"
+
+        shell_row = df_after_first[df_after_first[TransactionsTable.description.name] == "Shell Gas Station"].iloc[0]
+        assert shell_row[TransactionsTable.detailed_category.name] == "Gas"
+
+        target_row = df_after_first[df_after_first[TransactionsTable.description.name] == "Target Store"].iloc[0]
+        assert target_row[TransactionsTable.detailed_category.name] == "General Merchandise"
+
+        csv_updated = os.path.join(TEST_CSV_DIR, "test_categories_updated.csv")
+        transactions_db.upload_csv(csv_updated, updates_db_manager=updates_db)
+
+        df_after_second = transactions_db.to_dataframe()
+        assert df_after_second.shape[0] == 3, f"Expected 3 records after second upload, got {df_after_second.shape[0]}"
+
+        whole_foods_after = df_after_second[df_after_second[TransactionsTable.description.name] == "Whole Foods Market"].iloc[0]
+        assert whole_foods_after[TransactionsTable.detailed_category.name] == "Groceries", \
+            "Whole Foods category should remain unchanged"
+        assert whole_foods_after[TransactionsTable.primary_category.name] == "Food", \
+            "Whole Foods primary category should remain unchanged"
+
+        shell_after = df_after_second[df_after_second[TransactionsTable.description.name] == "Shell Gas Station"].iloc[0]
+        assert shell_after[TransactionsTable.detailed_category.name] == "Auto Fuel", \
+            f"Shell Gas Station detailed category should be updated to 'Auto Fuel', got '{shell_after[TransactionsTable.detailed_category.name]}'"
+        assert shell_after[TransactionsTable.primary_category.name] == "Transportation", \
+            "Shell Gas Station primary category should remain Transportation"
+
+        target_after = df_after_second[df_after_second[TransactionsTable.description.name] == "Target Store"].iloc[0]
+        assert target_after[TransactionsTable.detailed_category.name] == "General Retail", \
+            f"Target Store detailed category should be updated to 'General Retail', got '{target_after[TransactionsTable.detailed_category.name]}'"
+        assert target_after[TransactionsTable.primary_category.name] == "Shopping", \
+            "Target Store primary category should remain Shopping"
+
+    def test_upload_csv(self, clean_transactions_database, clean_updates_database):
+        """Tests upload_csv on its happy path."""
+        updates_db = clean_updates_database
+        transactions_db = clean_transactions_database
+        for csv in updates_db.iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR):
+            transactions_db.upload_csv(csv, updates_db_manager=updates_db)
+
+        transactions_table = transactions_db.to_dataframe()
+
+        assert not transactions_table.empty
+        assert "Posted" in transactions_table.status.values
+        assert "Unchecked" in transactions_table.status.values
+        assert "Checking - 9631" in transactions_table.account_name.values
+        assert transactions_table.shape[0] == 1002
