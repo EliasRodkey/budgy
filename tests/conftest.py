@@ -36,7 +36,7 @@ from budgy.utils.file_utils import EDirectories
 def configure_test_logging():
     configure_logging(
         log_directory=EDirectories.LOG_DIR,
-        mode=LoggingMode.DAILY_DIRECTORY,
+        mode=LoggingMode.DAILY_DIRECTORY, # TODO: Seeing an issue with the log creation, Getting the single file per run instead of the daily directory! and no JSON
         )
 
 
@@ -113,7 +113,7 @@ def clean_transactions_database():
 
 
 @pytest.fixture()
-def full_transactions_database():
+def full_transactions_database(clean_updates_database):
     """Fixture to provide and loaded transactions table before and after each test."""
     db_manager = test_transaction_manager
 
@@ -122,7 +122,7 @@ def full_transactions_database():
         upload_csv_to_db(
             TEST_FULL_TRANSACTIONS_CSV,
             transactions_db_manager=db_manager,
-            updates_db_manager=test_updates_manager
+            updates_db_manager=clean_updates_database
         )
         yield db_manager
 
@@ -131,8 +131,6 @@ def full_transactions_database():
         raise
 
     finally:
-        test_updates_manager.clear_table()
-        test_updates_manager.end_session()
         db_manager.clear_table()
         db_manager.end_session()
 
