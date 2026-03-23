@@ -60,7 +60,3 @@ class BudgetsTable(BaseTable):
     government_and_charity = Column(Float)
     other = Column(Float)
     uq_hash = Column(String, unique=True)
-
-
-
-budget_columns = []

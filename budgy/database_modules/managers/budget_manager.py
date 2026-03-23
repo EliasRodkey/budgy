@@ -10,7 +10,7 @@ Variables:
     - budgets_manager: Module-level BudgetsTableManager instance.
 """
 # Standard library imports
-import datetime
+from datetime import datetime
 import hashlib
 
 # Custom imports
@@ -106,7 +106,7 @@ class BudgetsTableManager(DatabaseManager):
         """Creates a unique hash for the budget based on the values provided in each category."""
         unique_str = ""
         for category in PrimaryCategories.as_snake_case_headers():
-            unique_str += budget_record[category]
+            unique_str += str(round(budget_record[category], 2))
 
         return hashlib.sha256(unique_str.encode()).hexdigest()
     
@@ -128,7 +128,7 @@ class BudgetsTableManager(DatabaseManager):
         logger.debug(f"Checking if budget hash {uq_hash} already exists", extra={LoggingExtras.UQ_HASH: uq_hash})
 
         return_item = self.fetch_items_by_attribute(uq_hash=uq_hash)
-        return return_item is not []
+        return bool(return_item)
         
 
 
