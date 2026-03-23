@@ -61,6 +61,10 @@ class SummariesTableManager(DatabaseManager):
             except DatabaseIntegrityError:
                 logger.warning(f"Trying to upload a duplicate summary for {month} / {year}, skipping")
 
+            except Exception as e:
+                logger.error(f"Unknown error encountered while uploading monthly summary for {month} / {year}: {e}")
+                raise e
+
 
     def update_summary(self, month: int, year: int, summary: pd.DataFrame):
         """
