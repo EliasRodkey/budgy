@@ -161,8 +161,8 @@ class TransactionsTableManager(DatabaseManager):
         try:
             records = self.filter_items(attributes)
 
-        except Exception:
-            logger.exception(f"Unhandled error retrieving records for attributes: {attributes} over period: {start_date} to {end_date}.")
+        except Exception as e:
+            logger.exception(f"Unhandled error retrieving records for attributes: {attributes} over period: {start_date} to {end_date}")
             return pd.DataFrame()
 
         if not records:
@@ -181,19 +181,17 @@ class TransactionsTableManager(DatabaseManager):
             year (int): The year as an integer (e.g., 2024).
 
         Returns:
-            pd.DataFrame: A DataFrame containing the total amount spent in each category.
+            pd.DataFrame: A DataFrame containing the total amount spent in each category. Or empty if no items found
         """
         logger.info(f"Generating monthly category report for month/year: {month}/{year} using manager: {self}.")
 
         records_df = self.retrieve_records_by_attribute_over_period(month, year)
-        columns = [member.name.lower().replace(" ", "_") for member in PrimaryCategories] + \
-                    [member.name.lower().replace(" ", "_") for member in DetailedCategories] + \
-                        ["total_amount"]
+        columns = PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
 
         if records_df.empty:
             logger.info(f"No transactions found for month/year: {month}/{year}. Returning empty report.")
-            return pd.DataFrame(columns=columns)
-
+            return pd.DataFrame()
+        
         try:
             primary_category_report = records_df.groupby(TransactionsTable.primary_category.name)[TransactionsTable.amount.name].sum().reset_index()
             detailed_category_report = records_df.groupby(TransactionsTable.detailed_category.name)[TransactionsTable.amount.name].sum().reset_index()
@@ -210,7 +208,7 @@ class TransactionsTableManager(DatabaseManager):
             category_report.drop(index="index", inplace=True)
 
         except Exception as e:
-            logger.exception(f"Error encountered while summarizing transactions from {month} / {year}.")
+            logger.exception(f"Error encountered while summarizing transactions from {month} / {year}: {e}")
             raise e
 
         return category_report

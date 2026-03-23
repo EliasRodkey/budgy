@@ -44,15 +44,15 @@ class CategoriesEnum(str, Enum):
     
 
     def as_snake_case(self) -> str:
-        return str(self.value).lower().replace("&", "and").replace(" ", "_")
+        return str(self.value).lower().replace("&", "and").replace(" ", "_").strip()
     
-    @property
-    def as_snake_case_headers(self) -> list:
-        return [member.value.lower().replace("&", "and").replace(" ", "_") for member in self]
+    @classmethod
+    def as_snake_case_headers(cls) -> list:
+        return [member.value.lower().replace("&", "and").replace(" ", "_").strip() for member in cls]
     
-    @property
-    def as_list(self) -> list:
-        return [member.value for member in self]
+    @classmethod
+    def as_list(cls) -> list:
+        return [member.value for member in cls]
 
 
 

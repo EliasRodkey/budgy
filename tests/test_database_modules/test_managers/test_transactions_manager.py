@@ -111,9 +111,7 @@ class TestTransactionsTableManager:
         assert isinstance(report_df, pd.DataFrame)
         assert report_df.empty
 
-        expected_columns = [member.name.lower().replace(" ", "_") for member in PrimaryCategories] + \
-                           [member.name.lower().replace(" ", "_") for member in DetailedCategories] + \
-                           ["total_amount"]
+        expected_columns = PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
         assert list(report_df.columns) == expected_columns, \
             f"Empty report columns mismatch: {list(report_df.columns)}"
 
