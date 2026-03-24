@@ -118,44 +118,15 @@ class TransactionsTableManager(DatabaseManager):
         - return_category_count: Returns the number of transactions for a given category over a period.
     """
 
-    def __init__(self, db_file: DatabaseFile):
+    def __init__(self, db_file: DatabaseFile, updates_manager: UpdatesTableManager):
         super().__init__(TransactionsTable, db_file)
-
-
-    def _update_categories_if_diff(self, record: dict) -> None:
-        """
-        If a duplicate transaction is detected based on the base hash, check and update categories
-        if they differ from the existing database record.
-
-        Args:
-            record (dict): the record to check for duplicates and update categories for
-        """
-        base_hash = record[TransactionsTable.base_hash.name]
-        logger.debug(f"Checking for category difference between duplicates based on base hash: {base_hash}")
-
-        db_records = self.fetch_items_by_attribute(base_hash=base_hash)
-
-        for db_record in db_records:
-            if record[TransactionsTable.detailed_category.name] == db_record.detailed_category:
-                logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", extra={LoggingExtras.BASE_HASH: base_hash})
-                continue
-            else:
-                try:
-                    self.update_item(
-                        item_id=db_record.id,
-                        primary_category=record[TransactionsTable.primary_category.name],
-                        detailed_category=record[TransactionsTable.detailed_category.name]
-                    )
-                except Exception as e:
-                    logger.exception(f"Exception encountered during category update for base hash: {base_hash}", extra={LoggingExtras.BASE_HASH: base_hash})
-                    raise e
+        self.updates_manager = updates_manager
 
 
     def upload_csv(
             self,
             csv_filepath: str,
             columns: List[Field] = transaction_columns,
-            updates_db_manager: 'UpdatesTableManager' = None
         ) -> None:
         """
         Converts and validates the new transactions line by line then uploads to the transactions database.
@@ -164,10 +135,7 @@ class TransactionsTableManager(DatabaseManager):
         Args:
             csv_filepath (str): the filepath of the csv being uploaded
             columns (List[Field]): the column mapping and conversion information for the csv upload
-            updates_db_manager (UpdatesTableManager): the database manager for the updates table
         """
-        if updates_db_manager is None:
-            updates_db_manager = updates_manager
 
         logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
         logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
@@ -188,18 +156,17 @@ class TransactionsTableManager(DatabaseManager):
 
                 except Exception as e:
                     logger.exception(f"Exception encountered during data upload to {self}", extra={LoggingExtras.RECORD: record})
-                    updates_db_manager.generate_update_entry(csv_filepath, TableStatus.INCOMPLETE)
+                    self.updates_manager.generate_update_entry(csv_filepath, TableStatus.INCOMPLETE)
                     raise e
 
         logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
-        updates_db_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
+        self.updates_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
         logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
 
     def upload_all_csvs(
             self,
             columns: List[Field] = transaction_columns,
-            updates_db_manager: 'UpdatesTableManager' = None,
             csv_dir: str = EDirectories.CSV_DIR
         ) -> None:
         """
@@ -207,18 +174,15 @@ class TransactionsTableManager(DatabaseManager):
 
         Args:
             columns (List[Field]): the column mapping and conversion information for the csv upload
-            updates_db_manager (UpdatesTableManager): the database manager for the updates table
             csv_dir (str): path to the directory where the function should search for csv files to upload
         """
-        if updates_db_manager is None:
-            updates_db_manager = updates_manager
 
         logger.info(f"Beginning upload of all csv files in {csv_dir} to {self.table_name}")
         failed_files = []
 
-        for csv_filepath in updates_db_manager.iter_csv_not_uploaded(csv_directory=csv_dir):
+        for csv_filepath in self.updates_manager.iter_csv_not_uploaded(csv_directory=csv_dir):
             try:
-                self.upload_csv(csv_filepath, columns=columns, updates_db_manager=updates_db_manager)
+                self.upload_csv(csv_filepath, columns=columns)
 
             except Exception:
                 logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}", extra={LoggingExtras.FILE: csv_filepath})
@@ -336,8 +300,32 @@ class TransactionsTableManager(DatabaseManager):
 
         logger.info(f"Counting number of transactions for {category}")
         return records_df.shape[0]
+    
 
+    def _update_categories_if_diff(self, record: dict) -> None:
+        """
+        If a duplicate transaction is detected based on the base hash, check and update categories
+        if they differ from the existing database record.
 
-# Module-level instances for production use
-transactions_manager = TransactionsTableManager(DB_FILE)
-updates_manager = UpdatesTableManager(DB_FILE)
+        Args:
+            record (dict): the record to check for duplicates and update categories for
+        """
+        base_hash = record[TransactionsTable.base_hash.name]
+        logger.debug(f"Checking for category difference between duplicates based on base hash: {base_hash}")
+
+        db_records = self.fetch_items_by_attribute(base_hash=base_hash)
+
+        for db_record in db_records:
+            if record[TransactionsTable.detailed_category.name] == db_record.detailed_category:
+                logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", extra={LoggingExtras.BASE_HASH: base_hash})
+                continue
+            else:
+                try:
+                    self.update_item(
+                        item_id=db_record.id,
+                        primary_category=record[TransactionsTable.primary_category.name],
+                        detailed_category=record[TransactionsTable.detailed_category.name]
+                    )
+                except Exception as e:
+                    logger.exception(f"Exception encountered during category update for base hash: {base_hash}", extra={LoggingExtras.BASE_HASH: base_hash})
+                    raise e

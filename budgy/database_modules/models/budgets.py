@@ -60,3 +60,9 @@ class BudgetsTable(BaseTable):
     government_and_charity = Column(Float)
     other = Column(Float)
     uq_hash = Column(String, unique=True)
+
+
+
+budget_columns = [
+    Field(column_name, column_name, type) for column_name, type in BudgetsTable.get_column_python_types().items()
+]

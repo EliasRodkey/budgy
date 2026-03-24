@@ -45,8 +45,8 @@ TEST_DB_FILENAME = "test_database.db"
 TEST_DB_FILEPATH = os.path.join(TEST_DB_DIR, TEST_DB_FILENAME)
 
 test_db_file = DatabaseFile(TEST_DB_FILEPATH, TEST_DB_DIR)
-test_transaction_manager = TransactionsTableManager(test_db_file)
 test_updates_manager = UpdatesTableManager(test_db_file)
+test_transaction_manager = TransactionsTableManager(test_db_file, test_updates_manager)
 test_budgets_manager = BudgetsTableManager(test_db_file)
 test_summaries_manager = SummariesTableManager(test_db_file)
 
@@ -112,16 +112,13 @@ def clean_transactions_database():
 
 
 @pytest.fixture()
-def full_transactions_database(clean_updates_database):
+def full_transactions_database():
     """Fixture to provide and loaded transactions table before and after each test."""
     db_manager = test_transaction_manager
 
     try:
         # Add transactions from the loaded csv to the test db
-        db_manager.upload_csv(
-            TEST_FULL_TRANSACTIONS_CSV,
-            updates_db_manager=clean_updates_database
-        )
+        db_manager.upload_csv(TEST_FULL_TRANSACTIONS_CSV)
         yield db_manager
 
     except Exception:
@@ -129,6 +126,8 @@ def full_transactions_database(clean_updates_database):
         raise
 
     finally:
+        db_manager.updates_manager.clear_table()
+        db_manager.updates_manager.end_session()
         db_manager.clear_table()
         db_manager.end_session()
 

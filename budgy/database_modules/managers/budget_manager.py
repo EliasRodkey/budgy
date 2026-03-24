@@ -18,7 +18,7 @@ from pleasant_database import DatabaseIntegrityError, DatabaseFile, DatabaseMana
 
 # Local imports
 from budgy.database_modules.managers.common import DB_FILE, DuplicateError
-from budgy.database_modules.models.budgets import BudgetsTable
+from budgy.database_modules.models.budgets import BudgetsTable, budget_columns
 from budgy.utils.analysis_utils import PrimaryCategories
 from budgy.utils.file_utils import LoggingExtras
 
@@ -95,7 +95,7 @@ class BudgetsTableManager(DatabaseManager):
                 assert isinstance(budget_record[category], float)
         
         for field in budget_record.keys():
-            if field not in primary_categories:
+            if field not in BudgetsTable.get_column_names():
                 raise ValueError(f"Budget entry not valid: {field}")
         
         assert len(budget_record) == len(primary_categories)
@@ -129,8 +129,3 @@ class BudgetsTableManager(DatabaseManager):
 
         return_item = self.fetch_items_by_attribute(uq_hash=uq_hash)
         return bool(return_item)
-        
-
-
-# Module-level instance for production use
-budgets_manager = BudgetsTableManager(DB_FILE)

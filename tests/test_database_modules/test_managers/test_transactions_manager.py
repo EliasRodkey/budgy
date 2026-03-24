@@ -243,7 +243,7 @@ class TestTransactionsTableManager:
         updates_db = clean_updates_database
 
         csv_original = os.path.join(TEST_CSV_DIR, "test_categories_original.csv")
-        transactions_db.upload_csv(csv_original, updates_db_manager=updates_db)
+        transactions_db.upload_csv(csv_original)
 
         df_after_first = transactions_db.to_dataframe()
         assert df_after_first.shape[0] == 3, f"Expected 3 records after first upload, got {df_after_first.shape[0]}"
@@ -258,7 +258,7 @@ class TestTransactionsTableManager:
         assert target_row[TransactionsTable.detailed_category.name] == "General Merchandise"
 
         csv_updated = os.path.join(TEST_CSV_DIR, "test_categories_updated.csv")
-        transactions_db.upload_csv(csv_updated, updates_db_manager=updates_db)
+        transactions_db.upload_csv(csv_updated)
 
         df_after_second = transactions_db.to_dataframe()
         assert df_after_second.shape[0] == 3, f"Expected 3 records after second upload, got {df_after_second.shape[0]}"
@@ -286,7 +286,7 @@ class TestTransactionsTableManager:
         updates_db = clean_updates_database
         transactions_db = clean_transactions_database
         for csv in updates_db.iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR):
-            transactions_db.upload_csv(csv, updates_db_manager=updates_db)
+            transactions_db.upload_csv(csv)
 
         transactions_table = transactions_db.to_dataframe()
 
