@@ -181,4 +181,6 @@ cython_debug/
 .pypirc
 
 # Claude Code markdown file
-CLAUDE.md
+*CLAUDE.md
+*TEST_INSTRUCTIONS.md
+/.claude

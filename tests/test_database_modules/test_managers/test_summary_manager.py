@@ -62,15 +62,12 @@ def _make_db_summary_record(month: int, year: int, budget_id: int) -> dict:
 
 class TestCheckSummaryExists:
 
-    def test_returns_false_when_empty(self, clean_summaries_database):
-        """_check_summary_exists returns False when the summaries table is empty."""
+    def test_returns_false_and_is_bool_when_empty(self, clean_summaries_database):
+        """_check_summary_exists returns False (and a bool) when the summaries table is empty."""
         summaries_manager, _ = clean_summaries_database
-        assert summaries_manager._check_summary_exists(12, 2025) is False
-
-    def test_returns_bool(self, clean_summaries_database):
-        """_check_summary_exists always returns a bool, not a list or None."""
-        summaries_manager, _ = clean_summaries_database
-        assert isinstance(summaries_manager._check_summary_exists(1, 2024), bool)
+        result = summaries_manager._check_summary_exists(12, 2025)
+        assert result is False
+        assert isinstance(result, bool)
 
     def test_with_seeded_record(self, clean_summaries_database):
         """True for the seeded month/year; False for a different month or year."""
@@ -101,6 +98,12 @@ class TestGetSummaryId:
         assert isinstance(result, int)
         assert result > 0
         assert result == expected_id
+
+    def test_raises_when_not_found(self, clean_summaries_database):
+        """_get_summary_id raises ItemNotFoundError when no record exists for the given month/year."""
+        summaries_manager, _ = clean_summaries_database
+        with pytest.raises(ItemNotFoundError):
+            summaries_manager._get_summary_id(12, 2025)
 
 
 # ─── TestCleanMonthlySummary ──────────────────────────────────────────────────
@@ -142,27 +145,19 @@ class TestCleanMonthlySummary:
         with pytest.raises(KeyError):
             test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
 
-    def test_raises_on_invalid_month_zero(self):
-        """month=0 raises — datetime constructor raises ValueError before the assertion."""
+    def test_raises_on_invalid_month(self):
+        """month=0 and month=13 both raise (datetime constructor or assertion)."""
         summary = _make_minimal_summary()
         with pytest.raises((AssertionError, ValueError)):
             test_summaries_manager._clean_monthly_summary(0, 2025, summary, budget_id=1)
-
-    def test_raises_on_invalid_month_thirteen(self):
-        """month=13 raises — datetime constructor raises ValueError before the assertion."""
-        summary = _make_minimal_summary()
         with pytest.raises((AssertionError, ValueError)):
             test_summaries_manager._clean_monthly_summary(13, 2025, summary, budget_id=1)
 
-    def test_raises_on_year_too_old(self):
-        """year < 2000 raises AssertionError from the year validation check."""
+    def test_raises_on_invalid_year(self):
+        """year < 2000 and year > current year both raise AssertionError."""
         summary = _make_minimal_summary()
         with pytest.raises(AssertionError):
             test_summaries_manager._clean_monthly_summary(1, 1999, summary, budget_id=1)
-
-    def test_raises_on_future_year(self):
-        """year beyond the current year raises AssertionError from the year validation check."""
-        summary = _make_minimal_summary()
         with pytest.raises(AssertionError):
             test_summaries_manager._clean_monthly_summary(1, datetime.now().year + 1, summary, budget_id=1)
 

@@ -37,30 +37,52 @@ new_update_item = {
 }
 
 
+# ─── helpers ──────────────────────────────────────────────────────────────────
+
+def _make_db_transactions_record(
+    date: datetime,
+    description: str,
+    primary_category: str,
+    detailed_category: str,
+    amount: float,
+    exclude: bool = False,
+    base_hash: str = "default_base_hash",
+    uq_hash: str = "default_uq_hash",
+) -> dict:
+    """Returns a dict suitable for direct add_item insertion into the transactions table."""
+    return {
+        "authorized_date": date,
+        "posted_date": date,
+        "status": "Posted",
+        "account_name": "Test Account",
+        "description": description,
+        "primary_category": primary_category,
+        "detailed_category": detailed_category,
+        "amount": amount,
+        "repayment": False,
+        "exclude": exclude,
+        "base_hash": base_hash,
+        "uq_hash": uq_hash,
+    }
+
+
 # =========================UpdatesTableManager===================================
 
 class TestUpdatesTableManager:
 
-    def test_generate_update_entry(self, clean_updates_database):
-        """Tests the updates_table_manager to make sure that we are not creating multiple uploads for the same file"""
-        try:
+    def test_generate_update_entry_raises_on_duplicate(self, clean_updates_database):
+        """generate_update_entry raises DuplicateError when the same filepath is uploaded again."""
+        with pytest.raises(DuplicateError):
             clean_updates_database.generate_update_entry(duplicate_update_item["filepath"], TableStatus.COMPLETE)
 
-        except Exception as e:
-            assert isinstance(e, DuplicateError)
+    def test_generate_update_entry_allows_status_change(self, clean_updates_database):
+        """generate_update_entry allows the same filepath to be re-uploaded with a different status."""
+        clean_updates_database.generate_update_entry(new_update_item["filepath"], TableStatus.INCOMPLETE)
+        clean_updates_database.generate_update_entry(new_update_item["filepath"], TableStatus.COMPLETE)
 
-        finally:
-            # This should execute without an error since the status is changing
-            clean_updates_database.generate_update_entry(new_update_item["filepath"], TableStatus.INCOMPLETE)
-            clean_updates_database.generate_update_entry(new_update_item["filepath"], TableStatus.COMPLETE)
-
-            df = clean_updates_database.to_dataframe()
-            clean_updates_database.clear_table()
-
-        assert df.filepath.isin([duplicate_update_item["filepath"]]).any()
-
+        df = clean_updates_database.to_dataframe()
+        assert df.filepath.isin([new_update_item["filepath"]]).any()
         new_update_idx = df.index[df.filepath == new_update_item["filepath"]]
-
         status = df.iloc[new_update_idx, :].status.iloc[0]
         assert status == TableStatus.COMPLETE
 
@@ -89,14 +111,11 @@ class TestTransactionsTableManager:
     # --- generate_monthly_category_report ---
 
     def test_generate_monthly_category_report(self, full_transactions_database):
-        """Test the generate_monthly_category_report function for a specific month and year.
-        The function only returns columns for categories that appear in the data, so we verify
-        that all returned columns are valid category names (not that all categories are present).
-        """
+        """Returns a non-empty DataFrame for Dec 2025 with valid category columns and numeric values."""
         report_df = full_transactions_database.generate_monthly_category_report(12, 2025)
 
-        assert isinstance(report_df, pd.DataFrame), "Report should be a pandas DataFrame."
-        assert not report_df.empty, "Expected non-empty report for December 2025."
+        assert isinstance(report_df, pd.DataFrame)
+        assert not report_df.empty
 
         all_category_values = pd.Series(
             [m.value for m in PrimaryCategories] + [m.value for m in DetailedCategories]
@@ -105,6 +124,10 @@ class TestTransactionsTableManager:
         invalid_cols = [col for col in report_df.columns if col not in all_valid_columns]
         assert not invalid_cols, f"Report contains unexpected column names: {invalid_cols}"
 
+        for col in report_df.columns:
+            assert pd.api.types.is_numeric_dtype(report_df[col]), \
+                f"Column '{col}' should be numeric, got {report_df[col].dtype}"
+
     def test_generate_monthly_category_report_empty(self, full_transactions_database):
         """generate_monthly_category_report returns an empty DataFrame with correct columns for a month with no data."""
         report_df = full_transactions_database.generate_monthly_category_report(1, 2000)
@@ -112,24 +135,12 @@ class TestTransactionsTableManager:
         assert isinstance(report_df, pd.DataFrame)
         assert report_df.empty
 
-    def test_generate_monthly_category_report_values_are_numeric(self, full_transactions_database):
-        """generate_monthly_category_report returns numeric (float) values for all category columns."""
-        report_df = full_transactions_database.generate_monthly_category_report(12, 2025)
-        assert not report_df.empty
-        for col in report_df.columns:
-            assert pd.api.types.is_numeric_dtype(report_df[col]), \
-                f"Column '{col}' should be numeric, got {report_df[col].dtype}"
-
     # --- retrieve_records_by_attribute_over_period ---
 
-    def test_retrieve_records_returns_dataframe(self, full_transactions_database):
-        """retrieve_records_by_attribute_over_period returns a pd.DataFrame."""
+    def test_retrieve_records_by_month_year(self, full_transactions_database):
+        """Returns a non-empty DataFrame for Dec 2025 where all dates fall within December 2025."""
         result = full_transactions_database.retrieve_records_by_attribute_over_period(12, 2025)
         assert isinstance(result, pd.DataFrame)
-
-    def test_retrieve_records_by_month_year(self, full_transactions_database):
-        """Records filtered by month=12, year=2025 all fall within December 2025."""
-        result = full_transactions_database.retrieve_records_by_attribute_over_period(12, 2025)
         assert not result.empty, "Expected records for December 2025 in the test dataset."
         for date in result["authorized_date"]:
             assert date.month == 12 and date.year == 2025, \
@@ -151,34 +162,14 @@ class TestTransactionsTableManager:
     def test_retrieve_records_excluded_row_not_returned(self, clean_transactions_database):
         """A manually excluded transaction does not appear in retrieve_records results."""
         db = clean_transactions_database
-        db.add_item(
-            authorized_date=datetime(2025, 6, 15),
-            posted_date=datetime(2025, 6, 16),
-            status="Posted",
-            account_name="Test Account",
-            description="EXCLUDED TRANSACTION",
-            primary_category="Shopping",
-            detailed_category="Retail",
-            amount=50.0,
-            repayment=False,
-            exclude=True,
-            base_hash="excluded_hash_001",
-            uq_hash="excluded_uq_hash_001",
-        )
-        db.add_item(
-            authorized_date=datetime(2025, 6, 15),
-            posted_date=datetime(2025, 6, 16),
-            status="Posted",
-            account_name="Test Account",
-            description="INCLUDED TRANSACTION",
-            primary_category="Shopping",
-            detailed_category="Retail",
-            amount=25.0,
-            repayment=False,
-            exclude=False,
-            base_hash="included_hash_001",
-            uq_hash="included_uq_hash_001",
-        )
+        db.add_item(**_make_db_transactions_record(
+            datetime(2025, 6, 15), "EXCLUDED TRANSACTION", "Shopping", "Retail", 50.0,
+            exclude=True, base_hash="excluded_hash_001", uq_hash="excluded_uq_hash_001",
+        ))
+        db.add_item(**_make_db_transactions_record(
+            datetime(2025, 6, 15), "INCLUDED TRANSACTION", "Shopping", "Retail", 25.0,
+            exclude=False, base_hash="included_hash_001", uq_hash="included_uq_hash_001",
+        ))
 
         result = db.retrieve_records_by_attribute_over_period(6, 2025)
 
@@ -191,34 +182,14 @@ class TestTransactionsTableManager:
     def test_retrieve_records_by_primary_category(self, clean_transactions_database):
         """Filtering by primary_category returns only rows with that category."""
         db = clean_transactions_database
-        db.add_item(
-            authorized_date=datetime(2025, 3, 10),
-            posted_date=datetime(2025, 3, 11),
-            status="Posted",
-            account_name="Test Account",
-            description="GROCERY RUN",
-            primary_category="Food & drink",
-            detailed_category="Groceries",
-            amount=80.0,
-            repayment=False,
-            exclude=False,
-            base_hash="food_hash_001",
-            uq_hash="food_uq_hash_001",
-        )
-        db.add_item(
-            authorized_date=datetime(2025, 3, 12),
-            posted_date=datetime(2025, 3, 13),
-            status="Posted",
-            account_name="Test Account",
-            description="AMAZON PURCHASE",
-            primary_category="Shopping",
-            detailed_category="Retail",
-            amount=120.0,
-            repayment=False,
-            exclude=False,
-            base_hash="shop_hash_001",
-            uq_hash="shop_uq_hash_001",
-        )
+        db.add_item(**_make_db_transactions_record(
+            datetime(2025, 3, 10), "GROCERY RUN", "Food & drink", "Groceries", 80.0,
+            base_hash="food_hash_001", uq_hash="food_uq_hash_001",
+        ))
+        db.add_item(**_make_db_transactions_record(
+            datetime(2025, 3, 12), "AMAZON PURCHASE", "Shopping", "Retail", 120.0,
+            base_hash="shop_hash_001", uq_hash="shop_uq_hash_001",
+        ))
 
         result = db.retrieve_records_by_attribute_over_period(3, 2025, primary_category="Food & drink")
 
@@ -229,28 +200,22 @@ class TestTransactionsTableManager:
 
     # --- return_category_count ---
 
-    def test_return_category_count_primary(self, full_transactions_database):
-        """return_category_count returns a non-negative int for a PrimaryCategory."""
-        count = full_transactions_database.return_category_count(PrimaryCategories.FOOD_AND_DRINK, 12, 2025)
-        assert isinstance(count, int)
-        assert count >= 0
+    def test_return_category_count_by_type(self, full_transactions_database):
+        """return_category_count returns a non-negative int for both PrimaryCategory and DetailedCategory inputs."""
+        primary_count = full_transactions_database.return_category_count(PrimaryCategories.FOOD_AND_DRINK, 12, 2025)
+        assert isinstance(primary_count, int)
+        assert primary_count >= 0
 
-    def test_return_category_count_detailed(self, full_transactions_database):
-        """return_category_count returns a non-negative int for a DetailedCategory."""
-        count = full_transactions_database.return_category_count(DetailedCategories.GROCERIES, 12, 2025)
-        assert isinstance(count, int)
-        assert count >= 0
+        detailed_count = full_transactions_database.return_category_count(DetailedCategories.GROCERIES, 12, 2025)
+        assert isinstance(detailed_count, int)
+        assert detailed_count >= 0
 
     def test_return_category_count_all_time(self, full_transactions_database):
-        """return_category_count with no month/year returns the all-time count."""
+        """return_category_count with no month/year returns the all-time count, which is <= total row count."""
+        total = full_transactions_database.to_dataframe().shape[0]
         count = full_transactions_database.return_category_count(PrimaryCategories.SHOPPING)
         assert isinstance(count, int)
         assert count >= 0
-
-    def test_return_category_count_primary_less_than_total(self, full_transactions_database):
-        """Count for a single primary category is <= total transaction count."""
-        total = full_transactions_database.to_dataframe().shape[0]
-        count = full_transactions_database.return_category_count(PrimaryCategories.FOOD_AND_DRINK)
         assert count <= total
 
     def test_return_category_count_invalid_raises(self, full_transactions_database):
