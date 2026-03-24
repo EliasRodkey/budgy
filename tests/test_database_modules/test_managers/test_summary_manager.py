@@ -13,8 +13,13 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
+# Custom imports
+from pleasant_database import ItemNotFoundError
+
 # Local imports
+from budgy.database_modules.models.budgets import BudgetsTable
 from budgy.database_modules.models.summaries import SummariesTable, summary_columns
+from budgy.utils.analysis_utils import PrimaryCategories
 from tests.conftest import (
     test_summaries_manager,
     full_transactions_database,
@@ -33,6 +38,26 @@ def _make_minimal_summary(income: float = 1000.0) -> pd.DataFrame:
     return pd.DataFrame({"income": [float(income)]})
 
 
+def _make_db_budget_record(uq_hash: str = "testhash1") -> dict:
+    """Returns a dict suitable for direct add_item insertion into the budgets table."""
+    base = {cat: 0.0 for cat in PrimaryCategories.as_snake_case_headers()}
+    base["uq_hash"] = uq_hash
+    base["date_created"] = datetime(2024, 1, 1)
+    return base
+
+
+def _make_db_summary_record(month: int, year: int, budget_id: int) -> dict:
+    """Returns a dict suitable for direct add_item insertion into the summaries table."""
+    non_scalar = {"date", "month", "year", "budget_id"}
+    record = {col.dest: 0.0 for col in summary_columns if col.dest not in non_scalar}
+    record["date"] = datetime(year, month, 1)
+    record["month"] = month
+    record["year"] = year
+    record["budget_id"] = budget_id
+    record["income"] = 1000.0
+    return record
+
+
 # ─── TestCheckSummaryExists ───────────────────────────────────────────────────
 
 class TestCheckSummaryExists:
@@ -42,158 +67,134 @@ class TestCheckSummaryExists:
         summaries_manager, _ = clean_summaries_database
         assert summaries_manager._check_summary_exists(12, 2025) is False
 
-    def test_returns_true_after_upload(self, full_transactions_database, clean_summaries_database):
-        """_check_summary_exists returns True after a summary for that month/year is uploaded."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        assert summaries_manager._check_summary_exists(12, 2025) is True
-
-    def test_returns_false_for_different_month(self, full_transactions_database, clean_summaries_database):
-        """_check_summary_exists returns False when the month doesn't match an uploaded record."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        assert summaries_manager._check_summary_exists(11, 2025) is False
-
-    def test_returns_false_for_different_year(self, full_transactions_database, clean_summaries_database):
-        """_check_summary_exists returns False when the year doesn't match an uploaded record."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        assert summaries_manager._check_summary_exists(12, 2024) is False
-
     def test_returns_bool(self, clean_summaries_database):
         """_check_summary_exists always returns a bool, not a list or None."""
         summaries_manager, _ = clean_summaries_database
-        result = summaries_manager._check_summary_exists(1, 2024)
-        assert isinstance(result, bool)
+        assert isinstance(summaries_manager._check_summary_exists(1, 2024), bool)
+
+    def test_with_seeded_record(self, clean_summaries_database):
+        """True for the seeded month/year; False for a different month or year."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+        summaries_manager.add_item(**_make_db_summary_record(12, 2025, budget_id))
+
+        assert summaries_manager._check_summary_exists(12, 2025) is True
+        assert summaries_manager._check_summary_exists(11, 2025) is False
+        assert summaries_manager._check_summary_exists(12, 2024) is False
 
 
 # ─── TestGetSummaryId ─────────────────────────────────────────────────────────
 
 class TestGetSummaryId:
 
-    def test_returns_integer_id_for_existing_record(self, full_transactions_database, clean_summaries_database):
-        """_get_summary_id returns a positive integer id for a record that exists."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        result_id = summaries_manager._get_summary_id(12, 2025)
-        assert isinstance(result_id, int)
-        assert result_id > 0
+    def test_returns_correct_id(self, clean_summaries_database):
+        """_get_summary_id returns a positive int matching the stored record's id."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+        summaries_manager.add_item(**_make_db_summary_record(12, 2025, budget_id))
 
-    def test_id_matches_fetched_record(self, full_transactions_database, clean_summaries_database):
-        """The id returned by _get_summary_id matches the id stored on the fetched ORM record."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        records = summaries_manager.fetch_items_by_attribute(month=12, year=2025)
-        expected_id = records[0].id
-        assert summaries_manager._get_summary_id(12, 2025) == expected_id
+        expected_id = summaries_manager.fetch_items_by_attribute(month=12, year=2025)[0].id
+        result = summaries_manager._get_summary_id(12, 2025)
+
+        assert isinstance(result, int)
+        assert result > 0
+        assert result == expected_id
 
 
 # ─── TestCleanMonthlySummary ──────────────────────────────────────────────────
 
 class TestCleanMonthlySummary:
 
-    def test_returns_dict(self):
-        """_clean_monthly_summary returns a dict."""
+    def test_output_shape_and_types(self):
+        """Returns a dict with all summary_columns keys; floats for category columns; missing columns default to 0.0."""
         summary = _make_minimal_summary()
-        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary)
+        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
+
         assert isinstance(result, dict)
+        assert {col.dest for col in summary_columns}.issubset(result.keys())
 
-    def test_dict_contains_all_summary_column_keys(self):
-        """Returned dict has a key for every column in summary_columns."""
-        summary = _make_minimal_summary()
-        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary)
-        expected_keys = {col.dest for col in summary_columns}
-        assert expected_keys.issubset(result.keys()), (
-            f"Missing keys: {expected_keys - result.keys()}"
-        )
-
-    def test_month_field_matches_arg(self):
-        """month field in the returned dict matches the month argument."""
-        summary = _make_minimal_summary()
-        result = test_summaries_manager._clean_monthly_summary(6, 2024, summary)
-        assert result[SummariesTable.month.name] == 6
-
-    def test_year_field_matches_arg(self):
-        """year field in the returned dict matches the year argument."""
-        summary = _make_minimal_summary()
-        result = test_summaries_manager._clean_monthly_summary(6, 2024, summary)
-        assert result[SummariesTable.year.name] == 2024
-
-    def test_date_field_is_first_of_month(self):
-        """date field in the returned dict is datetime(year, month, 1)."""
-        summary = _make_minimal_summary()
-        result = test_summaries_manager._clean_monthly_summary(3, 2025, summary)
-        assert isinstance(result[SummariesTable.date.name], datetime)
-        assert result[SummariesTable.date.name] == datetime(2025, 3, 1)
-
-    def test_float_columns_are_python_floats(self):
-        """All category amount columns in the returned dict are Python floats."""
-        summary = _make_minimal_summary()
-        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary)
-        skip = {SummariesTable.date.name, SummariesTable.month.name, SummariesTable.year.name}
+        skip = {SummariesTable.date.name, SummariesTable.month.name,
+                SummariesTable.year.name, SummariesTable.budget_id.name}
         for key, value in result.items():
             if key not in skip:
                 assert isinstance(value, float), (
                     f"Expected float for '{key}', got {type(value).__name__} = {value!r}"
                 )
 
-    def test_missing_columns_default_to_zero(self):
-        """Columns absent from the input summary are filled in as 0.0 in the output dict."""
-        summary = _make_minimal_summary(income=500.0)
-        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary)
-        # groceries not in input → should be 0.0
         assert result["groceries"] == 0.0
         assert result["food_and_drink"] == 0.0
+
+    def test_date_fields_match_args(self):
+        """month, year, and date fields in the returned dict match the arguments."""
+        summary = _make_minimal_summary()
+        result = test_summaries_manager._clean_monthly_summary(6, 2024, summary, budget_id=1)
+
+        assert result[SummariesTable.month.name] == 6
+        assert result[SummariesTable.year.name] == 2024
+        assert isinstance(result[SummariesTable.date.name], datetime)
+        assert result[SummariesTable.date.name] == datetime(2024, 6, 1)
 
     def test_raises_on_invalid_column_name(self):
         """Raises KeyError when input DataFrame has a column not in SummariesTable."""
         summary = pd.DataFrame({"not_a_real_column": [100.0]})
         with pytest.raises(KeyError):
-            test_summaries_manager._clean_monthly_summary(12, 2025, summary)
+            test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
 
     def test_raises_on_invalid_month_zero(self):
-        """month=0 causes an error — datetime constructor raises ValueError before the assertion."""
+        """month=0 raises — datetime constructor raises ValueError before the assertion."""
         summary = _make_minimal_summary()
         with pytest.raises((AssertionError, ValueError)):
-            test_summaries_manager._clean_monthly_summary(0, 2025, summary)
+            test_summaries_manager._clean_monthly_summary(0, 2025, summary, budget_id=1)
 
     def test_raises_on_invalid_month_thirteen(self):
-        """month=13 causes an error — datetime constructor raises ValueError before the assertion."""
+        """month=13 raises — datetime constructor raises ValueError before the assertion."""
         summary = _make_minimal_summary()
         with pytest.raises((AssertionError, ValueError)):
-            test_summaries_manager._clean_monthly_summary(13, 2025, summary)
+            test_summaries_manager._clean_monthly_summary(13, 2025, summary, budget_id=1)
 
     def test_raises_on_year_too_old(self):
         """year < 2000 raises AssertionError from the year validation check."""
         summary = _make_minimal_summary()
         with pytest.raises(AssertionError):
-            test_summaries_manager._clean_monthly_summary(1, 1999, summary)
+            test_summaries_manager._clean_monthly_summary(1, 1999, summary, budget_id=1)
 
     def test_raises_on_future_year(self):
         """year beyond the current year raises AssertionError from the year validation check."""
         summary = _make_minimal_summary()
-        future_year = datetime.now().year + 1
         with pytest.raises(AssertionError):
-            test_summaries_manager._clean_monthly_summary(1, future_year, summary)
+            test_summaries_manager._clean_monthly_summary(1, datetime.now().year + 1, summary, budget_id=1)
 
     def test_raises_on_negative_income(self):
         """Negative income value raises AssertionError from the income >= 0 check."""
         summary = _make_minimal_summary(income=-500.0)
         with pytest.raises(AssertionError):
-            test_summaries_manager._clean_monthly_summary(12, 2025, summary)
+            test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
 
     def test_real_report_cleans_without_error(self, full_transactions_database):
         """A real Dec 2025 report from generate_monthly_category_report cleans without raising."""
         summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary)
+        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
         assert isinstance(result, dict)
         assert result[SummariesTable.month.name] == 12
         assert result[SummariesTable.year.name] == 2025
+
+    def test_budget_id_in_result_when_provided(self):
+        """Explicit budget_id argument appears in the returned dict."""
+        summary = _make_minimal_summary()
+        result = test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=42)
+        assert result[SummariesTable.budget_id.name] == 42
+
+    def test_budget_id_from_latest_when_omitted(self, clean_summaries_database):
+        """When budget_id is omitted, result uses the budget_id from the most recently inserted summary."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+        summaries_manager.add_item(**_make_db_summary_record(11, 2025, budget_id))
+
+        result = summaries_manager._clean_monthly_summary(12, 2025, _make_minimal_summary())
+        assert result[SummariesTable.budget_id.name] == budget_id
 
 
 # ─── TestUploadMonthlySummary ─────────────────────────────────────────────────
@@ -201,101 +202,126 @@ class TestCleanMonthlySummary:
 class TestUploadMonthlySummary:
 
     def test_upload_creates_record(self, full_transactions_database, clean_summaries_database):
-        """Successful upload results in a record in the summaries table."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        assert summaries_manager._check_summary_exists(12, 2025)
+        """Successful upload inserts one record and does not raise."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
 
-    def test_uploaded_record_has_correct_month_and_year(self, full_transactions_database, clean_summaries_database):
-        """Uploaded summary record stores the correct month and year."""
-        summaries_manager, _ = clean_summaries_database
         summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
+        summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
+
+        assert summaries_manager._check_summary_exists(12, 2025)
         records = summaries_manager.fetch_items_by_attribute(month=12, year=2025)
         assert len(records) == 1
         assert records[0].month == 12
         assert records[0].year == 2025
 
-    def test_upload_does_not_raise(self, full_transactions_database, clean_summaries_database):
-        """upload_monthly_summary does not raise an exception on a clean first upload."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)  # must not raise
+    def test_duplicate_upload_behavior(self, full_transactions_database, clean_summaries_database, caplog):
+        """A duplicate upload is silently skipped: no exception, warning logged, exactly one row remains."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
 
-    def test_duplicate_upload_logs_warning(self, full_transactions_database, clean_summaries_database, caplog):
-        """Uploading the same month/year twice logs a warning about the duplicate."""
-        summaries_manager, _ = clean_summaries_database
         summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
+        summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
+
         with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
-            summaries_manager.upload_monthly_summary(12, 2025, summary)
-        assert any("already exists" in msg for msg in caplog.messages), (
-            f"Expected 'already exists' warning, got messages: {caplog.messages}"
-        )
+            summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
 
-    def test_duplicate_upload_does_not_add_second_row(self, full_transactions_database, clean_summaries_database):
-        """Uploading the same month/year twice leaves exactly one row in the table."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        records = summaries_manager.fetch_items_by_attribute(month=12, year=2025)
-        assert len(records) == 1
-
-    def test_duplicate_upload_does_not_raise(self, full_transactions_database, clean_summaries_database):
-        """A duplicate upload is silently skipped — no exception propagates to the caller."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
-        # Second call must not raise even though the record already exists
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
+        assert any("already exists" in msg for msg in caplog.messages)
+        assert len(summaries_manager.fetch_items_by_attribute(month=12, year=2025)) == 1
 
     def test_different_months_upload_independently(self, full_transactions_database, clean_summaries_database):
-        """Two different month/year pairs can each be uploaded as separate records."""
-        summaries_manager, _ = clean_summaries_database
-        summary_dec = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summary_nov = full_transactions_database.generate_monthly_category_report(11, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary_dec)
-        summaries_manager.upload_monthly_summary(11, 2025, summary_nov)
+        """Two different month/year pairs each produce a separate record."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+
+        summaries_manager.upload_monthly_summary(
+            12, 2025, full_transactions_database.generate_monthly_category_report(12, 2025), budget_id=budget_id
+        )
+        summaries_manager.upload_monthly_summary(
+            11, 2025, full_transactions_database.generate_monthly_category_report(11, 2025), budget_id=budget_id
+        )
+
         assert summaries_manager._check_summary_exists(12, 2025)
         assert summaries_manager._check_summary_exists(11, 2025)
+
+    def test_uploaded_record_budget_id(self, clean_summaries_database):
+        """Uploaded record stores the explicit budget_id and that id resolves to a real budget row."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+
+        summaries_manager.upload_monthly_summary(12, 2025, _make_minimal_summary(), budget_id=budget_id)
+
+        record = summaries_manager.fetch_items_by_attribute(month=12, year=2025)[0]
+        assert record.budget_id == budget_id
+        fetched_budget = budgets_manager.fetch_budget_by_id(record.budget_id)
+        assert fetched_budget is not BudgetsTable
+        assert fetched_budget.id == budget_id
+
+    def test_uploaded_record_inherits_latest_budget_when_omitted(self, clean_summaries_database):
+        """When budget_id is omitted, the uploaded record inherits from the most recently inserted summary."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+        summaries_manager.add_item(**_make_db_summary_record(11, 2025, budget_id))
+
+        summaries_manager.upload_monthly_summary(12, 2025, _make_minimal_summary())
+
+        record = summaries_manager.fetch_items_by_attribute(month=12, year=2025)[0]
+        assert record.budget_id == budget_id
 
 
 # ─── TestUpdateSummary ────────────────────────────────────────────────────────
 
 class TestUpdateSummary:
 
-    def test_update_logs_warning_when_summary_not_found(self, clean_summaries_database, caplog):
-        """update_summary logs a warning when no record exists for the given month/year."""
+    def test_update_when_record_missing(self, clean_summaries_database, caplog):
+        """update_summary logs a warning and does not raise when no record exists."""
         summaries_manager, _ = clean_summaries_database
-        summary = _make_minimal_summary()
         with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
-            summaries_manager.update_summary(12, 2025, summary)
-        assert any("doesn't exists" in msg or "doesn't exist" in msg for msg in caplog.messages), (
-            f"Expected a 'doesn't exist' warning, got: {caplog.messages}"
-        )
+            summaries_manager.update_summary(12, 2025, _make_minimal_summary())
+        assert any("doesn't exists" in msg or "doesn't exist" in msg for msg in caplog.messages)
 
-    def test_update_does_not_raise_when_not_found(self, clean_summaries_database):
-        """update_summary does not raise when no matching record exists."""
-        summaries_manager, _ = clean_summaries_database
-        summary = _make_minimal_summary()
-        summaries_manager.update_summary(12, 2025, summary)  # must not raise
+    def test_update_when_record_exists(self, full_transactions_database, clean_summaries_database, caplog):
+        """update_summary does not raise and does not warn when the record is present."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
 
-    def test_update_does_not_raise_when_record_exists(self, full_transactions_database, clean_summaries_database):
-        """update_summary does not raise when called for an existing month/year record."""
-        summaries_manager, _ = clean_summaries_database
         summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
+        summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
+
         summary["income"] = 10000
-        summaries_manager.update_summary(12, 2025, summary)  # must not raise
-
-    def test_update_does_not_warn_when_record_exists(self, full_transactions_database, clean_summaries_database, caplog):
-        """update_summary does not log a 'doesn't exist' warning when the record is present."""
-        summaries_manager, _ = clean_summaries_database
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
-        summaries_manager.upload_monthly_summary(12, 2025, summary)
         caplog.clear()
         with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
             summaries_manager.update_summary(12, 2025, summary)
+
         assert not any("doesn't exists" in msg or "doesn't exist" in msg for msg in caplog.messages)
+
+
+# ─── TestGetLatestBudgetId ────────────────────────────────────────────────────
+
+class TestGetLatestBudgetId:
+
+    def test_returns_most_recently_inserted_budget_id(self, clean_summaries_database):
+        """Returns the budget_id of the summary with the highest id (most recently inserted); result is an int."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record(uq_hash="hash_a"))
+        budgets_manager.add_item(**_make_db_budget_record(uq_hash="hash_b"))
+        budget_a_id, budget_b_id = [b.id for b in sorted(budgets_manager.fetch_all_items(), key=lambda b: b.id)]
+
+        summaries_manager.add_item(**_make_db_summary_record(10, 2025, budget_a_id))
+        summaries_manager.add_item(**_make_db_summary_record(11, 2025, budget_b_id))
+
+        result = summaries_manager._get_latest_budget_id()
+        assert result == budget_b_id
+        assert isinstance(result, int)
+
+    def test_raises_when_table_empty(self, clean_summaries_database):
+        """Raises ItemNotFoundError when the summaries table is empty."""
+        summaries_manager, _ = clean_summaries_database
+        with pytest.raises(ItemNotFoundError):
+            summaries_manager._get_latest_budget_id()

@@ -12,7 +12,7 @@ from datetime import datetime
 import pandas as pd
 
 # Custom imports
-from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityError
+from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityError, ItemNotFoundError
 
 # Local imports
 from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CATEGORY_MAPPING
@@ -45,7 +45,7 @@ class SummariesTableManager(DatabaseManager):
             month (int): month given as an integer
             year (int): year given as an integer
             summary (pd.DataFrame): Monthly summary output from transactions table manager.
-            budget_id (int): the id of the budget used to compare spending to, defaults to most recent if None
+            budget_id (int): the id of the budget used to compare spending to, defaults to most recent if None.
         """
         logger.info(f"Uploading monthly summary for {month} / {year} to {self.table_name}")
 
@@ -101,7 +101,7 @@ class SummariesTableManager(DatabaseManager):
         summary[SummariesTable.date.name] = datetime(year, month, 1)
         summary[SummariesTable.month.name] = month
         summary[SummariesTable.year.name] = year
-        # summary[SummariesTable.budget_id.name] = budget_id
+        summary[SummariesTable.budget_id.name] = self._get_latest_budget_id() if budget_id is None else budget_id
 
         columns = summary.columns  # Capture after adding date/month/year so they're not overwritten
         summary_record = {}
@@ -127,8 +127,8 @@ class SummariesTableManager(DatabaseManager):
             elif col.dest == SummariesTable.date.name:
                 assert isinstance(validated_entry, datetime), f"Invalid date entry for summary table: {validated_entry}, type: {type(validated_entry)}"
 
-            # elif col.dest == SummariesTable.budget_id.name:
-            #     pass
+            elif col.dest == SummariesTable.budget_id.name:
+                pass
 
             elif col.dest == SummariesTable.income.name or col.dest in [detailed.as_snake_case() for detailed in CATEGORY_MAPPING[PrimaryCategories.INCOME]]:
                 assert validated_entry >= 0, f"Invalid value for {col.dest}: {validated_entry}"
@@ -151,9 +151,30 @@ class SummariesTableManager(DatabaseManager):
         return return_item != []
     
 
-    def _get_summary_id(self, month: int, year: int) -> bool:
+    def _get_summary_id(self, month: int, year: int) -> int:
         """Retrives the summary id of the assocaited month / year combo"""
         logger.debug(f"Fetching summaries.id for month = {month}, year = {year}")
 
         return_item = self.fetch_items_by_attribute(month=month, year=year)
-        return return_item[0].id
+
+        if return_item:
+            return return_item[0].id
+
+        else:
+            raise ItemNotFoundError(float(f"{month}.{year}"), self.table_class)
+    
+
+    def _get_latest_budget_id(self) -> int:
+        """Returns the budget_id from the most recently inserted summary record."""
+        logger.debug(f"Checking latest summary upload for budget_id...")
+
+        summaries = self.fetch_all_items()
+
+        if not summaries:
+            raise ItemNotFoundError("latest budget_id", self.table_class)
+
+        latest = max(summaries, key=lambda s: s.id)
+        return latest.budget_id
+        
+
+

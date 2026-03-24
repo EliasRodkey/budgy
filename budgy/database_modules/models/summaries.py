@@ -18,8 +18,7 @@ from sqlalchemy import ForeignKey, UniqueConstraint, Column, Float, Integer, Dat
 from pleasant_database import BaseTable
 
 # Local imports
-from .common import Field, parse_date
-from .budgets import BudgetsTable
+from .common import Field
 
 # initialize module logger
 import logging
@@ -56,7 +55,7 @@ class SummariesTable(BaseTable):
     date = Column(DateTime)
     month = Column(Integer)
     year = Column(Integer)
-    # budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=False)
+    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=False)
     income = Column(Float)
     transfers = Column(Float)
     debt_payments = Column(Float)
