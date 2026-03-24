@@ -76,8 +76,9 @@ def test_generate_base_hash():
 
 
 def test_iter_csv(clean_updates_database):
-    """Tests the iter_csv_file function to make sure that it is correctly parsing the csv file and yielding the correct records with the correct types"""
+    """iter_val_csv_file yields records with correct column keys, status logic, date types, and unique uq_hash values."""
     for csv_filepath in clean_updates_database.iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR):
+        hashes = set()
         for record in iter_val_csv_file(csv_filepath, transaction_columns):
             for col in transaction_columns:
                 assert col.dest in record
@@ -86,15 +87,10 @@ def test_iter_csv(clean_updates_database):
             if col.dest == "authorized_date" or col.dest == "posted_date":
                 assert isinstance(record[col.dest], datetime)
 
-
-def test_iter_csv_hash(clean_updates_database):
-    """Tests iter_csv_file function to make sure the hashes created are all unique"""
-    for csv_filepath in clean_updates_database.iter_csv_not_uploaded(csv_directory=TEST_CSV_DIR):
-        hashes = set()
-        for record in iter_val_csv_file(csv_filepath, transaction_columns):
             assert record["uq_hash"] is not None, "Hash value is missing from record."
             assert record["uq_hash"] not in hashes, f"Duplicate hash value found: {record['uq_hash']}"
             hashes.add(record["uq_hash"])
-        assert len(hashes) == len(list(iter_val_csv_file(csv_filepath, transaction_columns))), f"Expected 999 unique hashes, but found {len(hashes)}."
 
-
+        all_records = list(iter_val_csv_file(csv_filepath, transaction_columns))
+        assert len(hashes) == len(all_records), \
+            f"Expected {len(all_records)} unique hashes, but found {len(hashes)}."

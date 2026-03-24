@@ -38,20 +38,12 @@ def test_parse_date_last_day_of_year():
     assert result == datetime(2023, 12, 31)
 
 
-def test_parse_date_invalid_format():
-    """parse_date raises ValueError for strings not matching '%Y-%m-%d'."""
+def test_parse_date_invalid_inputs():
+    """parse_date raises ValueError for wrong format, non-date strings, and slash separators."""
     with pytest.raises(ValueError):
         parse_date("01/15/2024")
-
-
-def test_parse_date_invalid_string():
-    """parse_date raises ValueError for completely non-date strings."""
     with pytest.raises(ValueError):
         parse_date("not-a-date")
-
-
-def test_parse_date_wrong_separator():
-    """parse_date raises ValueError when slashes are used instead of dashes."""
     with pytest.raises(ValueError):
         parse_date("2024/01/15")
 

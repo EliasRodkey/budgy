@@ -40,25 +40,29 @@ EXPECTED_BUDGET_COLUMNS = [
     "uq_hash",
 ]
 
-sample_budget = {
-    "date_created": datetime(2025, 1, 1),
-    "income": 5000.0,
-    "transfers": 0.0,
-    "debt_payments": 200.0,
-    "investments": 500.0,
-    "bank_fees": 10.0,
-    "food_and_drink": 600.0,
-    "shopping": 300.0,
-    "housing_and_utilities": 1500.0,
-    "health_and_wellness": 100.0,
-    "entertainment": 150.0,
-    "insurance": 200.0,
-    "services": 50.0,
-    "transportation": 120.0,
-    "travel": 80.0,
-    "government_and_charity": 40.0,
-    "other": 50.0,
-}
+
+def _make_db_budget_record(uq_hash: str = "abc123deadbeef") -> dict:
+    """Returns a dict suitable for direct add_item insertion into the budgets table."""
+    return {
+        "date_created": datetime(2025, 1, 1),
+        "income": 5000.0,
+        "transfers": 0.0,
+        "debt_payments": 200.0,
+        "investments": 500.0,
+        "bank_fees": 10.0,
+        "food_and_drink": 600.0,
+        "shopping": 300.0,
+        "housing_and_utilities": 1500.0,
+        "health_and_wellness": 100.0,
+        "entertainment": 150.0,
+        "insurance": 200.0,
+        "services": 50.0,
+        "transportation": 120.0,
+        "travel": 80.0,
+        "government_and_charity": 40.0,
+        "other": 50.0,
+        "uq_hash": uq_hash,
+    }
 
 
 def test_budgets_table_name():
@@ -74,21 +78,16 @@ def test_budgets_table_columns(clean_budgets_database):
 
 
 def test_budgets_table_add_and_fetch(clean_budgets_database):
-    """A budget row can be added and fetched back from BudgetsTable."""
+    """A budget row can be added, fetched, and converted to a DataFrame with correct columns."""
     db = clean_budgets_database
-    db.add_item(**sample_budget)
+    record = _make_db_budget_record()
+    db.add_item(**record)
 
     items = db.fetch_all_items()
     assert items is not None
     assert len(items) == 1
     assert items[0].income == 5000.0
     assert items[0].food_and_drink == 600.0
-
-
-def test_budgets_table_dataframe(clean_budgets_database):
-    """BudgetsTable converts to a non-empty DataFrame with correct columns after inserting a row."""
-    db = clean_budgets_database
-    db.add_item(**sample_budget)
 
     df = db.to_dataframe()
     assert not df.empty
@@ -98,7 +97,7 @@ def test_budgets_table_dataframe(clean_budgets_database):
 def test_budgets_table_delete(clean_budgets_database):
     """A budget row can be deleted from BudgetsTable."""
     db = clean_budgets_database
-    db.add_item(**sample_budget)
+    db.add_item(**_make_db_budget_record())
 
     items_before = db.fetch_all_items()
     assert len(items_before) == 1
@@ -108,7 +107,8 @@ def test_budgets_table_delete(clean_budgets_database):
     assert len(items_after) == 0
 
 
-def test_budget_columns_list_is_empty():
-    """budget_columns is an empty list (not a broken Column() namedtuple call)."""
+def test_budget_columns_list_is_populated():
+    """budget_columns is a non-empty list of Field namedtuples covering all BudgetsTable columns."""
     assert isinstance(budget_columns, list)
-    assert len(budget_columns) == 0
+    assert len(budget_columns) > 0
+    assert all(hasattr(col, "src") and hasattr(col, "dest") and hasattr(col, "convert") for col in budget_columns)

@@ -13,75 +13,69 @@ import pytest
 from pleasant_database import DatabaseIntegrityError
 
 # Local imports
-from budgy.database_modules.managers.transaction_manager import transactions_manager as transactions_table_manager, updates_manager as update_table_manager
 from budgy.database_modules.models.common import TableStatus
+from tests.conftest import TEST_CSV_DIR, TEST_DB_FILEPATH
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-record_1 = {
-    "authorized_date": datetime(2024, 1, 1),
-    "posted_date": datetime(2024, 1, 2),
-    "status": "pending",
-    "account_name": "Checking Account",
-    "description": "TEST TRANSACTION",
-    "primary_category": "Food",
-    "detailed_category": "Groceries",
-    "amount": 150.75,
-    "repayment": False,
-    "exclude": False
-}
-
-duplicate_update_item = {
-    "timestamp": datetime(2024, 1, 1),
-    "filepath": os.path.join(os.getcwd(), "tests", "test_csv_download_files", "TEST_UPDATE.csv"),
-    "status": TableStatus.COMPLETE
-}
+def _make_db_transactions_record(uq_hash: str = "test_uq_hash_001") -> dict:
+    """Returns a dict suitable for direct add_item insertion into the transactions table."""
+    return {
+        "authorized_date": datetime(2024, 1, 1),
+        "posted_date": datetime(2024, 1, 2),
+        "status": "pending",
+        "account_name": "Checking Account",
+        "description": "TEST TRANSACTION",
+        "primary_category": "Food",
+        "detailed_category": "Groceries",
+        "amount": 150.75,
+        "repayment": False,
+        "exclude": False,
+        "base_hash": "test_base_hash_001",
+        "uq_hash": uq_hash,
+    }
 
 
 def test_db_file_creation():
     """Test that the database file is created successfully."""
-    logger.debug("Starting test...")
-    db_file = transactions_table_manager.file
-    db_file.create()
-    assert os.path.exists(db_file.file_path), "Database file does not exist."
+    assert os.path.exists(TEST_DB_FILEPATH), "Database file does not exist."
 
 
-def test_transactions_table_creation():
-    """Test that the TransactionsTable is created successfully and data can be retrieved from it."""
-    logger.debug("Starting test...")
-    transactions_table_manager.add_item(**record_1)
-    items = transactions_table_manager.fetch_all_items()
-    logger.debug(f"Fetched items from transactions table:\n{items}")
+def test_transactions_table_creation(clean_transactions_database):
+    """TransactionsTable supports add, fetch, and DataFrame conversion."""
+    db = clean_transactions_database
+    record = _make_db_transactions_record()
+    db.add_item(**record)
+
+    items = db.fetch_all_items()
     assert items is not None, "Failed to fetch items from Transactions table."
     assert isinstance(items, list), "Fetched items is not a list."
 
-    as_df = transactions_table_manager.to_dataframe()
-    logger.info(f"Transactions table as dataframe:\n{as_df}")
+    as_df = db.to_dataframe()
     assert not as_df.empty, "Dataframe conversion resulted in empty dataframe."
-    assert list(as_df.columns) == (['id'] + list(record_1.keys()) + ["base_hash", "uq_hash"]), "Dataframe columns do not match expected columns."
+    expected_cols = ["id"] + list(record.keys())
+    assert list(as_df.columns) == expected_cols, "Dataframe columns do not match expected columns."
 
-    transactions_table_manager.delete_items_by_attribute(**{"description": "TEST TRANSACTION"})
 
+def test_updates_table_creation(clean_updates_database):
+    """UpdatesTable supports fetch and DataFrame conversion; duplicate filepath raises DatabaseIntegrityError."""
+    db = clean_updates_database
 
-def test_updates_table_creation():
-    """Test that the UpdatesTable is created successfully and data can be retrieved from it."""
-    logger.debug("Starting test...")
+    duplicate_filepath = os.path.join(TEST_CSV_DIR, "TEST_UPDATE.csv")
+    with pytest.raises(DatabaseIntegrityError):
+        db.add_item(
+            timestamp=datetime(2024, 1, 1),
+            filepath=duplicate_filepath,
+            status=TableStatus.COMPLETE,
+        )
 
-    try:
-        update_table_manager.add_item(**duplicate_update_item)
-    except Exception as e:
-        assert isinstance(e, DatabaseIntegrityError)
-
-    items = update_table_manager.fetch_all_items()
-    logger.debug(f"Fetched items from transaction_updates table:\n{items}")
+    items = db.fetch_all_items()
     assert items is not None, "Failed to fetch items from transaction_updates table."
     assert isinstance(items, list), "Fetched items is not a list."
 
-    as_df = update_table_manager.to_dataframe()
-    logger.info(f"Updates table as dataframe:\n{as_df}")
+    as_df = db.to_dataframe()
     assert not as_df.empty, "Dataframe conversion resulted in empty dataframe."
-    assert list(as_df.columns) == ['id'] + list(duplicate_update_item.keys()), "Dataframe columns do not match expected columns."
-
-    update_table_manager.delete_items_by_attribute(**{"filepath": "TEST_UPDATE.csv"})
+    assert list(as_df.columns) == ["id", "timestamp", "filepath", "status"], \
+        "Dataframe columns do not match expected columns."
