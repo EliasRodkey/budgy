@@ -59,6 +59,7 @@ class BudgetsTable(BaseTable):
     travel = Column(Float)
     government_and_charity = Column(Float)
     other = Column(Float)
+    net_gain_or_loss = Column(Float)
     uq_hash = Column(String, unique=True)
 
 

@@ -5,9 +5,6 @@ Module containing the class-based manager for the budgets table.
 
 Classes:
     - BudgetsTableManager: DatabaseManager subclass for the BudgetsTable.
-
-Variables:
-    - budgets_manager: Module-level BudgetsTableManager instance.
 """
 # Standard library imports
 from datetime import datetime
@@ -28,7 +25,15 @@ logger = logging.getLogger(__name__)
 
 
 class BudgetsTableManager(DatabaseManager):
-    """Manager for the budgets table."""
+    """
+    Manager for the budgets table.
+    Budgets should be uploaded on a "per month" spending basis.
+
+    Methods:
+        - upload_budgte: Verifies budget values and uploads to database table.
+        - fetch_budget_by_id: Retrieves a budget from the budgets table with the given budget_id.
+        - calculate_net_gain_or_loss: Calculates the total expected gain or loss from a given budget
+    """
 
     def __init__(self, db_file: DatabaseFile):
         super().__init__(BudgetsTable, db_file)
@@ -52,6 +57,7 @@ class BudgetsTableManager(DatabaseManager):
             raise DuplicateError(uq_hash, self.table_name)
         
         clean_budget[BudgetsTable.uq_hash.name] = uq_hash
+        clean_budget[BudgetsTable.net_gain_or_loss.name] = self._calculate_net_gain_or_loss(clean_budget)
         clean_budget[BudgetsTable.date_created.name] = date_created
 
         try:
@@ -81,6 +87,21 @@ class BudgetsTableManager(DatabaseManager):
         except Exception as e:
             logger.error(f"Unknown exception occured retrieving budget {budget_id}: {e}")
             raise
+    
+
+    def calculate_net_gain_or_loss(self, budget_record: dict) -> float:
+        """Calculates the total expected gain or loss from a given budget."""
+        logger.info(f"Calculating net gain or loss for budget: {budget_record[BudgetsTable.uq_hash.name]}")
+
+        # Income is just the income category
+        total_income = budget_record[BudgetsTable.income.name]
+
+        # Spending is everything else (remove income)
+        spending_categories = PrimaryCategories.as_snake_case_headers()
+        spending_categories.remove(BudgetsTable.income.name)
+        total_spending = sum([budget_record[category] for category in spending_categories])
+
+        return total_income - total_spending
     
 
     def _clean_budget(self, budget_record: dict) -> dict:

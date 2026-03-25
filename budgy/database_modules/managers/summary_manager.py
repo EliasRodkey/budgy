@@ -3,10 +3,12 @@
 budgy.database_modules.managers.summary_manager.py -
 Module contianing functions for reading, writing, and updating values in the summary table.
 
-
+Classes:
+    - SummariesTableManager: DatabaseManager subclass for the SummariesTable.
 """
 # Standard library imports
 from datetime import datetime
+from typing import List
 
 # Third party imports
 import pandas as pd
@@ -15,8 +17,11 @@ import pandas as pd
 from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityError, ItemNotFoundError
 
 # Local imports
-from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CATEGORY_MAPPING
+from budgy.utils.analysis_utils import PrimaryCategories, CATEGORY_MAPPING
+from budgy.utils.file_utils import LoggingExtras
+from .common import convert_datetime_nums_to_range
 from ..models.summaries import SummariesTable, summary_columns
+
 
 
 # initialize module logger
@@ -32,6 +37,7 @@ class SummariesTableManager(DatabaseManager):
     Methods:
         - upload_monthly_summary: Initiates a cleaning and upload of a provided summary from the transactions table from a the given month and year.
         - update_summary: Updates a summary entry in the summaries table.
+        - fetch_summary_by_id: Retrieves a monthly summary from the sumaries table with the given summary_id.
     """
     def __init__(self, db_file: DatabaseFile):
         super().__init__(SummariesTable, db_file)
@@ -90,7 +96,60 @@ class SummariesTableManager(DatabaseManager):
 
             except DatabaseIntegrityError as e:
                 logger.error(f"Summary table not updaes for {month} / {year}: {e}")
+    
 
+    def fetch_summary_by_id(self, summary_id: int) -> SummariesTable:
+        """Retrieves a monthly summary from the summariestable with the given summary_id."""
+        logger.info(f"Retrieving summary {summary_id} from {self.table_name}")
+
+        try:
+            return self.fetch_item_by_id(summary_id)
+        
+        except ItemNotFoundError:
+            logger.warning(f"No budget exists with ID {summary_id}")
+            return SummariesTable
+        
+        except Exception as e:
+            logger.error(f"Unknown exception occured retrieving budget {summary_id}: {e}")
+            raise
+    
+
+    def fetch_summaries_over_period(self, month: int, year: int) -> List[SummariesTable]:
+        """
+        Retrieves all records from the summaries table that match the specified attributes
+        and fall within the specified date range.
+
+        Args:
+            month (int): The month as an integer (1-12).
+            year (int): The year as an integer (e.g., 2024).
+        """
+        logger.info(f"Retrieving summaries from {year} from {self.table_name}")
+
+        start_date, end_date = convert_datetime_nums_to_range(month, year)
+
+        logger.debug(
+            f"Retrieving records from {start_date} to {end_date} using manager: {self}",
+            extra={
+                LoggingExtras.START_DATE.value: start_date.strftime(LoggingExtras.DATETIME_FORMAT),
+                LoggingExtras.END_DATE.value: end_date.strftime(LoggingExtras.DATETIME_FORMAT),
+            }
+        )
+
+        attributes = {}
+        attributes[SummariesTable.date.name] = [(">=", start_date), ("<=", end_date)]
+
+        try:
+            records = self.filter_items(attributes)
+
+        except Exception as e:
+            logger.exception(f"Unhandled error retrieving records for attributes: {attributes} over period: {start_date} to {end_date}")
+            return pd.DataFrame()
+
+        if not records:
+            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES: attributes})
+
+        return self.convert_orm_list_to_dataframe(records)
+    
 
     def _clean_monthly_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int=None) -> dict:
         """Cleans and validates monthly summary for upload, returns validated dict"""
