@@ -198,6 +198,23 @@ class TestTransactionsTableManager:
             "All returned records should have primary_category='Food & drink'."
         assert "AMAZON PURCHASE" not in result["description"].values
 
+    # --- retrieve_month_year_pairs ---
+
+    def test_retrieve_month_year_pairs_full_db(self, full_transactions_database):
+        """Checks if retrieve_month_year_pairs can accurately extract data and return in proper format"""
+        pairs = full_transactions_database.retrieve_month_year_pairs()
+
+        assert len(pairs) > 0
+        assert isinstance(pairs, list)
+        assert isinstance(pairs[0], tuple)
+        assert len(pairs[0]) == 2
+    
+    def test_retrieve_month_year_pairs_empty_db(self, clean_transactions_database):
+        """Checks if retrieve_month_year_pairs can accurately extract data and return in proper format"""
+        pairs = clean_transactions_database.retrieve_month_year_pairs()
+
+        assert pairs == []
+
     # --- return_category_count ---
 
     def test_return_category_count_by_type(self, full_transactions_database):

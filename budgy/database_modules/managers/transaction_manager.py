@@ -15,7 +15,7 @@ Variables:
 """
 # Standard library imports
 from datetime import datetime
-from typing import Generator, List
+from typing import Generator, List, Tuple
 import os
 
 # Third party imports
@@ -127,7 +127,7 @@ class TransactionsTableManager(DatabaseManager):
             self,
             csv_filepath: str,
             columns: List[Field] = transaction_columns,
-        ) -> None:
+        ) -> List[TransactionsTable]:
         """
         Converts and validates the new transactions line by line then uploads to the transactions database.
         Also enforces that no csv can be uploaded if it already has a posted upload with completed status.
@@ -135,6 +135,9 @@ class TransactionsTableManager(DatabaseManager):
         Args:
             csv_filepath (str): the filepath of the csv being uploaded
             columns (List[Field]): the column mapping and conversion information for the csv upload
+        
+        Returns:
+            List[TransactionTable]: A list of ORM objects that had their categories updated during the upload 
         """
 
         logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
@@ -142,10 +145,12 @@ class TransactionsTableManager(DatabaseManager):
 
         transactions_original_state = self.to_dataframe()
 
+        updated_records = []
         for record in iter_val_csv_file(csv_filepath, columns):
 
             if record[TransactionsTable.base_hash.name] in transactions_original_state[TransactionsTable.base_hash.name].values:
-                self._update_categories_if_diff(record)
+                updated_records.extend(self._update_categories_if_diff(record))
+                # TODO Compile update month / year pairs if applicable, make sure no duplicates, return to caller
 
             else:
                 try:
@@ -158,6 +163,8 @@ class TransactionsTableManager(DatabaseManager):
                     logger.exception(f"Exception encountered during data upload to {self}", extra={LoggingExtras.RECORD: record})
                     self.updates_manager.generate_update_entry(csv_filepath, TableStatus.INCOMPLETE)
                     raise e
+        
+        return updated_records
 
         logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
         self.updates_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
@@ -168,21 +175,25 @@ class TransactionsTableManager(DatabaseManager):
             self,
             columns: List[Field] = transaction_columns,
             csv_dir: str = EDirectories.CSV_DIR
-        ) -> None:
+        ) -> List[TransactionsTable]:
         """
         Iterates through all csv files in csv_dir and uploads only those not yet successfully uploaded.
 
         Args:
             columns (List[Field]): the column mapping and conversion information for the csv upload
             csv_dir (str): path to the directory where the function should search for csv files to upload
+        
+        Returns:
+            List[TransactionTable]: A list of ORM objects that had their categories updated during the upload 
         """
 
         logger.info(f"Beginning upload of all csv files in {csv_dir} to {self.table_name}")
         failed_files = []
+        updated_records = []
 
         for csv_filepath in self.updates_manager.iter_csv_not_uploaded(csv_directory=csv_dir):
             try:
-                self.upload_csv(csv_filepath, columns=columns)
+                updated_records.extend(self.upload_csv(csv_filepath, columns=columns))
 
             except Exception:
                 logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}", extra={LoggingExtras.FILE: csv_filepath})
@@ -190,11 +201,14 @@ class TransactionsTableManager(DatabaseManager):
 
         if failed_files:
             logger.warning(f"Batch upload completed with {len(failed_files)} files failed")
+
         else:
             logger.info(f"New CSV file upload complete.")
 
+        return updated_records
 
-    def retrieve_records_by_attribute_over_period(self, month: int=None, year: int=None, **kwargs) -> pd.DataFrame:
+
+    def fetch_records_by_attribute_over_period(self, month: int=None, year: int=None, **kwargs) -> pd.DataFrame:
         """
         Retrieves all records from the transactions table that match the specified attributes
         and fall within the specified date range. Excludes transactions marked as excluded.
@@ -236,6 +250,28 @@ class TransactionsTableManager(DatabaseManager):
         return self.convert_orm_list_to_dataframe(records)
 
 
+    def retrieve_month_year_pairs(self) -> List[Tuple]:
+        """Retrieves all of the month / year pairs in the database and returns them as a list of tuples [(month, year)]"""
+        # TODO: Add __repr__ and __str__ methods to DatabaseManager class (duh)
+        logger.info(f"Retrieving month year pairs from {self.table_name}")
+
+        transactions_df = self.to_dataframe()
+
+        if transactions_df.empty:
+            logger.warning(f"No transactions present in {self.table_name}, no month / year pairs found.")
+            return []
+
+        grouped_df = transactions_df.groupby(
+            transactions_df[TransactionsTable.authorized_date.name].dt.to_period("M")
+        )[TransactionsTable.amount.name].sum()
+
+        pairs = []
+        for date in grouped_df.index:
+            pairs.append((date.month, date.year))
+        
+        return pairs
+
+
     def generate_monthly_category_report(self, month: int, year: int) -> pd.DataFrame:
         """
         Generates a monthly category report for the specified month and year,
@@ -250,7 +286,7 @@ class TransactionsTableManager(DatabaseManager):
         """
         logger.info(f"Generating monthly category report for month/year: {month}/{year} using manager: {self}.")
 
-        records_df = self.retrieve_records_by_attribute_over_period(month, year)
+        records_df = self.fetch_records_by_attribute_over_period(month, year)
         columns = PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
 
         if records_df.empty:
@@ -289,10 +325,10 @@ class TransactionsTableManager(DatabaseManager):
             year (int): integer representing the year to search
         """
         if category in PrimaryCategories:
-            records_df = self.retrieve_records_by_attribute_over_period(month, year, primary_category=category.value)
+            records_df = self.fetch_records_by_attribute_over_period(month, year, primary_category=category.value)
 
         elif category in DetailedCategories:
-            records_df = self.retrieve_records_by_attribute_over_period(month, year, detailed_category=category.value)
+            records_df = self.fetch_records_by_attribute_over_period(month, year, detailed_category=category.value)
 
         else:
             logger.error(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", extra={LoggingExtras.CATEGORY: category.value})
@@ -302,13 +338,16 @@ class TransactionsTableManager(DatabaseManager):
         return records_df.shape[0]
     
 
-    def _update_categories_if_diff(self, record: dict) -> None:
+    def _update_categories_if_diff(self, record: dict) -> List[TransactionsTable]:
         """
         If a duplicate transaction is detected based on the base hash, check and update categories
         if they differ from the existing database record.
 
         Args:
             record (dict): the record to check for duplicates and update categories for
+        
+        Returns:
+            List[TransactionTable]: a list of the records updated
         """
         base_hash = record[TransactionsTable.base_hash.name]
         logger.debug(f"Checking for category difference between duplicates based on base hash: {base_hash}")
@@ -329,3 +368,5 @@ class TransactionsTableManager(DatabaseManager):
                 except Exception as e:
                     logger.exception(f"Exception encountered during category update for base hash: {base_hash}", extra={LoggingExtras.BASE_HASH: base_hash})
                     raise e
+
+        return db_records
