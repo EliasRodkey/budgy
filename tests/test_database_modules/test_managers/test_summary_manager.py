@@ -320,3 +320,70 @@ class TestGetLatestBudgetId:
         summaries_manager, _ = clean_summaries_database
         with pytest.raises(ItemNotFoundError):
             summaries_manager._get_latest_budget_id()
+
+
+# ─── TestFetchSummaryById ─────────────────────────────────────────────────────
+
+class TestFetchSummaryById:
+
+    def test_not_found_returns_class_and_warns(self, clean_summaries_database, caplog):
+        """fetch_summary_by_id returns the SummariesTable class and logs a warning for a missing ID."""
+        summaries_manager, _ = clean_summaries_database
+        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
+            result = summaries_manager.fetch_summary_by_id(9999)
+        assert result is SummariesTable
+        assert any("No budget exists with ID" in msg for msg in caplog.messages)
+
+    def test_returns_instance_when_found(self, clean_summaries_database):
+        """fetch_summary_by_id returns a SummariesTable instance with the correct id."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+        summaries_manager.add_item(**_make_db_summary_record(12, 2025, budget_id))
+
+        item = summaries_manager.fetch_items_by_attribute(month=12, year=2025)[0]
+        result = summaries_manager.fetch_summary_by_id(item.id)
+
+        assert isinstance(result, SummariesTable)
+        assert result.id == item.id
+
+
+# ─── TestFetchSummariesOverPeriod ─────────────────────────────────────────────
+
+class TestFetchSummariesOverPeriod:
+
+    def test_returns_records_within_period(self, clean_summaries_database):
+        """Returns a DataFrame containing only the records matching the given month/year; other periods excluded."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+
+        summaries_manager.add_item(**_make_db_summary_record(12, 2024, budget_id))
+        summaries_manager.add_item(**_make_db_summary_record(11, 2025, budget_id))
+        summaries_manager.add_item(**_make_db_summary_record(12, 2025, budget_id))
+
+        result_dec_2025 = summaries_manager.fetch_summaries_over_period(12, 2025)
+        assert isinstance(result_dec_2025, pd.DataFrame)
+        assert result_dec_2025.shape[0] == 1
+        assert result_dec_2025.iloc[0][SummariesTable.month.name] == 12
+        assert result_dec_2025.iloc[0][SummariesTable.year.name] == 2025
+
+        result_nov_2025 = summaries_manager.fetch_summaries_over_period(11, 2025)
+        assert isinstance(result_nov_2025, pd.DataFrame)
+        assert result_nov_2025.shape[0] == 1
+        assert result_nov_2025.iloc[0][SummariesTable.month.name] == 11
+        assert result_nov_2025.iloc[0][SummariesTable.year.name] == 2025
+
+    def test_returns_empty_dataframe_and_warns_when_no_records(self, clean_summaries_database, caplog):
+        """Returns an empty DataFrame and logs a warning when no records exist for the given period."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+        summaries_manager.add_item(**_make_db_summary_record(11, 2025, budget_id))
+
+        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
+            result = summaries_manager.fetch_summaries_over_period(12, 2025)
+
+        assert isinstance(result, pd.DataFrame)
+        assert result.empty
+        assert any("No records found" in msg for msg in caplog.messages)

@@ -25,7 +25,7 @@ import pandas as pd
 from pleasant_database import DatabaseFile, DatabaseIntegrityError, DatabaseManager
 
 # Local imports
-from budgy.database_modules.managers.common import DuplicateError, DB_FILE, convert_datetime_nums_to_range, format_column_names
+from budgy.database_modules.managers.common import DuplicateError, convert_datetime_nums_to_range, format_column_names
 from budgy.database_modules.models.common import Field, TableStatus
 from budgy.database_modules.models.transactions import TransactionsTable, UpdatesTable, transaction_columns
 from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
@@ -276,6 +276,8 @@ class TransactionsTableManager(DatabaseManager):
         """
         Generates a monthly category report for the specified month and year,
         summarizing the total amount spent in each category.
+        Theoretically can return a whole year or all time reports by leaving month or year as None.
+        See convert_datetime_nums_to_range.
 
         Args:
             month (int): The month as an integer (1-12).
@@ -353,7 +355,7 @@ class TransactionsTableManager(DatabaseManager):
         logger.debug(f"Checking for category difference between duplicates based on base hash: {base_hash}")
 
         db_records = self.fetch_items_by_attribute(base_hash=base_hash)
-
+        updated_records = []
         for db_record in db_records:
             if record[TransactionsTable.detailed_category.name] == db_record.detailed_category:
                 logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", extra={LoggingExtras.BASE_HASH: base_hash})
@@ -365,8 +367,9 @@ class TransactionsTableManager(DatabaseManager):
                         primary_category=record[TransactionsTable.primary_category.name],
                         detailed_category=record[TransactionsTable.detailed_category.name]
                     )
+                    updated_records.append(db_record)
                 except Exception as e:
                     logger.exception(f"Exception encountered during category update for base hash: {base_hash}", extra={LoggingExtras.BASE_HASH: base_hash})
                     raise e
 
-        return db_records
+        return updated_records

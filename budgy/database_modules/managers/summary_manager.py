@@ -72,7 +72,7 @@ class SummariesTableManager(DatabaseManager):
                 raise e
 
 
-    def update_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int=None):
+    def update_summary(self, month: int, year: int, summary: pd.DataFrame,):
         """
         Updates a summary entry in the summaries table. 
         Should be called when new transaction categories are updated in transactions db.
@@ -81,7 +81,6 @@ class SummariesTableManager(DatabaseManager):
             month (int): month given as an integer
             year (int): year given as an integer
             summary (pd.DataFrame): Monthly summary output from transactions table manager.
-            budget_id (int): the id of the budget used to compare spending to, defaults to most recent if None.
         """
         logger.info(f"Updating monthly summary for {month} / {year} in {self.table_name}")
 
@@ -89,7 +88,9 @@ class SummariesTableManager(DatabaseManager):
             logger.warning(f"Entry for month = {month} and year = {year} doesn't exists in {self.table_name}")
 
         else:
-            clean_summary = self._clean_monthly_summary(month, year, summary, budget_id=budget_id)
+            summary_id = self._get_summary_id(month, year)
+            summary_record = self.fetch_summary_by_id(summary_id)
+            clean_summary = self._clean_monthly_summary(month, year, summary, budget_id=summary_record.budget_id)
 
             try:
                 self.update_item(self._get_summary_id(month, year), **clean_summary)

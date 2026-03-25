@@ -178,3 +178,32 @@ class TestFetchBudgetById:
         item = clean_budgets_database.fetch_all_items()[0]
         result = clean_budgets_database.fetch_budget_by_id(item.id)
         assert isinstance(result, BudgetsTable)
+
+
+# ─── TestCalculateNetGainOrLoss ───────────────────────────────────────────────
+
+class TestCalculateNetGainOrLoss:
+
+    def test_returns_correct_float_for_all_scenarios(self):
+        """calculate_net_gain_or_loss returns the correct float for loss, gain, and breakeven.
+
+        Base setup: all 16 categories = 100.0.
+        Total spending = 15 non-income categories × 100.0 = 1500.0.
+          income=100.0  → net = 100 - 1500 = -1400.0  (loss)
+          income=2000.0 → net = 2000 - 1500 = 500.0   (gain)
+          income=1500.0 → net = 1500 - 1500 = 0.0     (breakeven)
+        """
+        budget = _make_db_budget_record()  # all 16 categories = 100.0, includes uq_hash
+
+        budget["income"] = 100.0
+        result_loss = test_budgets_manager.calculate_net_gain_or_loss(budget)
+        assert result_loss == -1400.0
+        assert isinstance(result_loss, float)
+
+        budget["income"] = 2000.0
+        result_gain = test_budgets_manager.calculate_net_gain_or_loss(budget)
+        assert result_gain == 500.0
+
+        budget["income"] = 1500.0
+        result_breakeven = test_budgets_manager.calculate_net_gain_or_loss(budget)
+        assert result_breakeven == 0.0

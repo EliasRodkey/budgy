@@ -312,3 +312,89 @@ class TestTransactionsTableManager:
         assert "Unchecked" in transactions_table.status.values
         assert "Checking - 9631" in transactions_table.account_name.values
         assert transactions_table.shape[0] == 1002
+
+    def test_upload_csv_returns_empty_list_for_new_records(self, clean_transactions_database, clean_updates_database):
+        """upload_csv returns an empty list when all records in the CSV are new (no duplicates)."""
+        transactions_db = clean_transactions_database
+        csv_original = os.path.join(TEST_CSV_DIR, "test_categories_original.csv")
+        result = transactions_db.upload_csv(csv_original)
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_upload_csv_returns_updated_records(self, clean_transactions_database, clean_updates_database):
+        """
+        upload_csv returns only the ORM records whose categories were actually changed.
+
+        Uploading test_categories_updated.csv over test_categories_original.csv should return
+        Shell Gas Station and Target Store (2 updated), but not Whole Foods Market (unchanged).
+        """
+        transactions_db = clean_transactions_database
+
+        csv_original = os.path.join(TEST_CSV_DIR, "test_categories_original.csv")
+        transactions_db.upload_csv(csv_original)
+
+        csv_updated = os.path.join(TEST_CSV_DIR, "test_categories_updated.csv")
+        result = transactions_db.upload_csv(csv_updated)
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+        descriptions = {item.description for item in result}
+        assert "Shell Gas Station" in descriptions
+        assert "Target Store" in descriptions
+        assert "Whole Foods Market" not in descriptions
+
+        shell = next(item for item in result if item.description == "Shell Gas Station")
+        assert shell.detailed_category == "Auto Fuel"
+        assert shell.primary_category == "Transportation"
+
+        target = next(item for item in result if item.description == "Target Store")
+        assert target.detailed_category == "General Retail"
+        assert target.primary_category == "Shopping"
+
+    def test_upload_all_csvs_returns_updated_records(self, clean_transactions_database, clean_updates_database, tmp_path):
+        """
+        upload_all_csvs returns only the ORM records whose categories were actually changed
+        across all CSVs processed.
+
+        Seeds the DB with two original CSV files, then calls upload_all_csvs on an isolated
+        directory containing both updated CSVs. Expects 4 updated records total:
+        Shell Gas + Target (from file 1), Netflix + Starbucks (from file 2).
+        Amazon and Whole Foods are unchanged and must not appear in the result.
+        """
+        import shutil
+        transactions_db = clean_transactions_database
+
+        category_fixtures = os.path.join(TEST_CSV_DIR, "category_fixtures")
+        csv_original = os.path.join(TEST_CSV_DIR, "test_categories_original.csv")
+        csv_original_2 = os.path.join(category_fixtures, "test_categories_original_2.csv")
+        transactions_db.upload_csv(csv_original)
+        transactions_db.upload_csv(csv_original_2)
+
+        shutil.copy(os.path.join(TEST_CSV_DIR, "test_categories_updated.csv"), tmp_path)
+        shutil.copy(os.path.join(category_fixtures, "test_categories_updated_2.csv"), tmp_path)
+
+        result = transactions_db.upload_all_csvs(csv_dir=str(tmp_path))
+
+        assert isinstance(result, list)
+        assert len(result) == 4
+
+        descriptions = {item.description for item in result}
+        assert "Shell Gas Station" in descriptions
+        assert "Target Store" in descriptions
+        assert "Netflix" in descriptions
+        assert "Starbucks" in descriptions
+        assert "Whole Foods Market" not in descriptions
+        assert "Amazon" not in descriptions
+
+        shell = next(item for item in result if item.description == "Shell Gas Station")
+        assert shell.detailed_category == "Auto Fuel"
+
+        target = next(item for item in result if item.description == "Target Store")
+        assert target.detailed_category == "General Retail"
+
+        netflix = next(item for item in result if item.description == "Netflix")
+        assert netflix.detailed_category == "Streaming"
+
+        starbucks = next(item for item in result if item.description == "Starbucks")
+        assert starbucks.detailed_category == "Coffee"
