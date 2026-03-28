@@ -38,6 +38,7 @@ class SummariesTableManager(DatabaseManager):
         - upload_monthly_summary: Initiates a cleaning and upload of a provided summary from the transactions table from a the given month and year.
         - update_summary: Updates a summary entry in the summaries table.
         - fetch_summary_by_id: Retrieves a monthly summary from the sumaries table with the given summary_id.
+        - fetch_summaries_over_period: Retrieves all records from the summaries table that fall within the specified date range.
     """
     def __init__(self, db_file: DatabaseFile):
         super().__init__(SummariesTable, db_file)
@@ -93,11 +94,24 @@ class SummariesTableManager(DatabaseManager):
             clean_summary = self._clean_monthly_summary(month, year, summary, budget_id=summary_record.budget_id)
 
             try:
-                self.update_item(self._get_summary_id(month, year), **clean_summary)
+                self.update_item(summary_id, **clean_summary)
 
             except DatabaseIntegrityError as e:
-                logger.error(f"Summary table not updaes for {month} / {year}: {e}")
+                logger.error(f"Summary {summary_id} not updated for {month} / {year}: {e}")
     
+
+    def update_summary_budget_id(self, month: int, year: int, budget_id: int) -> None:
+        """Updates the budget id associated with the month year combination provided."""
+        logger.info(f"Updating summary {month} /{year} budget id to: {budget_id}")
+
+        summary_id = self._get_summary_id(month, year)
+
+        try:
+            self.update_item(summary_id, budget_id=budget_id)
+        
+        except DatabaseIntegrityError as e:
+                logger.error(f"Summary {summary_id} budget id not updated for {month} / {year}: {e}")
+
 
     def fetch_summary_by_id(self, summary_id: int) -> SummariesTable:
         """Retrieves a monthly summary from the summariestable with the given summary_id."""

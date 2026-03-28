@@ -113,9 +113,17 @@ class TransactionsTableManager(DatabaseManager):
     Manager for the transactions table. Provides querying and analysis methods.
 
     Methods:
-        - retrieve_records_by_attribute_over_period: Queries transactions by date range and optional attributes, returns a DataFrame.
+        - upload_csv: Converts and validates the new transactions line by line then uploads to the transactions database.
+        - upload_all_csvs: Iterates through all csv files in csv_dir and uploads only those not yet successfully uploaded.
+        - fetch_records_by_attribute_over_period: Queries transactions by date range and optional attributes, returns a DataFrame.
+        - fetch_records_by_category_over_period: Uses above method to fetch records by category specifically.
+        - retrieve_month_year_pairs: Retrieves all of the month / year pairs in the database and returns them as a list of tuples [(month, year)].
         - generate_monthly_category_report: Summarizes total spending per category for a given month and year.
-        - return_category_count: Returns the number of transactions for a given category over a period.
+        - category_count: Returns the number of transactions for a given category over a period.
+        - category_total_spending: Returns an positive float representing the total spending of transactions from the given category over a period of time.
+        - category_average_spending: Returns an positive float representing the average spending of transactions from the given category over a period of time.
+        - total_income: Returns total income over a given period.
+        - average_income: Returns average income over a given period.
     """
 
     def __init__(self, db_file: DatabaseFile, updates_manager: UpdatesTableManager):
@@ -163,12 +171,12 @@ class TransactionsTableManager(DatabaseManager):
                     logger.exception(f"Exception encountered during data upload to {self}", extra={LoggingExtras.RECORD: record})
                     self.updates_manager.generate_update_entry(csv_filepath, TableStatus.INCOMPLETE)
                     raise e
-        
-        return updated_records
 
         logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
         self.updates_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
         logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
+
+        return updated_records
 
 
     def upload_all_csvs(
@@ -250,8 +258,8 @@ class TransactionsTableManager(DatabaseManager):
         return self.convert_orm_list_to_dataframe(records)
 
 
-    def retrieve_month_year_pairs(self) -> List[Tuple]:
-        """Retrieves all of the month / year pairs in the database and returns them as a list of tuples [(month, year)]"""
+    def fetch_month_year_pairs(self) -> List[Tuple]:
+        """Retrieves all of the month / year pairs in the database and returns them as a list of tuples [(month, year)]."""
         # TODO: Add __repr__ and __str__ methods to DatabaseManager class (duh)
         logger.info(f"Retrieving month year pairs from {self.table_name}")
 
@@ -270,6 +278,21 @@ class TransactionsTableManager(DatabaseManager):
             pairs.append((date.month, date.year))
         
         return pairs
+    
+
+    def fetch_records_by_category_over_period(self, category: CategoriesEnum, month: int=None, year: int=None) -> pd.DataFrame:
+        """Retrieves records from the database over the given period from the given category."""
+        if category in PrimaryCategories:
+            records_df = self.fetch_records_by_attribute_over_period(month, year, primary_category=category.value)
+
+        elif category in DetailedCategories:
+            records_df = self.fetch_records_by_attribute_over_period(month, year, detailed_category=category.value)
+
+        else:
+            logger.error(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", extra={LoggingExtras.CATEGORY: category.value})
+            raise KeyError(f"The category {category} was not found in either PrimaryCategories or DetailedCategories")
+
+        return records_df
 
 
     def generate_monthly_category_report(self, month: int, year: int) -> pd.DataFrame:
@@ -317,7 +340,7 @@ class TransactionsTableManager(DatabaseManager):
         return category_report
 
 
-    def return_category_count(self, category: CategoriesEnum, month: int=None, year: int=None) -> int:
+    def category_count(self, category: CategoriesEnum, month: int=None, year: int=None) -> int:
         """
         Returns an integer representing the number of transactions from the given category over a period of time.
 
@@ -326,18 +349,56 @@ class TransactionsTableManager(DatabaseManager):
             month (int): integer between 1-12 representing the month to search
             year (int): integer representing the year to search
         """
-        if category in PrimaryCategories:
-            records_df = self.fetch_records_by_attribute_over_period(month, year, primary_category=category.value)
+        logger.info(f"Counting number of transactions from {category} in {self.table_name}")
 
-        elif category in DetailedCategories:
-            records_df = self.fetch_records_by_attribute_over_period(month, year, detailed_category=category.value)
-
-        else:
-            logger.error(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", extra={LoggingExtras.CATEGORY: category.value})
-            raise KeyError(f"The category {category} was not found in either PrimaryCategories or DetailedCategories")
-
-        logger.info(f"Counting number of transactions for {category}")
+        records_df = self.fetch_records_by_category_over_period(category, month=month, year=year)
         return records_df.shape[0]
+    
+
+    def category_total_spending(self, category: CategoriesEnum, month: int=None, year: int=None) -> float:
+        """
+        Returns an positive float representing the total spending of transactions from the given category over a period of time.
+
+        Args:
+            category (CategoriesEnum): The category to count
+            month (int): integer between 1-12 representing the month to search
+            year (int): integer representing the year to search
+        """
+        logger.info(f"Calculating total spending from {category} in {self.table_name}")
+        
+        records_df = self.fetch_records_by_category_over_period(category, month=month, year=year)
+        return records_df[TransactionsTable.amount.name].sum() * -1
+    
+
+    def category_average_spending(self, category: CategoriesEnum, month: int=None, year: int=None) -> float:
+        """
+        Returns an positive float representing the average spending of transactions from the given category over a period of time.
+
+        Args:
+            category (CategoriesEnum): The category to count
+            month (int): integer between 1-12 representing the month to search
+            year (int): integer representing the year to search
+        """
+        logger.info(f"Calculating average spending from {category} in {self.table_name}")
+        
+        records_df = self.fetch_records_by_category_over_period(category, month=month, year=year)
+        return (records_df[TransactionsTable.amount.name].sum() * -1) / records_df.shape[0]
+    
+
+    def total_income(self, month: int=None, year:int=None) -> float:
+        """Returns total income over a given period."""
+        logger.info(f"Retrieving total income information from {self.table_name}")
+
+        records_df = self.fetch_records_by_category_over_period(PrimaryCategories.INCOME.value, month=month, year=year)
+        return records_df[TransactionsTable.amount.name].sum()
+    
+
+    def average_income(self, month: int=None, year:int=None) -> float:
+        """Returns total income over a given period."""
+        logger.info(f"Retrieving average income information from {self.table_name}")
+
+        records_df = self.fetch_records_by_category_over_period(PrimaryCategories.INCOME.value, month=month, year=year)
+        return records_df[TransactionsTable.amount.name].sum() / records_df.shape[0]
     
 
     def _update_categories_if_diff(self, record: dict) -> List[TransactionsTable]:
