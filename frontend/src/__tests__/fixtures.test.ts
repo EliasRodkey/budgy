@@ -9,15 +9,24 @@ import {
   mockAISummary,
 } from './fixtures/index'
 
+// All 16 primary categories from PrimaryCategories enum in analysis_utils.py
 const PRIMARY_CATEGORIES = [
-  'Food & Dining',
-  'Transportation',
-  'Housing',
-  'Health & Medical',
-  'Entertainment',
-  'Shopping',
-  'Utilities',
   'Income',
+  'Transfers',
+  'Debt payments',
+  'Investments',
+  'Bank fees',
+  'Food & drink',
+  'Shopping',
+  'Housing & utilities',
+  'Health & wellness',
+  'Entertainment',
+  'Insurance',
+  'Services',
+  'Transportation',
+  'Travel',
+  'Government & charity',
+  'Other',
 ] as const
 
 describe('fixture exports', () => {
@@ -33,12 +42,12 @@ describe('fixture exports', () => {
 })
 
 describe('mockTransactions', () => {
-  it('has 65 transactions', () => {
-    expect(mockTransactions).toHaveLength(65)
+  it('has 74 transactions', () => {
+    expect(mockTransactions).toHaveLength(74)
   })
 
-  // Item 4: all 8 primary categories represented
-  it('contains all 8 primary categories', () => {
+  // Item 4: all 16 primary categories represented
+  it('contains all 16 primary categories', () => {
     const found = new Set(mockTransactions.map((tx) => tx.primaryCategory))
     for (const cat of PRIMARY_CATEGORIES) {
       expect(found.has(cat), `missing category: ${cat}`).toBe(true)
