@@ -74,30 +74,39 @@ budgy_2.0/
 ## Key Components & Responsibilities
 
 ### API Layer (`src/api/`)
+
 Owns all data fetching, the `USE_MOCK` flag, mock data generation, and the snake_case → camelCase transform. Each file exports typed async functions consumed by custom hooks. Does **not** contain business logic, component state, or rendering.
 
 ### Custom Hooks (`src/hooks/`)
+
 Thin wrappers around TanStack Query that call into `src/api/`. Expose `{ data, isLoading, isError, error }` to page components. Do **not** contain rendering logic or filtering logic.
 
 ### Page Components (`src/pages/`)
+
 Own route-level layout and orchestrate sub-components. Read URL search params for active filters. Do **not** call `src/api/` directly — all data access goes through hooks.
 
 ### Chart Components (`src/components/charts/`)
+
 Wrap Recharts primitives with consistent tooltip formatting, currency display, and `ResponsiveContainer`. Accept typed data props. Do **not** fetch data or manage state.
 
 ### Layout (`src/components/layout/`)
+
 App shell: collapsible sidebar and header. Reads sidebar collapse state from Zustand. Does **not** own page content or data.
 
 ### Zustand Stores (`src/store/`)
+
 Two stores only: `theme` (light/dark + localStorage persistence) and `sidebar` (collapsed/expanded). Do **not** hold server data, filter state, or form state.
 
 ### Budget Assignment Logic (`src/lib/budget.ts`)
+
 Pure function: `getEffectiveBudget(assignments: BudgetAssignment[], month: string): BudgetAssignment | null`. Returns the assignment with the most recent `effectiveFrom` ≤ `month`. Extracted from UI for isolated unit testing with edge cases.
 
 ### FastAPI Routers (`api/routers/`)
+
 Thin HTTP handlers. Parse and validate request params via Pydantic, delegate to existing Python manager classes, serialize responses (Pydantic handles camelCase output via `model_config = ConfigDict(populate_by_name=True)`). Do **not** contain business logic.
 
 ### Python Managers (`budgy/database_modules/`)
+
 Unchanged. All database access and business logic lives here. The FastAPI layer calls into these directly.
 
 ## Data Flow
@@ -146,34 +155,42 @@ The AI summary card is rendered in full (recap, anomaly badges, suggestion list,
 All responses use envelope `{ data: T, meta?: { total, page, page_size } }`. Amounts are floats in dollars. Dates are ISO 8601 strings. FastAPI Pydantic models serialize to camelCase.
 
 ### GET `/api/transactions`
+
 - **Input**: `page`, `page_size`, `category`, `date_from`, `date_to`, `search`, `sort_by`, `sort_order`, `flagged`
 - **Output**: `{ data: Transaction[], meta: { total, page, page_size } }`
 - **Errors**: `422` on invalid params
 
 ### POST `/api/transactions/import`
+
 - **Input**: multipart `file` (CSV)
 - **Output**: `{ data: { imported: number, failed: { row: number, reason: string }[] } }`
 - **Errors**: `400` if file is not a valid CSV; `422` if required columns are missing
 
 ### GET `/api/summary/:month`
+
 - **Input**: `month` path param (YYYY-MM)
 - **Output**: `{ data: MonthlySummary }`
 - **Errors**: `404` if no transactions exist for that month
 
 ### GET `/api/categories`
+
 - **Output**: `{ data: Category[] }` — only categories present in actual transaction data; zero-transaction detailed categories omitted
 
 ### GET `/api/analytics/series`
+
 - **Input**: `date_from`, `date_to` (YYYY-MM)
 - **Output**: `{ data: AnalyticsSeries }`
 
 ### GET/POST/PUT/DELETE `/api/budgets` and `/api/budgets/:id`
+
 Standard CRUD. `Budget.categoryLimits` serialized from the flat per-column backend schema into `Record<string, number>`.
 
 ### GET/POST/DELETE `/api/budgets/assignments` and `/api/budgets/assignments/:id`
+
 `effectiveFrom` is a YYYY-MM string.
 
 ### POST `/api/ai/summary`
+
 - **Input**: `{ month: string }`
 - **Output**: `{ data: AISummary }`
 - **Errors**: `503` if AI provider is unavailable; `504` on timeout
@@ -216,31 +233,76 @@ Filter state lives in the URL (not Zustand) so filtered views are bookmarkable a
 ## Decisions & Rationale
 
 ### Decision: Mock-first API layer with `USE_MOCK` flag
+
 **Chosen**: `const USE_MOCK = true` at the top of each `src/api/` file; real `fetch()` stub commented directly below each mock return.
 **Alternatives considered**: MSW (Mock Service Worker), separate mock server, feature flags in env vars.
 **Reason**: One-line change per file to go live. No extra tooling or build config. Mocks and real stubs live side-by-side for easy comparison. MSW adds complexity that isn't needed when the API contract is already fully specified.
 
 ### Decision: URL search params for filter state
+
 **Chosen**: `useSearchParams` from react-router-dom for date range, category, search text, page, and sort.
 **Alternatives considered**: Zustand, local component state.
 **Reason**: Filters are bookmarkable and shareable by design. TanStack Query keys derived from URL params means cache invalidation is automatic. Zustand is not appropriate for state that should survive a page reload or be shareable.
 
 ### Decision: Category names as strings, not frontend enums
+
 **Chosen**: `primaryCategory` and `detailedCategory` are plain strings throughout.
 **Alternatives considered**: Mirroring the backend Python enums in TypeScript.
 **Reason**: The backend may add new categories without a frontend code change. The API returns only categories present in actual data, so the frontend never renders empty buckets. Budget limits attach to category name strings as keys in `Record<string, number>`, matching the backend's column-per-category schema.
 
 ### Decision: Budget assignment resolution as a pure function
+
 **Chosen**: `getEffectiveBudget()` in `src/lib/budget.ts` — exported pure function, tested independently.
 **Alternatives considered**: Logic inline in the budget page component or inside a custom hook.
 **Reason**: The resolution logic (most recent `effectiveFrom` ≤ month) has several edge cases (no assignments, exact match, multiple overlapping, future-dated assignment). Keeping it pure makes it exhaustively testable without rendering components.
 
 ### Decision: snake_case → camelCase transform in the API layer
+
 **Chosen**: Transform happens in `src/api/` functions before returning to hooks and components.
 **Alternatives considered**: Transform in FastAPI response (Pydantic alias), transform in components.
 **Reason**: Components and hooks only ever see camelCase TypeScript types. FastAPI uses Pydantic's `alias_generator` for camelCase output, and the `src/api/` layer types match that output. A single point of transformation prevents inconsistency.
 
 ### Decision: Remove PyQt5 UI without migration
+
 **Chosen**: Delete `budgy/UI/` in full. No migration path.
 **Alternatives considered**: Keep PyQt5 UI as a fallback during transition.
 **Reason**: The new web UI fully replaces all PyQt5 functionality and adds significantly more. Maintaining both would require keeping PyQt5 dependencies and two separate data-access paths with no benefit. The Python backend (managers, database) is the durable asset; the UI layer is not.
+
+## Testing
+
+### Test runner
+
+Vitest — reads `vite.config.ts` natively, inherits the `@` path alias without extra config, and handles TypeScript without additional transforms. Run with `npm test` (`vitest run` for a single non-watch pass).
+
+### What is tested
+
+| Module | Approach |
+|---|---|
+| `src/__tests__/fixtures/` | Compiled by `tsc --noEmit`; runtime assertions verify shape, counts, and required data presence |
+| `src/lib/` pure functions | Unit tests — especially `getEffectiveBudget()` in `budget.ts`, which has edge cases around overlapping assignments |
+| `src/api/` mock functions | Verify mock return values conform to declared TypeScript types |
+| Zustand stores | State transition tests via direct store calls |
+| Custom hooks (`src/hooks/`) | `renderHook` via `@testing-library/react` once hooks are implemented |
+
+### What is not tested
+
+- shadcn/ui primitives (third-party, tested upstream)
+- Recharts rendering internals
+- Page-level integration (verified manually against mock data)
+
+### Shared fixtures
+
+All test files import from `src/__tests__/fixtures/index.ts`. This is the single source of truth for realistic mock data — 6 months, 65 transactions, all primary categories populated.
+
+### Commands
+
+```bash
+# Type-check everything (includes fixtures and test files)
+node_modules/.bin/tsc --noEmit
+
+# Run all tests
+npm test
+
+# Start dev server (verify no runtime import errors)
+npm run dev
+```
