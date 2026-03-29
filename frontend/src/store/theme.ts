@@ -36,7 +36,7 @@ export const useThemeStore = create<ThemeStore>()(
     {
       name: 'budgy-theme',
       onRehydrateStorage: () => (state) => {
-        if (state) applyTheme(state.theme)
+        applyTheme(state?.theme ?? getOsDefault())
       },
     },
   ),
