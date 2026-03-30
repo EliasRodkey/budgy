@@ -86,7 +86,7 @@ export function TransactionTable({ transactions, isLoading, onEdit, onDelete }: 
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Description</th>
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground text-right">Amount</th>
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Category</th>
-              <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Subcategory</th>
+              <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Detailed Category</th>
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Flag</th>
               <th className="py-3 px-4" />
             </tr>

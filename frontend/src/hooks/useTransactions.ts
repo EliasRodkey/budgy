@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteTransaction,
+  getAvailableTags,
   getTransactions,
   importTransactions,
   updateTransaction,
@@ -42,5 +43,12 @@ export function useImportTransactions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
+  });
+}
+
+export function useAvailableTags() {
+  return useQuery({
+    queryKey: ["transactions", "tags"],
+    queryFn: getAvailableTags,
   });
 }

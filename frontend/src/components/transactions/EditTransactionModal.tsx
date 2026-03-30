@@ -1,29 +1,22 @@
 import { Button } from "@/components/ui/button";
+import { CATEGORY_MAPPING } from "@/constants/categories";
 import type { Transaction } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { TagInput } from "./TagInput";
 
-const PRIMARY_CATEGORIES = [
-  "Income",
-  "Transfers",
-  "Debt payments",
-  "Investments",
-  "Bank fees",
-  "Food & drink",
-  "Shopping",
-  "Housing & utilities",
-  "Health & wellness",
-  "Entertainment",
-  "Insurance",
-  "Services",
-  "Transportation",
-  "Travel",
-  "Government & charity",
-  "Other",
-];
+function containsSuspiciousContent(val: string | undefined): boolean {
+  if (!val) return false;
+  return (
+    /<script/i.test(val) ||
+    /javascript:/i.test(val) ||
+    /on\w+\s*=/i.test(val) ||
+    /\b(DROP|INSERT|DELETE|SELECT|UPDATE)\b/i.test(val)
+  );
+}
 
 const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
@@ -35,6 +28,17 @@ const schema = z.object({
   isFlagged: z.boolean(),
   isExcluded: z.boolean(),
   isRepayment: z.boolean(),
+  notes: z
+    .string()
+    .max(300, "Notes must be 300 characters or fewer")
+    .optional()
+    .refine((val) => !containsSuspiciousContent(val), {
+      message: "Notes contain disallowed content",
+    }),
+  tags: z
+    .array(z.string().max(30).regex(/^\S+$/, "Tags cannot contain spaces"))
+    .max(10, "Maximum 10 tags allowed")
+    .optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -42,6 +46,7 @@ type FormValues = z.infer<typeof schema>;
 interface EditTransactionModalProps {
   transaction: Transaction | null;
   isPending: boolean;
+  availableTags: string[];
   onSave: (id: string, updates: Partial<Transaction>) => void;
   onClose: () => void;
 }
@@ -66,15 +71,31 @@ function InputClass(invalid: boolean) {
   return `w-full h-8 rounded-md border px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring ${invalid ? "border-destructive" : "border-input"}`;
 }
 
-export function EditTransactionModal({ transaction, isPending, onSave, onClose }: EditTransactionModalProps) {
+export function EditTransactionModal({ transaction, isPending, availableTags, onSave, onClose }: EditTransactionModalProps) {
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
   });
+
+  const watchedPrimary = watch("primaryCategory");
+  const watchedNotes = watch("notes") ?? "";
+  const detailedOptions = CATEGORY_MAPPING[watchedPrimary] ?? [];
+
+  // Reset detailed category when primary category changes
+  const [prevPrimary, setPrevPrimary] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (prevPrimary !== undefined && watchedPrimary !== prevPrimary) {
+      setValue("detailedCategory", "");
+    }
+    setPrevPrimary(watchedPrimary);
+  }, [watchedPrimary, prevPrimary, setValue]);
 
   useEffect(() => {
     if (transaction) {
@@ -88,14 +109,21 @@ export function EditTransactionModal({ transaction, isPending, onSave, onClose }
         isFlagged: transaction.isFlagged,
         isExcluded: transaction.isExcluded,
         isRepayment: transaction.isRepayment,
+        notes: transaction.notes ?? "",
+        tags: transaction.tags ?? [],
       });
+      setPrevPrimary(transaction.primaryCategory);
     }
   }, [transaction, reset]);
 
   if (!transaction) return null;
 
   function onSubmit(values: FormValues) {
-    onSave(transaction!.id, values);
+    onSave(transaction!.id, {
+      ...values,
+      notes: values.notes || undefined,
+      tags: values.tags?.length ? values.tags : undefined,
+    });
   }
 
   return (
@@ -103,7 +131,7 @@ export function EditTransactionModal({ transaction, isPending, onSave, onClose }
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-lg">
+      <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-sm font-semibold">Edit Transaction</h2>
@@ -149,23 +177,28 @@ export function EditTransactionModal({ transaction, isPending, onSave, onClose }
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Primary Category" error={errors.primaryCategory?.message}>
+            <Field label="Category" error={errors.primaryCategory?.message}>
               <select
                 {...register("primaryCategory")}
                 className={InputClass(!!errors.primaryCategory)}
               >
                 <option value="">Select…</option>
-                {PRIMARY_CATEGORIES.map((c) => (
+                {Object.keys(CATEGORY_MAPPING).map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </Field>
             <Field label="Detailed Category" error={errors.detailedCategory?.message}>
-              <input
-                type="text"
+              <select
                 {...register("detailedCategory")}
+                disabled={detailedOptions.length === 0}
                 className={InputClass(!!errors.detailedCategory)}
-              />
+              >
+                <option value="">{detailedOptions.length === 0 ? "Select a category first" : "Select…"}</option>
+                {detailedOptions.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </Field>
           </div>
 
@@ -177,6 +210,35 @@ export function EditTransactionModal({ transaction, isPending, onSave, onClose }
               </label>
             ))}
           </div>
+
+          <Field label="Notes" error={errors.notes?.message}>
+            <div className="space-y-1">
+              <textarea
+                {...register("notes")}
+                rows={3}
+                maxLength={300}
+                placeholder="Add a note…"
+                className={`w-full rounded-md border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none ${errors.notes ? "border-destructive" : "border-input"}`}
+              />
+              <p className="text-xs text-muted-foreground text-right">{watchedNotes.length}/300</p>
+            </div>
+          </Field>
+
+          <Field label="Tags" error={errors.tags?.message}>
+            <Controller
+              name="tags"
+              control={control}
+              defaultValue={[]}
+              render={({ field }) => (
+                <TagInput
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                  availableTags={availableTags}
+                  error={errors.tags?.message}
+                />
+              )}
+            />
+          </Field>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" type="button" onClick={onClose}>

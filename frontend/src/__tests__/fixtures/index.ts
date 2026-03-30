@@ -121,6 +121,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["work", "paycheck"],
   },
   {
     id: "tx-002",
@@ -133,6 +134,8 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["groceries", "weekly-shop"],
+    notes: "Weekly grocery run, stocked up on pantry staples",
   },
   {
     id: "tx-003",
@@ -145,6 +148,8 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["rent", "housing"],
+    notes: "October 2024 rent payment",
   },
   {
     id: "tx-004",
@@ -169,6 +174,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["subscription", "streaming"],
   },
   {
     id: "tx-006",
@@ -181,6 +187,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["coffee", "work-commute"],
   },
   {
     id: "tx-007",
@@ -193,6 +200,8 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["takeout", "delivery"],
+    notes: "Family dinner order, split with roommate",
   },
   {
     id: "tx-008",
@@ -217,6 +226,8 @@ export const mockTransactions: Transaction[] = [
     isFlagged: true,
     isExcluded: false,
     isRepayment: false,
+    tags: ["amazon", "online-shopping"],
+    notes: "Flagged — verify this charge is legitimate",
   },
   {
     id: "tx-010",
@@ -229,6 +240,8 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["health", "reimbursable"],
+    notes: "HSA reimbursable — submit receipt",
   },
   {
     id: "tx-011",
@@ -241,6 +254,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["groceries", "weekly-shop"],
   },
   {
     id: "tx-012",
@@ -253,6 +267,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["rideshare", "work-commute"],
   },
   {
     id: "tx-013",
@@ -277,6 +292,8 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["p2p", "dinner-split"],
+    notes: "Splitting October group dinner at La Paloma",
   },
 
   // ── November 2024 ──
@@ -303,6 +320,8 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["rent", "housing"],
+    notes: "November 2024 rent payment",
   },
   {
     id: "tx-016",
@@ -315,6 +334,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["groceries"],
   },
   {
     id: "tx-017",
@@ -327,6 +347,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["subscription", "health", "fitness"],
   },
   {
     id: "tx-018",
@@ -339,6 +360,7 @@ export const mockTransactions: Transaction[] = [
     isFlagged: false,
     isExcluded: false,
     isRepayment: false,
+    tags: ["car", "gas"],
   },
   {
     id: "tx-019",

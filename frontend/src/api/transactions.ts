@@ -8,6 +8,9 @@ const USE_MOCK = true;
 export interface TransactionFilters {
   search?: string;
   category?: string;
+  detailedCategory?: string;
+  tags?: string[];        // OR logic: match any of these tags
+  showExcluded?: boolean; // default false — excluded transactions are hidden
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string; // YYYY-MM-DD
   sortBy?: "date" | "amount";
@@ -33,6 +36,11 @@ export interface ImportResult {
 function applyFilters(txs: Transaction[], filters: TransactionFilters): Transaction[] {
   let result = [...txs];
 
+  // Hide excluded transactions by default
+  if (!filters.showExcluded) {
+    result = result.filter((t) => !t.isExcluded);
+  }
+
   if (filters.search) {
     const q = filters.search.toLowerCase();
     result = result.filter(
@@ -43,10 +51,16 @@ function applyFilters(txs: Transaction[], filters: TransactionFilters): Transact
   }
 
   if (filters.category) {
+    result = result.filter((t) => t.primaryCategory === filters.category);
+  }
+
+  if (filters.detailedCategory) {
+    result = result.filter((t) => t.detailedCategory === filters.detailedCategory);
+  }
+
+  if (filters.tags && filters.tags.length > 0) {
     result = result.filter(
-      (t) =>
-        t.primaryCategory === filters.category ||
-        t.detailedCategory === filters.category,
+      (t) => t.tags && filters.tags!.some((tag) => t.tags!.includes(tag)),
     );
   }
 
@@ -97,6 +111,9 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
   // const params = new URLSearchParams();
   // if (filters.search) params.set("search", filters.search);
   // if (filters.category) params.set("category", filters.category);
+  // if (filters.detailedCategory) params.set("detailed_category", filters.detailedCategory);
+  // if (filters.tags?.length) params.set("tags", filters.tags.join(","));
+  // if (filters.showExcluded) params.set("show_excluded", "true");
   // if (filters.dateFrom) params.set("date_from", filters.dateFrom);
   // if (filters.dateTo) params.set("date_to", filters.dateTo);
   // if (filters.sortBy) params.set("sort_by", filters.sortBy);
@@ -123,9 +140,28 @@ export async function getFlaggedTransactions(): Promise<Transaction[]> {
   throw new Error("Real API not implemented");
 }
 
+export async function getAvailableTags(): Promise<string[]> {
+  if (USE_MOCK) {
+    const tagSet = new Set<string>();
+    for (const t of mutableTransactions) {
+      if (t.tags) {
+        for (const tag of t.tags) tagSet.add(tag);
+      }
+    }
+    return [...tagSet].sort();
+  }
+
+  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
+  // const res = await fetch("/api/transactions/tags");
+  // if (!res.ok) throw new Error("Failed to fetch tags");
+  // const json = await res.json();
+  // return json.data as string[];
+  throw new Error("Real API not implemented");
+}
+
 export async function updateTransaction(
   id: string,
-  updates: Partial<Pick<Transaction, "description" | "merchant" | "amount" | "date" | "primaryCategory" | "detailedCategory" | "isFlagged" | "isExcluded" | "isRepayment">>,
+  updates: Partial<Pick<Transaction, "description" | "merchant" | "amount" | "date" | "primaryCategory" | "detailedCategory" | "isFlagged" | "isExcluded" | "isRepayment" | "notes" | "tags">>,
 ): Promise<Transaction> {
   if (USE_MOCK) {
     const idx = mutableTransactions.findIndex((t) => t.id === id);
