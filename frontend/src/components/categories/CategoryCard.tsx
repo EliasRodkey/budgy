@@ -4,10 +4,11 @@ import type { CategorySpend } from "@/types";
 
 interface CategoryCardProps {
   spend: CategorySpend;
+  color?: string;
   onClick?: () => void;
 }
 
-export function CategoryCard({ spend, onClick }: CategoryCardProps) {
+export function CategoryCard({ spend, color, onClick }: CategoryCardProps) {
   const hasLimit = spend.monthlyLimit !== null && spend.percentOfLimit !== null;
   const pct = spend.percentOfLimit ?? 0;
   const overBudget = spend.isOverBudget;
@@ -19,7 +20,15 @@ export function CategoryCard({ spend, onClick }: CategoryCardProps) {
       className="w-full text-left rounded-xl border border-border bg-card p-5 hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between gap-2 mb-3">
-        <h3 className="text-sm font-medium">{spend.categoryName}</h3>
+        <div className="flex items-center gap-2 min-w-0">
+          {color && (
+            <span
+              className="shrink-0 inline-block w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: color }}
+            />
+          )}
+          <h3 className="text-sm font-medium truncate">{spend.categoryName}</h3>
+        </div>
         {overBudget && (
           <span className="shrink-0 inline-flex items-center rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
             Over budget

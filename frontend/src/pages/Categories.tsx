@@ -1,6 +1,8 @@
 import { CategoryCard, CategoryCardSkeleton } from "@/components/categories/CategoryCard";
+import { CategoryDonut } from "@/components/categories/CategoryDonut";
 import { Button } from "@/components/ui/button";
 import { useCategoryOverview } from "@/hooks/useCategories";
+import { CATEGORY_COLORS, NON_SPENDING_CATEGORIES } from "@/lib/categoryColors";
 import { currentMonth, formatMonth } from "@/lib/formatters";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +12,18 @@ const MONTH = currentMonth();
 export default function Categories() {
   const navigate = useNavigate();
   const { data: categories, isLoading, isError, refetch } = useCategoryOverview(MONTH);
+
+  const spending = (categories ?? [])
+    .filter((c) => !NON_SPENDING_CATEGORIES.has(c.categoryName))
+    .sort((a, b) => b.amount - a.amount);
+
+  const nonSpending = (categories ?? [])
+    .filter((c) => NON_SPENDING_CATEGORIES.has(c.categoryName))
+    .sort((a, b) => b.amount - a.amount);
+
+  function handleCategoryClick(categoryName: string) {
+    navigate(`/categories/${encodeURIComponent(categoryName)}`);
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -29,24 +43,44 @@ export default function Categories() {
         </div>
       )}
 
+      <CategoryDonut
+        categories={categories ?? []}
+        isLoading={isLoading}
+        onCategoryClick={handleCategoryClick}
+      />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading
-          ? Array.from({ length: 6 }).map((_, i) => <CategoryCardSkeleton key={i} />)
-          : categories?.map((spend) => (
+          ? Array.from({ length: 9 }).map((_, i) => <CategoryCardSkeleton key={i} />)
+          : spending.map((spend) => (
               <CategoryCard
                 key={spend.categoryId}
                 spend={spend}
-                onClick={() =>
-                  navigate(`/categories/${encodeURIComponent(spend.categoryName)}`)
-                }
+                color={CATEGORY_COLORS[spend.categoryName]}
+                onClick={() => handleCategoryClick(spend.categoryName)}
               />
             ))}
       </div>
 
-      {!isLoading && !isError && categories?.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-12">
-          No spending data for this month.
-        </p>
+      {!isLoading && !isError && nonSpending.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Other
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {nonSpending.map((spend) => (
+              <CategoryCard
+                key={spend.categoryId}
+                spend={spend}
+                onClick={() => handleCategoryClick(spend.categoryName)}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -91,10 +91,40 @@ export async function getCategoryOverview(_month: string): Promise<CategorySpend
 
     const limits: Record<string, number> = activeBudget?.categoryLimits ?? {};
 
-    // Aggregate spend across all transactions (all time for mock)
+    // All 16 primary categories — always appear even with $0
+    const ALL_PRIMARY_CATEGORIES = [
+      "Income", "Transfers", "Debt payments", "Investments", "Bank fees",
+      "Food & drink", "Shopping", "Housing & utilities", "Health & wellness",
+      "Entertainment", "Insurance", "Services", "Transportation",
+      "Travel", "Government & charity", "Other",
+    ];
+
     const map = new Map<string, { amount: number; count: number; catId: string }>();
-    for (const tx of mockTransactions) {
-      if (tx.isExcluded) continue;
+
+    // Pre-populate all categories at $0
+    for (const name of ALL_PRIMARY_CATEGORIES) {
+      map.set(name, {
+        amount: 0,
+        count: 0,
+        catId: mockCategories.find((c) => c.level === "primary" && c.name === name)?.id ?? name,
+      });
+    }
+
+    // Filter to the requested month; fall back to the latest available mock month if none match
+    // (mock data uses fixed past dates and won't match the real current month)
+    const monthTransactions = mockTransactions.filter(
+      (tx) => !tx.isExcluded && tx.date.startsWith(_month),
+    );
+    let txSource = monthTransactions;
+    if (txSource.length === 0) {
+      const latestMonth = mockTransactions
+        .map((tx) => tx.date.slice(0, 7))
+        .sort()
+        .at(-1) ?? "";
+      txSource = mockTransactions.filter((tx) => !tx.isExcluded && tx.date.startsWith(latestMonth));
+    }
+
+    for (const tx of txSource) {
       const key = tx.primaryCategory;
       const entry = map.get(key) ?? {
         amount: 0,
@@ -107,7 +137,6 @@ export async function getCategoryOverview(_month: string): Promise<CategorySpend
     }
 
     return Array.from(map.entries())
-      .filter(([, v]) => v.count > 0)
       .map(([name, v]) => {
         const limit = limits[name] ?? null;
         const pct = limit !== null ? (v.amount / limit) * 100 : null;
@@ -116,7 +145,7 @@ export async function getCategoryOverview(_month: string): Promise<CategorySpend
           categoryName: name,
           amount: v.amount,
           transactionCount: v.count,
-          avgPerTransaction: v.amount / v.count,
+          avgPerTransaction: v.count > 0 ? v.amount / v.count : 0,
           monthlyLimit: limit,
           percentOfLimit: pct,
           isOverBudget: pct !== null && pct > 100,
