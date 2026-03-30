@@ -189,6 +189,17 @@ export default function CategoryDetail() {
                     tickLine={false}
                     axisLine={false}
                     width={56}
+                    domain={[
+                      0,
+                      data.budget !== null
+                        ? Math.ceil(
+                            Math.max(
+                              ...data.spendOverTime.map((d) => d.amount),
+                              data.budget,
+                            ) * 1.1,
+                          )
+                        : "auto",
+                    ]}
                   />
                   <Tooltip content={<SpendTooltip />} />
                   <Line
