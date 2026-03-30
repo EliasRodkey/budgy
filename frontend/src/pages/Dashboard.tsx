@@ -1,8 +1,8 @@
 import { AISummaryCard } from "@/components/dashboard/AISummaryCard";
 import { BudgetGauge } from "@/components/dashboard/BudgetGauge";
 import { FlaggedTransactionsList } from "@/components/dashboard/FlaggedTransactionsList";
-import { SpendingDonut } from "@/components/dashboard/SpendingDonut";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
+import { CategoryDonut } from "@/components/categories/CategoryDonut";
 import { Button } from "@/components/ui/button";
 import { useAISummary } from "@/hooks/useAISummary";
 import { useAssignCategory, useFlaggedTransactions } from "@/hooks/useFlaggedTransactions";
@@ -10,11 +10,13 @@ import { useSummary } from "@/hooks/useSummary";
 import { currentMonth, formatMonth } from "@/lib/formatters";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const MONTH = currentMonth();
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const {
     data: summary,
@@ -69,7 +71,14 @@ export default function Dashboard() {
       {/* Budget gauge + donut chart */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <BudgetGauge byCategory={summary?.byCategory ?? []} isLoading={summaryLoading} />
-        <SpendingDonut summary={summary} isLoading={summaryLoading} />
+        <CategoryDonut
+          categories={summary?.byCategory ?? []}
+          isLoading={summaryLoading}
+          onCategoryClick={(name) => navigate(`/categories/${encodeURIComponent(name)}`)}
+          height={260}
+          innerRadius={60}
+          outerRadius={100}
+        />
       </div>
 
       {/* AI Summary */}
