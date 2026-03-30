@@ -1,7 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/formatters";
 import type { MonthlySummary } from "@/types";
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Popover } from "@base-ui/react/popover";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 const CHART_COLORS = [
   "#6366f1", // indigo
@@ -64,7 +65,33 @@ export function SpendingDonut({ summary, isLoading }: SpendingDonutProps) {
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <h2 className="text-sm font-medium text-muted-foreground mb-4">Spending by Category</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-medium text-muted-foreground">Spending by Category</h2>
+        <Popover.Root>
+          <Popover.Trigger
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            Legend ▾
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Positioner side="bottom" align="end" sideOffset={6}>
+              <Popover.Popup className="z-50 min-w-[160px] max-h-60 overflow-y-auto rounded-lg border border-border bg-card p-3 shadow-md">
+                <ul className="space-y-2">
+                  {data.map((entry, i) => (
+                    <li key={entry.categoryId} className="flex items-center gap-2 text-xs">
+                      <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                        style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className="text-foreground">{entry.categoryName}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Popover.Popup>
+            </Popover.Positioner>
+          </Popover.Portal>
+        </Popover.Root>
+      </div>
       <ResponsiveContainer width="100%" height={260}>
         <PieChart>
           <Pie
@@ -82,11 +109,6 @@ export function SpendingDonut({ summary, isLoading }: SpendingDonutProps) {
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend
-            formatter={(value) => (
-              <span className="text-xs text-foreground">{value}</span>
-            )}
-          />
         </PieChart>
       </ResponsiveContainer>
     </div>

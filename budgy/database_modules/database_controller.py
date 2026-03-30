@@ -69,8 +69,14 @@ class DatabaseController:
         pass
 
     # Calculate average category spending based on category counts and summary
+    def calculate_average_category_spending(self, category) -> dict:
+        """"""
+        pass
 
     # Calculate total category spending based on category counts and summary
+    def calculate_total_category_spending(self, category) -> dict:
+        """"""
+        pass
 
     # Calulate percentages per category of summary / budget spending
 
@@ -82,4 +88,8 @@ class DatabaseController:
 
     # Rank categories based on their spending relative to budgeted amount
 
+    # TODO: Move to utils
+    def _one_dimensional_df_to_dict() -> dict:
+        """"""
+        pass
     

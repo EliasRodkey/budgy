@@ -1,4 +1,5 @@
 import { AISummaryCard } from "@/components/dashboard/AISummaryCard";
+import { BudgetGauge } from "@/components/dashboard/BudgetGauge";
 import { FlaggedTransactionsList } from "@/components/dashboard/FlaggedTransactionsList";
 import { SpendingDonut } from "@/components/dashboard/SpendingDonut";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
@@ -65,8 +66,11 @@ export default function Dashboard() {
       {/* Financial snapshot cards */}
       <SummaryCards summary={summary} isLoading={summaryLoading} />
 
-      {/* Donut chart */}
-      <SpendingDonut summary={summary} isLoading={summaryLoading} />
+      {/* Budget gauge + donut chart */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <BudgetGauge byCategory={summary?.byCategory ?? []} isLoading={summaryLoading} />
+        <SpendingDonut summary={summary} isLoading={summaryLoading} />
+      </div>
 
       {/* AI Summary */}
       <AISummaryCard
