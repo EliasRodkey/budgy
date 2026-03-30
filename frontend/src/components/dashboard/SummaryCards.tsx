@@ -23,11 +23,12 @@ interface StatCardProps {
   value: number;
   icon: React.ReactNode;
   valueClass?: string;
+  highlight?: boolean;
 }
 
-function StatCard({ label, value, icon, valueClass }: StatCardProps) {
+function StatCard({ label, value, icon, valueClass, highlight }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className={`rounded-xl border p-5 transition-colors ${highlight ? "border-destructive/40 bg-destructive/5" : "border-border bg-card"}`}>
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm text-muted-foreground">{label}</span>
         <span className="text-muted-foreground">{icon}</span>
@@ -71,6 +72,7 @@ export function SummaryCards({ summary, isLoading }: SummaryCardsProps) {
         value={summary.net}
         icon={<Wallet size={16} />}
         valueClass={summary.net >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}
+        highlight={summary.net < 0}
       />
     </div>
   );
