@@ -4,6 +4,8 @@ import {
   mockMonthlySummaries,
   mockAnalyticsSeries,
   mockTransactions,
+  mockBudgets,
+  mockBudgetAssignments,
 } from "../__tests__/fixtures";
 
 const USE_MOCK = true;
@@ -77,19 +79,54 @@ export async function getCategories(): Promise<Category[]> {
   throw new Error("Real API not implemented");
 }
 
-export async function getCategoryOverview(month: string): Promise<CategorySpend[]> {
+export async function getCategoryOverview(_month: string): Promise<CategorySpend[]> {
   if (USE_MOCK) {
-    const summary = mockMonthlySummaries.find((s) => s.month === month);
-    if (!summary) {
-      // Fall back to most recent month
-      const latest = mockMonthlySummaries.at(-1);
-      return latest?.byCategory.filter((c) => c.transactionCount > 0) ?? [];
+    // Resolve the active budget: assignment with most recent effectiveFrom <= _month
+    const validAssignments = mockBudgetAssignments
+      .filter((a) => a.effectiveFrom <= _month)
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+    const activeBudget = validAssignments.length
+      ? mockBudgets.find((b) => b.id === validAssignments[0].budgetId)
+      : mockBudgets.at(-1); // fallback: most recently created
+
+    const limits: Record<string, number> = activeBudget?.categoryLimits ?? {};
+
+    // Aggregate spend across all transactions (all time for mock)
+    const map = new Map<string, { amount: number; count: number; catId: string }>();
+    for (const tx of mockTransactions) {
+      if (tx.isExcluded) continue;
+      const key = tx.primaryCategory;
+      const entry = map.get(key) ?? {
+        amount: 0,
+        count: 0,
+        catId: mockCategories.find((c) => c.level === "primary" && c.name === key)?.id ?? key,
+      };
+      entry.amount += Math.abs(tx.amount);
+      entry.count += 1;
+      map.set(key, entry);
     }
-    return summary.byCategory.filter((c) => c.transactionCount > 0);
+
+    return Array.from(map.entries())
+      .filter(([, v]) => v.count > 0)
+      .map(([name, v]) => {
+        const limit = limits[name] ?? null;
+        const pct = limit !== null ? (v.amount / limit) * 100 : null;
+        return {
+          categoryId: v.catId,
+          categoryName: name,
+          amount: v.amount,
+          transactionCount: v.count,
+          avgPerTransaction: v.amount / v.count,
+          monthlyLimit: limit,
+          percentOfLimit: pct,
+          isOverBudget: pct !== null && pct > 100,
+        };
+      })
+      .sort((a, b) => b.amount - a.amount);
   }
 
   // Real fetch stub
-  // const res = await fetch(`/api/summary/${month}`);
+  // const res = await fetch(`/api/summary/${_month}`);
   // if (!res.ok) throw new Error("Failed to fetch category overview");
   // const json = await res.json();
   // return (json.data as MonthlySummary).byCategory.filter((c) => c.transactionCount > 0);

@@ -31,22 +31,28 @@ export function CategoryCard({ spend, onClick }: CategoryCardProps) {
         {formatCurrency(spend.amount)}
       </p>
 
-      {hasLimit && (
-        <div className="mt-3 space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{Math.round(pct)}% of limit</span>
-            <span>{formatCurrency(spend.monthlyLimit!)} limit</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+      <div className="mt-3 space-y-1">
+        <div className="flex justify-between text-xs text-muted-foreground">
+          {hasLimit ? (
+            <>
+              <span>{Math.round(pct)}% of limit</span>
+              <span>{formatCurrency(spend.monthlyLimit!)} limit</span>
+            </>
+          ) : (
+            <span>No budget set</span>
+          )}
+        </div>
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          {hasLimit && (
             <div
               className={`h-full rounded-full transition-all ${
                 overBudget ? "bg-destructive" : "bg-primary"
               }`}
               style={{ width: `${barWidth}%` }}
             />
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
         {spend.transactionCount} transaction{spend.transactionCount !== 1 ? "s" : ""}
