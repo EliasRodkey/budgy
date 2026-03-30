@@ -21,6 +21,8 @@ export interface Transaction {
   isFlagged: boolean;
   isExcluded: boolean;
   isRepayment: boolean;
+  notes?: string;    // max 300 chars, edit modal only
+  tags?: string[];   // max 10 tags, each max 30 chars, no spaces
 }
 
 export interface Category {
