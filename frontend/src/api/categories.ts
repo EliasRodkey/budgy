@@ -16,6 +16,12 @@ export interface CategoryDetailData {
   primaryCategory: string;
   spendOverTime: { month: string; amount: number }[];
   subcategories: CategorySpend[];
+  currentMonthSubcategories: CategorySpend[];
+  budget: number | null;
+  currentMonthTotal: number;
+  currentMonthTxCount: number;
+  yearAvgSpend: number;
+  currentMonthTransactions: Transaction[];
 }
 
 export interface SubcategoryDetailData {
@@ -177,7 +183,64 @@ export async function getCategoryDetail(primaryCategory: string): Promise<Catego
 
     const subcategories = buildSubcategorySpend(mockTransactions, primaryCategory);
 
-    return { primaryCategory, spendOverTime, subcategories };
+    // Resolve active budget for this category
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const validAssignments = mockBudgetAssignments
+      .filter((a) => a.effectiveFrom <= currentMonth)
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+    const activeBudget = validAssignments.length
+      ? mockBudgets.find((b) => b.id === validAssignments[0].budgetId)
+      : mockBudgets.at(-1);
+    const budget: number | null = activeBudget?.categoryLimits?.[primaryCategory] ?? null;
+
+    // Resolve current-month transactions (fall back to latest mock month if no match)
+    const monthTxs = mockTransactions.filter(
+      (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory && tx.date.startsWith(currentMonth),
+    );
+    const latestMonth = mockTransactions
+      .map((tx) => tx.date.slice(0, 7))
+      .sort()
+      .at(-1) ?? "";
+    const txSource = monthTxs.length > 0
+      ? monthTxs
+      : mockTransactions.filter(
+          (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory && tx.date.startsWith(latestMonth),
+        );
+
+    const currentMonthSubcategories = buildSubcategorySpend(txSource, primaryCategory);
+    const currentMonthTotal = txSource.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const currentMonthTxCount = txSource.length;
+    const currentMonthTransactions = [...txSource].sort((a, b) => b.date.localeCompare(a.date));
+
+    // Year average: monthly totals for the current year, fall back to latest available year
+    const currentYear = currentMonth.slice(0, 4);
+    const yearTxs = mockTransactions.filter(
+      (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory && tx.date.startsWith(currentYear),
+    );
+    const yearTxSource = yearTxs.length > 0 ? yearTxs : mockTransactions.filter(
+      (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory,
+    );
+    const monthlyTotals = new Map<string, number>();
+    for (const tx of yearTxSource) {
+      const m = tx.date.slice(0, 7);
+      monthlyTotals.set(m, (monthlyTotals.get(m) ?? 0) + Math.abs(tx.amount));
+    }
+    const totalsArr = Array.from(monthlyTotals.values());
+    const yearAvgSpend = totalsArr.length > 0
+      ? totalsArr.reduce((s, v) => s + v, 0) / totalsArr.length
+      : 0;
+
+    return {
+      primaryCategory,
+      spendOverTime,
+      subcategories,
+      currentMonthSubcategories,
+      budget,
+      currentMonthTotal,
+      currentMonthTxCount,
+      yearAvgSpend,
+      currentMonthTransactions,
+    };
   }
 
   // Real fetch stub
