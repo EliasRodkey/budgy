@@ -463,16 +463,27 @@ function BudgetForm({
 interface CreateBudgetFormProps {
   onSuccess: () => void;
   onCancel: () => void;
+  prefillBudget?: Budget;
 }
 
-function CreateBudgetForm({ onSuccess, onCancel }: CreateBudgetFormProps) {
+function CreateBudgetForm({ onSuccess, onCancel, prefillBudget }: CreateBudgetFormProps) {
   const { mutate, isPending } = useCreateBudget();
 
-  const defaultValues: BudgetFormValues = {
-    categoryLimits: Object.fromEntries(SPENDING_CATEGORIES.map((c) => [c, 0])),
-    incomeEstimate: 0,
-    note: "",
-  };
+  const defaultValues: BudgetFormValues = prefillBudget
+    ? {
+        categoryLimits: Object.fromEntries(
+          SPENDING_CATEGORIES.map((c) => [c, prefillBudget.categoryLimits[c] ?? 0]),
+        ),
+        incomeEstimate:
+          prefillBudget.netGainOrLoss +
+          Object.values(prefillBudget.categoryLimits).reduce((s, v) => s + v, 0),
+        note: prefillBudget.note ?? "",
+      }
+    : {
+        categoryLimits: Object.fromEntries(SPENDING_CATEGORIES.map((c) => [c, 0])),
+        incomeEstimate: 0,
+        note: "",
+      };
 
   function onSubmit(values: BudgetFormValues) {
     const income = Number(values.incomeEstimate) || 0;
@@ -557,6 +568,65 @@ function EditBudgetForm({ budget, onSuccess, onCancel }: EditBudgetFormProps) {
   );
 }
 
+// ─── Edit warning dialog ──────────────────────────────────────────────────────
+
+interface EditWarningDialogProps {
+  pastMonths: string[];
+  onCreateNew: () => void;
+  onClose: () => void;
+}
+
+function EditWarningDialog({ pastMonths, onCreateNew, onClose }: EditWarningDialogProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-amber-500" />
+            <h2 className="text-sm font-semibold">Unable to edit budget</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This budget is assigned to past months that can no longer be changed. Editing
+            it in place would retroactively alter those months.
+          </p>
+
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1 max-h-32 overflow-y-auto">
+            {pastMonths.map((m) => (
+              <p key={m} className="text-xs text-muted-foreground">{formatMonth(m)}</p>
+            ))}
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            Would you like to create a new budget pre-filled with these values instead?
+          </p>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={onCreateNew}>
+              Create new budget
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Budget card ──────────────────────────────────────────────────────────────
 
 interface BudgetCardProps {
@@ -566,6 +636,7 @@ interface BudgetCardProps {
   allBudgets: Budget[];
   onDeleteRequest: (budget: Budget) => void;
   onAssignAsCurrent: (budgetId: string) => void;
+  onCreateFromBudget: (budget: Budget) => void;
   isAssigning: boolean;
 }
 
@@ -576,13 +647,42 @@ function BudgetCard({
   allBudgets,
   onDeleteRequest,
   onAssignAsCurrent,
+  onCreateFromBudget,
   isAssigning,
 }: BudgetCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [showEditWarning, setShowEditWarning] = useState(false);
 
   const limits = Object.entries(budget.categoryLimits);
   const period = getBudgetPeriod(budget.id, assignments);
+
+  // Months before the current month where this budget was the effective budget
+  const pastMonthsAssigned = (() => {
+    const own = assignments.filter((a) => a.budgetId === budget.id);
+    if (own.length === 0) return [];
+    const earliest = own.sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))[0];
+    const past: string[] = [];
+    const today = currentMonth();
+    let cursor = earliest.effectiveFrom;
+    while (cursor < today) {
+      if (getEffectiveBudget(assignments, cursor)?.budgetId === budget.id) {
+        past.push(cursor);
+      }
+      const [y, m] = cursor.split("-").map(Number);
+      cursor = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+    }
+    return past;
+  })();
+
+  function handleEditClick() {
+    if (pastMonthsAssigned.length > 0) {
+      setShowEditWarning(true);
+    } else {
+      setEditing(true);
+      setExpanded(false);
+    }
+  }
 
   return (
     <div
@@ -626,7 +726,7 @@ function BudgetCard({
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-muted-foreground"
-              onClick={() => { setEditing(true); setExpanded(false); }}
+              onClick={handleEditClick}
               title="Edit this budget"
             >
               <Pencil size={14} />
@@ -697,6 +797,17 @@ function BudgetCard({
             </p>
           )}
         </div>
+      )}
+
+      {showEditWarning && (
+        <EditWarningDialog
+          pastMonths={pastMonthsAssigned}
+          onCreateNew={() => {
+            setShowEditWarning(false);
+            onCreateFromBudget(budget);
+          }}
+          onClose={() => setShowEditWarning(false)}
+        />
       )}
     </div>
   );
@@ -874,7 +985,13 @@ export default function Budgets() {
   const { mutate: assignAsCurrent, isPending: assigning } = useCreateBudgetAssignment();
 
   const [showCreateBudget, setShowCreateBudget] = useState(false);
+  const [prefillBudget, setPrefillBudget] = useState<Budget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Budget | null>(null);
+
+  function handleCreateFromBudget(budget: Budget) {
+    setPrefillBudget(budget);
+    setShowCreateBudget(true);
+  }
 
   const isLoading = loadingBudgets || loadingAssignments;
   const isError = errorBudgets || errorAssignments;
@@ -987,10 +1104,13 @@ export default function Budgets() {
 
         {showCreateBudget && (
           <div className="rounded-xl border border-border bg-card p-5">
-            <p className="text-sm font-medium mb-4">Create new budget</p>
+            <p className="text-sm font-medium mb-4">
+              {prefillBudget ? "Create new budget (pre-filled from existing)" : "Create new budget"}
+            </p>
             <CreateBudgetForm
-              onSuccess={() => setShowCreateBudget(false)}
-              onCancel={() => setShowCreateBudget(false)}
+              prefillBudget={prefillBudget ?? undefined}
+              onSuccess={() => { setShowCreateBudget(false); setPrefillBudget(null); }}
+              onCancel={() => { setShowCreateBudget(false); setPrefillBudget(null); }}
             />
           </div>
         )}
@@ -1015,6 +1135,7 @@ export default function Budgets() {
                 allBudgets={budgets ?? []}
                 onDeleteRequest={setDeleteTarget}
                 onAssignAsCurrent={handleAssignAsCurrent}
+                onCreateFromBudget={handleCreateFromBudget}
                 isAssigning={assigning}
               />
             ))}
