@@ -28,6 +28,7 @@ export async function createBudget(
   if (USE_MOCK) {
     const budget: Budget = {
       ...payload,
+      note: payload.note ?? null,
       id: `budget-${Date.now()}`,
       dateCreated: new Date().toISOString(),
     };
@@ -76,8 +77,8 @@ export async function deleteBudget(id: string): Promise<void> {
     const idx = mutableBudgets.findIndex((b) => b.id === id);
     if (idx === -1) throw new Error(`Budget ${id} not found`);
     mutableBudgets = mutableBudgets.filter((b) => b.id !== id);
-    // Also remove any assignments referencing this budget
-    mutableAssignments = mutableAssignments.filter((a) => a.budgetId !== id);
+    // Assignments are NOT cascade-deleted — the caller must reassign covered
+    // months before deleting a budget that has assignments.
     return;
   }
 

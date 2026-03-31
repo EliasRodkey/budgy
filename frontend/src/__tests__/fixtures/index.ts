@@ -1141,6 +1141,7 @@ export const mockBudgets: Budget[] = [
       "Insurance": 150,
     },
     netGainOrLoss: 3800 - (400 + 150 + 1800 + 100 + 80 + 200 + 150),
+    note: "Base budget for Q4 2024",
   },
   {
     id: "budget-002",
@@ -1156,6 +1157,7 @@ export const mockBudgets: Budget[] = [
       "Services": 75,
     },
     netGainOrLoss: 3800 - (450 + 175 + 1800 + 150 + 100 + 250 + 150 + 75),
+    note: "New Year revision — increased food and health limits",
   },
 ];
 
