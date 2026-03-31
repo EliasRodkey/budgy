@@ -107,6 +107,11 @@ export async function createBudgetAssignment(
   payload: Omit<BudgetAssignment, "id">,
 ): Promise<BudgetAssignment> {
   if (USE_MOCK) {
+    // Upsert: replace any existing assignment for the same effectiveFrom month
+    // so that reassigning the current month always takes effect immediately.
+    mutableAssignments = mutableAssignments.filter(
+      (a) => a.effectiveFrom !== payload.effectiveFrom,
+    );
     const assignment: BudgetAssignment = {
       ...payload,
       id: `assign-${Date.now()}`,

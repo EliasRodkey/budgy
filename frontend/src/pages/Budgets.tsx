@@ -188,8 +188,16 @@ function ActiveBudgetCard({ budgets, assignments }: ActiveBudgetCardProps) {
           </span>
         </span>
       </div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-primary/20 pt-3 mt-1 text-sm">
+        {Object.entries(budget.categoryLimits).map(([category, limit]) => (
+          <div key={category} className="flex justify-between gap-2">
+            <span className="text-muted-foreground truncate">{category}</span>
+            <span className="font-medium tabular-nums">{formatCurrency(limit)}</span>
+          </div>
+        ))}
+      </div>
       {budget.note && (
-        <p className="text-xs text-muted-foreground border-t border-border/50 pt-2 mt-2">
+        <p className="text-xs text-muted-foreground border-t border-primary/20 pt-2 mt-1">
           {budget.note}
         </p>
       )}
@@ -625,16 +633,24 @@ function BudgetCard({
             </Button>
           )}
           {!isActive && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-muted-foreground hover:text-primary"
-              onClick={() => onAssignAsCurrent(budget.id)}
-              disabled={isAssigning}
-              title="Assign as current month's budget"
-            >
-              <CalendarCheck size={14} />
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-muted-foreground hover:text-primary"
+                    onClick={() => onAssignAsCurrent(budget.id)}
+                    disabled={isAssigning}
+                  >
+                    <CalendarCheck size={14} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Assign as current month's budget
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           <Button
             variant="ghost"
@@ -690,6 +706,14 @@ function BudgetCard({
 
 type ChartView = "total" | "per-category";
 
+/** Compact axis label: "Jan '25" */
+function shortMonth(yyyyMm: string): string {
+  const [y, m] = yyyyMm.split("-").map(Number);
+  const date = new Date(y, m - 1, 1);
+  const mon = date.toLocaleDateString("en-US", { month: "short" });
+  return `${mon} '${String(y).slice(2)}`;
+}
+
 interface BudgetLimitsChartProps {
   budgets: Budget[];
   assignments: BudgetAssignment[];
@@ -733,7 +757,7 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
     const assignment = getEffectiveBudget(assignments, month);
     const budget = assignment ? budgets.find((b) => b.id === assignment.budgetId) : null;
     const row: Record<string, string | number> = {
-      month: formatMonth(month).replace(" ", "\n"),
+      month: shortMonth(month),
       monthFull: month,
     };
     if (view === "total") {
@@ -786,7 +810,10 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
             />
             <RechartsTooltip
               formatter={(value: number, name: string) => [formatCurrency(value), name]}
-              labelFormatter={(label) => label}
+              labelFormatter={(label, payload) => {
+                const monthFull = payload?.[0]?.payload?.monthFull;
+                return monthFull ? formatMonth(monthFull) : label;
+              }}
               contentStyle={{
                 backgroundColor: "var(--card)",
                 border: "1px solid var(--border)",
