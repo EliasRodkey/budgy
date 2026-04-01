@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MOCK_DEFAULT_DATE_FROM, MOCK_DEFAULT_DATE_TO } from "@/api/analytics";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { useSummary } from "@/hooks/useSummary";
 import { formatCurrency, formatMonth } from "@/lib/formatters";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import {
@@ -14,8 +13,7 @@ import {
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -135,7 +133,6 @@ export default function Analytics() {
 
   const dateFrom = searchParams.get("dateFrom") ?? MOCK_DEFAULT_DATE_FROM;
   const dateTo = searchParams.get("dateTo") ?? MOCK_DEFAULT_DATE_TO;
-  const donutMonth = searchParams.get("donutMonth") ?? dateTo;
 
   function setParam(key: string, value: string) {
     setSearchParams((prev) => {
@@ -146,11 +143,12 @@ export default function Analytics() {
   }
 
   const { data, isLoading, isError, refetch } = useAnalytics({ dateFrom, dateTo });
-  const { data: donutSummary, isLoading: donutLoading } = useSummary(donutMonth);
 
   const labels = data?.series.labels ?? [];
   const datasets = data?.series.datasets ?? [];
   const incomeExpenses = data?.incomeExpenses ?? [];
+  const budgetPerformance = data?.budgetPerformance ?? [];
+  const monthlyBudgetTotals = data?.monthlyBudgetTotals ?? [];
 
   // Build flat data arrays for charts that use month as x-axis
   const incomeExpensesChartData = incomeExpenses.map((row) => ({
@@ -160,7 +158,6 @@ export default function Analytics() {
     Net: row.net,
   }));
 
-  // Stacked bar and line chart share the same flat row shape
   const flatChartData = labels.map((label, labelIdx) => {
     const row: Record<string, string | number> = { month: label };
     for (const ds of datasets) {
@@ -169,12 +166,6 @@ export default function Analytics() {
     return row;
   });
 
-  // Donut data from selected month summary
-  const donutData =
-    donutSummary?.byCategory
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => b.amount - a.amount) ?? [];
-
   return (
     <div className="p-6 space-y-6">
       {/* Header + date range selector */}
@@ -182,7 +173,7 @@ export default function Analytics() {
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Spending trends and summaries across your selected period.
+            Spending trends and budget performance across your selected period.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -213,7 +204,7 @@ export default function Analytics() {
 
       {/* 1. Line chart: spending over time per category */}
       {isLoading ? (
-        <ChartSkeleton height={300} />
+        <ChartSkeleton height={450} />
       ) : (
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="text-sm font-medium text-muted-foreground mb-4">
@@ -224,7 +215,7 @@ export default function Analytics() {
               No data for selected range.
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={450}>
               <LineChart data={flatChartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis
@@ -256,7 +247,7 @@ export default function Analytics() {
         </div>
       )}
 
-      {/* 2. Income vs expenses + 3. Donut side by side */}
+      {/* 2. Income vs expenses + 3. Total over/under budget side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Income vs Expenses bar chart with net overlay */}
         {isLoading ? (
@@ -301,189 +292,194 @@ export default function Analytics() {
           </div>
         )}
 
-        {/* Donut chart for selected month */}
-        {donutLoading ? (
+        {/* Total over/under budget bar chart */}
+        {isLoading ? (
           <ChartSkeleton height={280} />
         ) : (
           <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                Category Breakdown
-              </h2>
-              {labels.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground text-right">Month</label>
-                  <select
-                    value={donutMonth}
-                    onChange={(e) => setParam("donutMonth", e.target.value)}
-                    className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {labels.map((label) => (
-                      <option key={label} value={label}>
-                        {formatMonth(label)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-            {donutData.length === 0 ? (
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">
+              Total Over/Under Budget
+            </h2>
+            {monthlyBudgetTotals.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-16">
-                No spending data for {formatMonth(donutMonth)}.
+                No budget data for selected range.
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={donutData}
-                    dataKey="amount"
-                    nameKey="categoryName"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                  >
-                    {donutData.map((entry, i) => (
-                      <Cell
-                        key={entry.categoryId}
-                        fill={categoryColor(entry.categoryName, i)}
-                      />
-                    ))}
-                  </Pie>
+                <BarChart data={monthlyBudgetTotals}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatMonth}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(v) => formatCurrency(v)}
+                    width={80}
+                  />
+                  <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.3} />
                   <Tooltip
-                    content={({ active, payload }) => {
+                    content={({ active, payload, label: ttLabel }) => {
                       if (!active || !payload?.length) return null;
-                      const entry = payload[0];
+                      const val = payload[0].value as number;
+                      const isOver = val > 0;
                       return (
-                        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-sm">
-                          <p className="font-medium">{entry.name}</p>
-                          <p className="text-muted-foreground">
-                            {formatCurrency(entry.value as number)}
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-sm min-w-[180px]">
+                          <p className="font-medium mb-1">
+                            {formatMonth(ttLabel as string)}
                           </p>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">
+                              {isOver ? "Over budget" : "Under budget"}
+                            </span>
+                            <span
+                              className="font-medium"
+                              style={{ color: isOver ? "#f43f5e" : "#22c55e" }}
+                            >
+                              {isOver ? "+" : ""}
+                              {formatCurrency(val)}
+                            </span>
+                          </div>
                         </div>
                       );
                     }}
                   />
-                  <Legend
-                    formatter={(value) => (
-                      <span className="text-xs text-foreground">{value}</span>
-                    )}
-                  />
-                </PieChart>
+                  <Bar dataKey="overUnder" radius={[3, 3, 0, 0]} name="Over/Under Budget">
+                    {monthlyBudgetTotals.map((entry, i) => (
+                      <Cell
+                        key={`cell-${i}`}
+                        fill={entry.overUnder > 0 ? "#f43f5e" : "#22c55e"}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>
         )}
       </div>
 
-      {/* 4. Stacked bar chart: category spending by month */}
-      {isLoading ? (
-        <ChartSkeleton height={300} />
-      ) : (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-medium text-muted-foreground mb-4">
-            Category Spending by Month
-          </h2>
-          {flatChartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-16">
-              No data for selected range.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={flatChartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={formatMonth}
-                />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(v) => formatCurrency(v)}
-                  width={80}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend />
-                {datasets.map((ds, i) => (
-                  <Bar
-                    key={ds.categoryId}
-                    dataKey={ds.categoryName}
-                    stackId="a"
-                    fill={categoryColor(ds.categoryName, i)}
-                    radius={i === datasets.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      )}
-
-      {/* 5. Small-multiple line charts: one per category */}
+      {/* 4. Per-category budget performance cards */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <ChartSkeleton key={i} height={160} />
           ))}
         </div>
-      ) : datasets.length > 0 ? (
+      ) : budgetPerformance.length > 0 ? (
         <div>
           <h2 className="text-sm font-medium text-muted-foreground mb-3">
-            Per-Category Trends
+            Per-Category Budget Performance
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {datasets.map((ds, i) => {
-              const chartData = labels.map((label, labelIdx) => ({
-                month: label,
-                value: ds.values[labelIdx] ?? 0,
-              }));
-              const color = categoryColor(ds.categoryName, i);
+            {budgetPerformance.map((cat, i) => {
+              const color = categoryColor(cat.categoryName, i);
+              // For income: positive is good (green). For expenses: positive is bad (red).
+              const isAvgOver = cat.isIncome
+                ? cat.averageOverUnder < 0
+                : cat.averageOverUnder > 0;
+              const avgBadgeColor = isAvgOver ? "#f43f5e" : "#22c55e";
+              const avgBadgeBg = isAvgOver
+                ? "rgba(244,63,94,0.12)"
+                : "rgba(34,197,94,0.12)";
               return (
                 <div
-                  key={ds.categoryId}
+                  key={cat.categoryId}
                   className="rounded-xl border border-border bg-card p-4"
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                        style={{ backgroundColor: color }}
+                      />
+                      <h3 className="text-xs font-medium text-foreground truncate">
+                        {cat.categoryName}
+                      </h3>
+                    </div>
                     <span
-                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
-                      style={{ backgroundColor: color }}
-                    />
-                    <h3 className="text-xs font-medium text-foreground">
-                      {ds.categoryName}
-                    </h3>
+                      className="text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full"
+                      style={{ backgroundColor: avgBadgeBg, color: avgBadgeColor }}
+                    >
+                      {cat.averageOverUnder > 0 ? "+" : ""}
+                      {formatCurrency(cat.averageOverUnder)} avg
+                    </span>
                   </div>
-                  <ResponsiveContainer width="100%" height={160}>
-                    <LineChart data={chartData}>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {cat.isIncome
+                      ? `Estimate: ${formatCurrency(cat.monthlyLimit)}/mo`
+                      : `Budget: ${formatCurrency(cat.monthlyLimit)}/mo`}
+                  </p>
+                  <ResponsiveContainer width="100%" height={140}>
+                    <LineChart data={cat.data}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis
                         dataKey="month"
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(v: string) => v.slice(5)}
+                        tickFormatter={(v: string) => {
+                          const [year, mon] = v.split("-").map(Number);
+                          return new Date(year, mon - 1, 1).toLocaleDateString(
+                            "en-US",
+                            { month: "short" },
+                          );
+                        }}
                       />
                       <YAxis
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => `$${v}`}
-                        width={50}
+                        tickFormatter={(v) => formatCurrency(v)}
+                        width={60}
+                      />
+                      <ReferenceLine
+                        y={0}
+                        stroke="currentColor"
+                        strokeOpacity={0.4}
+                        strokeDasharray="4 2"
                       />
                       <Tooltip
                         content={({ active, payload, label: ttLabel }) => {
                           if (!active || !payload?.length) return null;
+                          const val = payload[0].value as number;
+                          // For income: positive = above estimate (good). For expenses: positive = over budget (bad).
+                          const isPositive = val > 0;
+                          const isWarning = cat.isIncome ? !isPositive : isPositive;
+                          const labelText = cat.isIncome
+                            ? isPositive
+                              ? "Above estimate"
+                              : "Below estimate"
+                            : isPositive
+                              ? "Over budget"
+                              : "Under budget";
                           return (
-                            <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
-                              <p className="font-medium">{formatMonth(ttLabel as string)}</p>
-                              <p className="text-muted-foreground">
-                                {formatCurrency(payload[0].value as number)}
+                            <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs min-w-[160px]">
+                              <p className="font-medium mb-1">
+                                {formatMonth(ttLabel as string)}
                               </p>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground">
+                                  {labelText}
+                                </span>
+                                <span
+                                  className="font-medium"
+                                  style={{
+                                    color: isWarning ? "#f43f5e" : "#22c55e",
+                                  }}
+                                >
+                                  {val > 0 ? "+" : ""}
+                                  {formatCurrency(val)}
+                                </span>
+                              </div>
                             </div>
                           );
                         }}
                       />
                       <Line
                         type="monotone"
-                        dataKey="value"
+                        dataKey="overUnder"
                         stroke={color}
                         strokeWidth={2}
                         dot={{ r: 3, fill: color }}
+                        activeDot={{ r: 4 }}
                       />
                     </LineChart>
                   </ResponsiveContainer>

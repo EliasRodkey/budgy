@@ -64,7 +64,8 @@ export interface Budget {
   id: string;
   dateCreated: string; // ISO 8601
   categoryLimits: Record<string, number>; // primaryCategory name → monthly limit
-  netGainOrLoss: number; // calculated: income - sum of limits
+  monthlyIncomeEstimate: number; // user-entered expected monthly income
+  netGainOrLoss: number; // derived: monthlyIncomeEstimate - sum(categoryLimits)
   note: string | null; // optional user note
 }
 

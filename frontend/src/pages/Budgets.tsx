@@ -474,9 +474,7 @@ function CreateBudgetForm({ onSuccess, onCancel, prefillBudget }: CreateBudgetFo
         categoryLimits: Object.fromEntries(
           SPENDING_CATEGORIES.map((c) => [c, prefillBudget.categoryLimits[c] ?? 0]),
         ),
-        incomeEstimate:
-          prefillBudget.netGainOrLoss +
-          Object.values(prefillBudget.categoryLimits).reduce((s, v) => s + v, 0),
+        incomeEstimate: prefillBudget.monthlyIncomeEstimate,
         note: prefillBudget.note ?? "",
       }
     : {
@@ -496,6 +494,7 @@ function CreateBudgetForm({ onSuccess, onCancel, prefillBudget }: CreateBudgetFo
     mutate(
       {
         categoryLimits: limits,
+        monthlyIncomeEstimate: income,
         netGainOrLoss: income - limitSum,
         note: values.note?.trim() || null,
       },
@@ -531,7 +530,7 @@ function EditBudgetForm({ budget, onSuccess, onCancel }: EditBudgetFormProps) {
     categoryLimits: Object.fromEntries(
       SPENDING_CATEGORIES.map((c) => [c, budget.categoryLimits[c] ?? 0]),
     ),
-    incomeEstimate: budget.netGainOrLoss + limitSum,
+    incomeEstimate: budget.monthlyIncomeEstimate,
     note: budget.note ?? "",
   };
 
@@ -548,6 +547,7 @@ function EditBudgetForm({ budget, onSuccess, onCancel }: EditBudgetFormProps) {
         id: budget.id,
         payload: {
           categoryLimits: limits,
+          monthlyIncomeEstimate: income,
           netGainOrLoss: income - newLimitSum,
           note: values.note?.trim() || null,
         },
