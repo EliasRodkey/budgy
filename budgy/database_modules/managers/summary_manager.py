@@ -17,10 +17,10 @@ import pandas as pd
 from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityError, ItemNotFoundError
 
 # Local imports
-from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CATEGORY_MAPPING
+from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from budgy.utils.file_utils import LoggingExtras
 from .common import convert_datetime_nums_to_range
-from ..models.summaries import SummariesTable, summary_columns
+from ..models.summaries import SummariesTable
 
 
 
@@ -164,95 +164,47 @@ class SummariesTableManager(DatabaseManager):
             logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES: attributes})
 
         return self.convert_orm_list_to_dataframe(records)
-    
-
-    def calculate_total_spending_over_period(self, month: int=None, year: int=None) -> pd.DataFrame:
-        """Calculates total spending over a given period by summing all category columns in the summary table."""
-        logger.info(f"Calculating total spending over period: {month} / {year} from {self.table_name}")
-
-        summaries_df = self.fetch_summaries_over_period(month, year)
-
-        if summaries_df.empty:
-            logger.warning(f"No summaries found for period: {month} / {year}, returning empty DataFrame.")
-            return summaries_df
-        
-        all_categories = PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
-        spending_df = summaries_df[all_categories].copy()
-        
-        return spending_df.sum(axis=1)
-    
-
-    def calculate_average_total_spending_over_period(self, month: int=None, year: int=None) -> pd.DataFrame:
-        """Calculates total spending over a given period by summing all category columns in the summary table."""
-        logger.info(f"Calculating total spending over period: {month} / {year} from {self.table_name}")
-
-        summaries_df = self.fetch_summaries_over_period(month, year)
-
-        if summaries_df.empty:
-            logger.warning(f"No summaries found for period: {month} / {year}, returning empty DataFrame.")
-            return summaries_df
-        
-        all_categories = PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
-        spending_df = summaries_df[all_categories].copy()
-        
-        return spending_df.mean(axis=1)
 
 
     def _clean_monthly_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int=None) -> dict:
-        """Cleans and validates monthly summary for upload, returns validated dict"""
-        logger.debug(f"Cleaning monthly summary for uplaod...")
+        """Validates and flattens a sparse monthly summary DataFrame for DB insertion.
 
-        flat_summary = self._flatten_summary(summary)
+        Args:
+            month: Month as integer (1-12).
+            year: Year as integer (2000–current).
+            summary: Sparse DataFrame from generate_monthly_summary — index=categories, columns=['sum', 'mean', 'count'].
+            budget_id: Budget to associate with this summary. Defaults to most recently inserted summary's budget_id.
 
-        input_columns = summary.columns
-        if sum([col not in SummariesTable.get_column_names() for col in input_columns]) > 0:
-            raise KeyError(f"Invalid column name in raw summary table {input_columns}")
+        Returns:
+            Dict with required scalar fields (date, month, year, budget_id) plus sparse sum_*/mean_*/count_* keys.
+            DB column defaults fill any missing category columns.
 
-        summary[SummariesTable.date.name] = datetime(year, month, 1)
-        summary[SummariesTable.month.name] = month
-        summary[SummariesTable.year.name] = year
-        summary[SummariesTable.budget_id.name] = self._get_latest_budget_id() if budget_id is None else budget_id
+        Raises:
+            KeyError: If any category in the summary index is not a known primary or detailed category.
+            AssertionError: If month/year are out of range, or income is negative.
+        """
+        logger.debug(f"Cleaning monthly summary for upload...")
 
-        columns = list(summary.columns)  # Capture after adding date/month/year so they're not overwritten
-        summary_record = {}
+        assert 1 <= month <= 12, f"Invalid month: {month}"
+        assert 2000 <= year <= datetime.now().year, f"Invalid year: {year}"
 
-        for col in summary_columns:
-            if col.dest not in columns:
-                logger.debug(f"Summary missing {col.dest}, adding...")
-                summary[col.dest] = 0
-                columns.append(col.dest) # Add updated columns to list so we don't try to add them again later
+        flat = self._flatten_summary(summary)
 
-            raw_value = summary[col.dest].max()
-            if col.dest == SummariesTable.date.name:
-                validated_entry = raw_value.to_pydatetime() if hasattr(raw_value, "to_pydatetime") else raw_value
-            else:
-                # TODO: For some reason when we get to "other" here, we have 2 columns and it throws an error for trying to convert the series.
-                validated_entry = col.convert(raw_value)
-            
+        all_known = set(PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers())
+        for key in flat:
+            category = key.split("_", 1)[1]  # strip 'sum_' / 'mean_' / 'count_' prefix
+            if category not in all_known:
+                raise KeyError(f"Unknown category in summary: '{category}'")
 
-            if col.dest == SummariesTable.month.name:
-                assert 1 <= validated_entry <= 12, f"Invalid month entered into summary table record month = {validated_entry}"
-            
-            elif col.dest == SummariesTable.year.name:
-                assert 2000 <= validated_entry <= datetime.now().year, f"Invalid year entered into summary table record month = {validated_entry}"
-            
-            elif col.dest == SummariesTable.date.name:
-                assert isinstance(validated_entry, datetime), f"Invalid date entry for summary table: {validated_entry}, type: {type(validated_entry)}"
+        income_sum = flat.get(f"sum_{PrimaryCategories.INCOME.as_snake_case()}", 0.0)
+        assert income_sum >= 0, f"Income sum must be non-negative, got {income_sum}"
 
-            elif col.dest == SummariesTable.budget_id.name:
-                pass
+        flat[SummariesTable.date.name] = datetime(year, month, 1)
+        flat[SummariesTable.month.name] = month
+        flat[SummariesTable.year.name] = year
+        flat[SummariesTable.budget_id.name] = self._get_latest_budget_id() if budget_id is None else budget_id
 
-            elif col.dest == SummariesTable.income.name or col.dest in [detailed.as_snake_case() for detailed in CATEGORY_MAPPING[PrimaryCategories.INCOME]]:
-                assert validated_entry >= 0, f"Invalid value for {col.dest}: {validated_entry}"
-                assert isinstance(validated_entry, float),f"Invalid value for {col.dest}: {validated_entry}, type: {type(validated_entry)}"
-            
-            else:
-                assert isinstance(validated_entry, float),f"Invalid value for {col.dest}: {validated_entry}, type: {type(validated_entry)}"
-
-            # TODO: Everything else besides maybe some transfers should be negative?
-            summary_record[col.dest] = validated_entry
-        
-        return summary_record
+        return flat
         
 
     def _check_summary_exists(self, month: int, year: int) -> bool:
@@ -289,19 +241,19 @@ class SummariesTableManager(DatabaseManager):
         return latest.budget_id
 
 
-    def _flatten_summary(self, summary: pd.DataFrame) -> pd.DataFrame:
-        """Flattens the summary dataframe for upload to the summaries table."""
-        sum_column = summary["sum"]
-        mean_column = summary["mean"]
-        count_column = summary["count"]
+    def _flatten_summary(self, summary: pd.DataFrame) -> dict:
+        """Flattens a sparse summary DataFrame into a prefixed dict for DB insertion.
 
-        sum_column.index = self._attach_column_prefix(sum_column.index, "sum")
-        mean_column.index = self._attach_column_prefix(mean_column.index, "mean")
-        count_column.index = self._attach_column_prefix(count_column.index, "count")
+        Args:
+            summary: DataFrame with index=category names, columns=['sum', 'mean', 'count'].
 
-        return pd.concat([sum_column, mean_column, count_column], axis=1).reset_index().T
-    
-    def _attach_column_prefix(self, column: pd.Series, prefix: str) -> pd.Series:
-        """Attaches a prefix to a column name for upload to the summaries table."""
-        return column.rename(f"{prefix}_{column.name}")
+        Returns:
+            Dict with keys like 'sum_income', 'mean_income', 'count_income' for each row present.
+            Values are native Python float/int (not numpy types) to satisfy pleasant_database type checks.
+        """
+        sum_s   = summary["sum"].add_prefix("sum_")
+        mean_s  = summary["mean"].add_prefix("mean_")
+        count_s = summary["count"].add_prefix("count_")
+        raw = pd.concat([sum_s, mean_s, count_s]).to_dict()
+        return {k: (int(v) if k.startswith("count_") else float(v)) for k, v in raw.items()}
         
