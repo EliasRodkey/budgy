@@ -130,7 +130,8 @@ class TransactionsTableManager(DatabaseManager):
         super().__init__(TransactionsTable, db_file)
         self.updates_manager = updates_manager
 
-
+    # TODO: During upload, make sure to check sign on transactions. If it should be negative enforce negative, if it should be positive enforce positive. 
+    # Can use category for this, but may want to build in some additional logic to catch miscategorized transactions that have the wrong sign. Flag edited for review!
     def upload_csv(
             self,
             csv_filepath: str,

@@ -129,6 +129,7 @@ class SummariesTableManager(DatabaseManager):
             raise
     
 
+    # TODO: Make sure we are fetching only the data we plan on using. If not we need more specific fetch functions.
     def fetch_summaries_over_period(self, month: int=None, year: int=None) -> List[SummariesTable]:
         """
         Retrieves all records from the summaries table that match the specified attributes
@@ -162,7 +163,7 @@ class SummariesTableManager(DatabaseManager):
 
         if not records:
             logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES: attributes})
-
+        
         return self.convert_orm_list_to_dataframe(records)
 
 
