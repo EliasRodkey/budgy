@@ -29,18 +29,18 @@ logger = logging.getLogger(__name__)
 
 # ─── TransactionsTableManager ────────────────────────────────────────────────
 
-def test_generate_monthly_category_report_speed(full_transactions_database):
-    """Log per-run and average elapsed time for generate_monthly_category_report over 10 iterations."""
+def test_generate_monthly_summary_speed(full_transactions_database):
+    """Log per-run and average elapsed time for generate_monthly_summary over 10 iterations."""
     times = []
     for i in range(10):
         start = time.time()
-        full_transactions_database.generate_monthly_category_report(12, 2025)
+        full_transactions_database.generate_monthly_summary(12, 2025)
         elapsed = time.time() - start
         times.append(elapsed)
-        logger.info(f"  Run {i + 1:>2}: generate_monthly_category_report took {elapsed:.6f}s")
+        logger.info(f"  Run {i + 1:>2}: generate_monthly_summary took {elapsed:.6f}s")
     avg = sum(times) / len(times)
     logger.info(f"  Average over 10 runs: {avg:.6f}s")
-    print(f"\n[PERF] generate_monthly_category_report — avg {avg:.4f}s over 10 runs")
+    print(f"\n[PERF] generate_monthly_summary — avg {avg:.4f}s over 10 runs")
 
 
 # ─── SummariesTableManager ────────────────────────────────────────────────────
@@ -98,14 +98,14 @@ def test_fetch_summaries_over_period_speed(full_summaries_database):
 def test_full_upload_and_summarize_pipeline_speed(clean_summaries_database, full_transactions_database):
     """Log total elapsed time for uploading a monthly summary for every month/year pair in the transactions DB.
 
-    Covers: generate_monthly_category_report → upload_monthly_summary for all available months.
+    Covers: generate_monthly_summary → upload_monthly_summary for all available months.
     """
     summaries_manager, _ = clean_summaries_database
     month_year_pairs = full_transactions_database.retrieve_month_year_pairs()
 
     start = time.time()
     for month, year in month_year_pairs:
-        summary = full_transactions_database.generate_monthly_category_report(month, year)
+        summary = full_transactions_database.generate_monthly_summary(month, year)
         summaries_manager.upload_monthly_summary(month, year, summary, budget_id=1)
     elapsed = time.time() - start
 

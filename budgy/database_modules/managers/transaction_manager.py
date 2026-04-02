@@ -118,7 +118,7 @@ class TransactionsTableManager(DatabaseManager):
         - retrieve_records_by_attribute_over_period: Queries transactions by date range and optional attributes, returns a DataFrame.
         - fetch_records_by_category_over_period: Uses above method to fetch records by category specifically.
         - retrieve_month_year_pairs: Retrieves all of the month / year pairs in the database and returns them as a list of tuples [(month, year)].
-        - generate_monthly_category_report: Summarizes total spending per category for a given month and year.
+        - generate_monthly_summary: Summarizes total spending per category for a given month and year.
         - return_category_count: Returns the number of transactions for a given category over a period.
         - category_total_spending: Returns an positive float representing the total spending of transactions from the given category over a period of time.
         - category_average_spending: Returns an positive float representing the average spending of transactions from the given category over a period of time.
@@ -295,11 +295,12 @@ class TransactionsTableManager(DatabaseManager):
         return records_df
 
 
-    def generate_monthly_category_report(self, month: int=None, year: int=None) -> pd.DataFrame:
+    def generate_monthly_summary(self, month: int=None, year: int=None) -> pd.DataFrame:
         """
-        Generates a monthly category report for the specified month and year,
-        summarizing the total amount spent in each category as well as the average amount spend per transaction and transaction count.
-        Theoretically can return a whole year or all time reports by leaving month or year as None.
+        Generates a monthly summary for the specified month and year,
+        summarizing the total amount spent in each category as well as the average amount per transaction and transaction count.
+        Only categories that have transactions are included (sparse output).
+        Theoretically can return a whole year or all time summary by leaving month or year as None.
         See convert_datetime_nums_to_range.
 
         Args:
@@ -307,53 +308,45 @@ class TransactionsTableManager(DatabaseManager):
             year (int): The year as an integer (e.g., 2024).
 
         Returns:
-            pd.DataFrame: A DataFrame containing the total amount spent in each category. Or empty if no items found
+            pd.DataFrame: A sparse DataFrame with index=category names, columns=['sum', 'mean', 'count'].
+                          Returns an empty DataFrame if no transactions found.
         """
-        logger.info(f"Generating monthly category report for month/year: {month}/{year} using manager: {self}.")
+        logger.info(f"Generating monthly summary for month/year: {month}/{year} using manager: {self}.")
 
         records_df = self.retrieve_records_by_attribute_over_period(month, year)
 
         if records_df.empty:
-            logger.info(f"No transactions found for month/year: {month}/{year}. Returning empty report.")
+            logger.info(f"No transactions found for month/year: {month}/{year}. Returning empty summary.")
             return pd.DataFrame()
-        
+
         try:
             primary_category_sum = records_df.groupby(TransactionsTable.primary_category.name)[TransactionsTable.amount.name].sum().reset_index()
             detailed_category_sum = records_df.groupby(TransactionsTable.detailed_category.name)[TransactionsTable.amount.name].sum().reset_index()
-            primary_category_sum.columns = detailed_category_sum.columns = ["category", "total"]
-        
+            primary_category_sum.columns = detailed_category_sum.columns = ["category", "sum"]
+
             primary_category_mean = records_df.groupby(TransactionsTable.primary_category.name)[TransactionsTable.amount.name].mean().reset_index()
             detailed_category_mean = records_df.groupby(TransactionsTable.detailed_category.name)[TransactionsTable.amount.name].mean().reset_index()
             primary_category_mean.columns = detailed_category_mean.columns = ["category", "mean"]
-        
+
             primary_category_count = records_df.groupby(TransactionsTable.primary_category.name)[TransactionsTable.id.name].count().reset_index()
             detailed_category_count = records_df.groupby(TransactionsTable.detailed_category.name)[TransactionsTable.id.name].count().reset_index()
             primary_category_count.columns = detailed_category_count.columns = ["category", "count"]
 
-            primary_category_report = pd.concat([primary_category_sum, primary_category_mean["mean"], primary_category_count["count"]], axis=1)
-            detailed_category_report = pd.concat([detailed_category_sum, detailed_category_mean["mean"], detailed_category_count["count"]], axis=1)
-            detailed_category_report = detailed_category_report[detailed_category_report.category != PrimaryCategories.OTHER.value]
+            primary_category_summary = pd.concat([primary_category_sum, primary_category_mean["mean"], primary_category_count["count"]], axis=1)
+            detailed_category_summary = pd.concat([detailed_category_sum, detailed_category_mean["mean"], detailed_category_count["count"]], axis=1)
+            detailed_category_summary = detailed_category_summary[detailed_category_summary.category != PrimaryCategories.OTHER.value]
 
-            category_report = pd.concat([primary_category_report, detailed_category_report], axis=0).reset_index()
+            category_summary = pd.concat([primary_category_summary, detailed_category_summary], axis=0).reset_index()
 
-            category_report.category = format_column_names(category_report.category)
-            category_report.set_index("category", inplace=True)
-            category_report.drop(columns=["index"], inplace=True)
+            category_summary.category = format_column_names(category_summary.category)
+            category_summary.set_index("category", inplace=True)
+            category_summary.drop(columns=["index"], inplace=True)
 
         except Exception as e:
             logger.exception(f"Error encountered while summarizing transactions from {month} / {year}: {e}")
             raise e
 
-        # Add empty rows for any categories that are missing from the report but present in the category mapping
-        all_categories = PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
-        current_categories = category_report.index.tolist()
-        
-        for category in all_categories:
-            if category not in current_categories:
-                category_report.loc[category] = [0.0, 0.0, 0]
-                current_categories.append(category)
-
-        return category_report.reindex(all_categories)
+        return category_summary
     
 
     def total_income(self, month: int=None, year:int=None) -> float:

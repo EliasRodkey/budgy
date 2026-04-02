@@ -175,7 +175,7 @@ def full_summaries_database(clean_budgets_database, full_transactions_database):
     """
     db_manager = test_summaries_manager
     for month, year in full_transactions_database.retrieve_month_year_pairs():
-        summary = full_transactions_database.generate_monthly_category_report(month, year)
+        summary = full_transactions_database.generate_monthly_summary(month, year)
         db_manager.upload_monthly_summary(month, year, summary, budget_id=1)
 
     try:

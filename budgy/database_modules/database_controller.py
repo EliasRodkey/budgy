@@ -43,7 +43,7 @@ class DatabaseController:
         month_year_pairs = set((item.authorized_date.month, item.authorized_date.year) for item in updates_items)
 
         for month, year in month_year_pairs:
-            summary = self.transactions_manager.generate_monthly_category_report(month, year)
+            summary = self.transactions_manager.generate_monthly_summary(month, year)
             self.summaries_manager.update_summary(month, year, summary)
 
     # Create all summaries from time periods present in the transactions database
@@ -54,7 +54,7 @@ class DatabaseController:
         month_year_pairs = set(self.transactions_manager.retrieve_month_year_pairs())
 
         for month, year in month_year_pairs:
-            summary = self.transactions_manager.generate_monthly_category_report(month, year)
+            summary = self.transactions_manager.generate_monthly_summary(month, year)
             self.summaries_manager.upload_monthly_summary(month, year, summary)
 
     # TODO: Add a is_empty to DatabaseManager class in pleasant_database
