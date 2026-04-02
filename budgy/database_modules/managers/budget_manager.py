@@ -57,7 +57,7 @@ class BudgetsTableManager(DatabaseManager):
             raise DuplicateError(uq_hash, self.table_name)
         
         clean_budget[BudgetsTable.uq_hash.name] = uq_hash
-        clean_budget[BudgetsTable.net_gain_or_loss.name] = self._calculate_net_gain_or_loss(clean_budget)
+        clean_budget[BudgetsTable.net_gain_or_loss.name] = self.calculate_net_gain_or_loss(clean_budget)
         clean_budget[BudgetsTable.date_created.name] = date_created
 
         try:

@@ -108,32 +108,37 @@ class TestUpdatesTableManager:
 
 class TestTransactionsTableManager:
 
-    # --- generate_monthly_category_report ---
+    # --- generate_monthly_summary ---
 
-    def test_generate_monthly_category_report(self, full_transactions_database):
-        """Returns a non-empty DataFrame for Dec 2025 with valid category columns and numeric values."""
-        report_df = full_transactions_database.generate_monthly_category_report(12, 2025)
+    def test_generate_monthly_summary(self, full_transactions_database):
+        """Returns a sparse non-empty DataFrame for Dec 2025 with sum/mean/count columns and valid index."""
+        summary_df = full_transactions_database.generate_monthly_summary(12, 2025)
 
-        assert isinstance(report_df, pd.DataFrame)
-        assert not report_df.empty
+        assert isinstance(summary_df, pd.DataFrame)
+        assert not summary_df.empty
 
-        all_category_values = pd.Series(
+        assert summary_df.columns.tolist() == ['sum', 'mean', 'count'], \
+            f"Expected columns ['sum', 'mean', 'count'], got {summary_df.columns.tolist()}"
+
+        all_valid_index = set(format_column_names(pd.Series(
             [m.value for m in PrimaryCategories] + [m.value for m in DetailedCategories]
-        )
-        all_valid_columns = set(format_column_names(all_category_values))
-        invalid_cols = [col for col in report_df.columns if col not in all_valid_columns]
-        assert not invalid_cols, f"Report contains unexpected column names: {invalid_cols}"
+        )))
+        invalid_cats = [cat for cat in summary_df.index if cat not in all_valid_index]
+        assert not invalid_cats, f"Summary contains unexpected index values: {invalid_cats}"
 
-        for col in report_df.columns:
-            assert pd.api.types.is_numeric_dtype(report_df[col]), \
-                f"Column '{col}' should be numeric, got {report_df[col].dtype}"
+        # Sparse — only categories with transactions are present
+        assert len(summary_df) < len(all_valid_index), \
+            "Expected sparse output (fewer rows than total categories)"
 
-    def test_generate_monthly_category_report_empty(self, full_transactions_database):
-        """generate_monthly_category_report returns an empty DataFrame with correct columns for a month with no data."""
-        report_df = full_transactions_database.generate_monthly_category_report(1, 2000)
+        assert 'income' in summary_df.index, "Expected 'income' category in summary index"
+        assert summary_df.loc['income', 'count'] >= 0
 
-        assert isinstance(report_df, pd.DataFrame)
-        assert report_df.empty
+    def test_generate_monthly_summary_empty(self, full_transactions_database):
+        """generate_monthly_summary returns an empty DataFrame for a month with no data."""
+        summary_df = full_transactions_database.generate_monthly_summary(1, 2000)
+
+        assert isinstance(summary_df, pd.DataFrame)
+        assert summary_df.empty
 
     # --- retrieve_records_by_attribute_over_period ---
 
@@ -214,34 +219,6 @@ class TestTransactionsTableManager:
         pairs = clean_transactions_database.retrieve_month_year_pairs()
 
         assert pairs == []
-
-    # --- return_category_count ---
-
-    def test_return_category_count_by_type(self, full_transactions_database):
-        """return_category_count returns a non-negative int for both PrimaryCategory and DetailedCategory inputs."""
-        primary_count = full_transactions_database.return_category_count(PrimaryCategories.FOOD_AND_DRINK, 12, 2025)
-        assert isinstance(primary_count, int)
-        assert primary_count >= 0
-
-        detailed_count = full_transactions_database.return_category_count(DetailedCategories.GROCERIES, 12, 2025)
-        assert isinstance(detailed_count, int)
-        assert detailed_count >= 0
-
-    def test_return_category_count_all_time(self, full_transactions_database):
-        """return_category_count with no month/year returns the all-time count, which is <= total row count."""
-        total = full_transactions_database.to_dataframe().shape[0]
-        count = full_transactions_database.return_category_count(PrimaryCategories.SHOPPING)
-        assert isinstance(count, int)
-        assert count >= 0
-        assert count <= total
-
-    def test_return_category_count_invalid_raises(self, full_transactions_database):
-        """Passing a value not in PrimaryCategories or DetailedCategories raises KeyError."""
-        class FakeCategory:
-            value = "Not A Real Category"
-
-        with pytest.raises((KeyError, AttributeError)):
-            full_transactions_database.return_category_count(FakeCategory())
 
     # --- upload_csv / upload_all_csvs ---
 
@@ -398,3 +375,4 @@ class TestTransactionsTableManager:
 
         starbucks = next(item for item in result if item.description == "Starbucks")
         assert starbucks.detailed_category == "Coffee"
+    

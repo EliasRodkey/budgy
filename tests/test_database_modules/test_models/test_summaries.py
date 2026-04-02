@@ -28,9 +28,9 @@ EXPECTED_PRIMARY_CATEGORY_COLUMNS = [
     for member in PrimaryCategories
 ]
 
-# Spot-check a selection of detailed category columns
+# Spot-check a selection of detailed category columns (prefixed as stored in SummariesTable)
 SPOT_CHECK_DETAILED_COLUMNS = [
-    "wages", "groceries", "rent", "medical", "flights", "fitness", "restaurants_and_bars",
+    "sum_wages", "sum_groceries", "sum_rent", "sum_medical", "sum_flights", "sum_fitness", "sum_restaurants_and_bars",
 ]
 
 
@@ -62,15 +62,15 @@ def test_summaries_table_crud(clean_summaries_database):
         month=12,
         year=2025,
         budget_id=budget_id,
-        income=4800.0,
-        food_and_drink=550.0,
+        sum_income=4800.0,
+        sum_food_and_drink=550.0,
     )
 
     items = summaries_db.fetch_all_items()
     assert len(items) == 1
     assert items[0].month == 12
     assert items[0].year == 2025
-    assert items[0].income == 4800.0
+    assert items[0].sum_income == 4800.0
 
 
 def test_summaries_table_delete(clean_summaries_database):
@@ -84,7 +84,7 @@ def test_summaries_table_delete(clean_summaries_database):
         month=11,
         year=2025,
         budget_id=budget_id,
-        income=5100.0,
+        sum_income=5100.0,
     )
 
     items_before = summaries_db.fetch_all_items()

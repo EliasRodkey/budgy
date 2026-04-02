@@ -1,6 +1,7 @@
 # Do not track database files or csv transaction files
 *.db
-*.csv
+*data
+*SoFi-Relay-All-Transactions_2025-12-31.csv
 
 # Ignore vscode settings
 .vscode/
@@ -183,5 +184,4 @@ cython_debug/
 
 # Claude Code markdown file
 *CLAUDE.md
-*TEST_INSTRUCTIONS.md
 /.claude

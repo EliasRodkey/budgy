@@ -17,10 +17,10 @@ import pandas as pd
 from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityError, ItemNotFoundError
 
 # Local imports
-from budgy.utils.analysis_utils import PrimaryCategories, CATEGORY_MAPPING
+from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from budgy.utils.file_utils import LoggingExtras
 from .common import convert_datetime_nums_to_range
-from ..models.summaries import SummariesTable, summary_columns
+from ..models.summaries import SummariesTable
 
 
 
@@ -129,7 +129,8 @@ class SummariesTableManager(DatabaseManager):
             raise
     
 
-    def fetch_summaries_over_period(self, month: int, year: int) -> List[SummariesTable]:
+    # TODO: Make sure we are fetching only the data we plan on using. If not we need more specific fetch functions.
+    def fetch_summaries_over_period(self, month: int=None, year: int=None) -> List[SummariesTable]:
         """
         Retrieves all records from the summaries table that match the specified attributes
         and fall within the specified date range.
@@ -162,60 +163,49 @@ class SummariesTableManager(DatabaseManager):
 
         if not records:
             logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES: attributes})
-
+        
         return self.convert_orm_list_to_dataframe(records)
-    
+
 
     def _clean_monthly_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int=None) -> dict:
-        """Cleans and validates monthly summary for upload, returns validated dict"""
-        logger.debug(f"Cleaning monthly summary for uplaod...")
-        input_columns = summary.columns
-        if sum([col not in SummariesTable.get_column_names() for col in input_columns]) > 0:
-            raise KeyError(f"Invalid column name in raw summary table {input_columns}")
+        """Validates and flattens a sparse monthly summary DataFrame for DB insertion.
 
-        summary[SummariesTable.date.name] = datetime(year, month, 1)
-        summary[SummariesTable.month.name] = month
-        summary[SummariesTable.year.name] = year
-        summary[SummariesTable.budget_id.name] = self._get_latest_budget_id() if budget_id is None else budget_id
+        Args:
+            month: Month as integer (1-12).
+            year: Year as integer (2000–current).
+            summary: Sparse DataFrame from generate_monthly_summary — index=categories, columns=['sum', 'mean', 'count'].
+            budget_id: Budget to associate with this summary. Defaults to most recently inserted summary's budget_id.
 
-        columns = summary.columns  # Capture after adding date/month/year so they're not overwritten
-        summary_record = {}
+        Returns:
+            Dict with required scalar fields (date, month, year, budget_id) plus sparse sum_*/mean_*/count_* keys.
+            DB column defaults fill any missing category columns.
 
-        for col in summary_columns:
-            if col.dest not in columns:
-                logger.debug(f"Summary missing {col.dest}, adding...")
-                summary[col.dest] = 0
+        Raises:
+            KeyError: If any category in the summary index is not a known primary or detailed category.
+            AssertionError: If month/year are out of range, or income is negative.
+        """
+        logger.debug(f"Cleaning monthly summary for upload...")
 
-            raw_value = summary[col.dest].max()
-            if col.dest == SummariesTable.date.name:
-                validated_entry = raw_value.to_pydatetime() if hasattr(raw_value, "to_pydatetime") else raw_value
-            else:
-                validated_entry = col.convert(raw_value)
-            
+        assert 1 <= month <= 12, f"Invalid month: {month}"
+        assert 2000 <= year <= datetime.now().year, f"Invalid year: {year}"
 
-            if col.dest == SummariesTable.month.name:
-                assert 1 <= validated_entry <= 12, f"Invalid month entered into summary table record month = {validated_entry}"
-            
-            elif col.dest == SummariesTable.year.name:
-                assert 2000 <= validated_entry <= datetime.now().year, f"Invalid year entered into summary table record month = {validated_entry}"
-            
-            elif col.dest == SummariesTable.date.name:
-                assert isinstance(validated_entry, datetime), f"Invalid date entry for summary table: {validated_entry}, type: {type(validated_entry)}"
+        flat = self._flatten_summary(summary)
 
-            elif col.dest == SummariesTable.budget_id.name:
-                pass
+        all_known = set(PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers())
+        for key in flat:
+            category = key.split("_", 1)[1]  # strip 'sum_' / 'mean_' / 'count_' prefix
+            if category not in all_known:
+                raise KeyError(f"Unknown category in summary: '{category}'")
 
-            elif col.dest == SummariesTable.income.name or col.dest in [detailed.as_snake_case() for detailed in CATEGORY_MAPPING[PrimaryCategories.INCOME]]:
-                assert validated_entry >= 0, f"Invalid value for {col.dest}: {validated_entry}"
-                assert isinstance(validated_entry, float),f"Invalid value for {col.dest}: {validated_entry}, type: {type(validated_entry)}"
-            
-            else:
-                assert isinstance(validated_entry, float),f"Invalid value for {col.dest}: {validated_entry}, type: {type(validated_entry)}"
+        income_sum = flat.get(f"sum_{PrimaryCategories.INCOME.as_snake_case()}", 0.0)
+        assert income_sum >= 0, f"Income sum must be non-negative, got {income_sum}"
 
-            # TODO: Everything else besides maybe some transfers should be negative?
-            summary_record[col.dest] = validated_entry
-        
-        return summary_record
+        flat[SummariesTable.date.name] = datetime(year, month, 1)
+        flat[SummariesTable.month.name] = month
+        flat[SummariesTable.year.name] = year
+        flat[SummariesTable.budget_id.name] = self._get_latest_budget_id() if budget_id is None else budget_id
+
+        return flat
         
 
     def _check_summary_exists(self, month: int, year: int) -> bool:
@@ -250,4 +240,21 @@ class SummariesTableManager(DatabaseManager):
 
         latest = max(summaries, key=lambda s: s.id)
         return latest.budget_id
+
+
+    def _flatten_summary(self, summary: pd.DataFrame) -> dict:
+        """Flattens a sparse summary DataFrame into a prefixed dict for DB insertion.
+
+        Args:
+            summary: DataFrame with index=category names, columns=['sum', 'mean', 'count'].
+
+        Returns:
+            Dict with keys like 'sum_income', 'mean_income', 'count_income' for each row present.
+            Values are native Python float/int (not numpy types) to satisfy pleasant_database type checks.
+        """
+        sum_s   = summary["sum"].add_prefix("sum_")
+        mean_s  = summary["mean"].add_prefix("mean_")
+        count_s = summary["count"].add_prefix("count_")
+        raw = pd.concat([sum_s, mean_s, count_s]).to_dict()
+        return {k: (int(v) if k.startswith("count_") else float(v)) for k, v in raw.items()}
         

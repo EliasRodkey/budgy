@@ -37,6 +37,7 @@ EXPECTED_BUDGET_COLUMNS = [
     "travel",
     "government_and_charity",
     "other",
+    "net_gain_or_loss",
     "uq_hash",
 ]
 
