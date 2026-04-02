@@ -36,7 +36,27 @@ logger = logging.getLogger(__name__)
 
 
 
-class PrimaryCategories(str, Enum):
+class CategoriesEnum(str, Enum):
+    """Parent class for category enum objects"""
+
+    def __str__(self):
+        return str(self.value)
+    
+
+    def as_snake_case(self) -> str:
+        return str(self.value).lower().replace("&", "and").replace(" ", "_").strip()
+    
+    @classmethod
+    def as_snake_case_headers(cls) -> list:
+        return [member.value.lower().replace("&", "and").replace(" ", "_").strip() for member in cls]
+    
+    @classmethod
+    def as_list(cls) -> list:
+        return [member.value for member in cls]
+
+
+
+class PrimaryCategories(CategoriesEnum):
     """Enum class for primary categories of transactions."""
     INCOME = "Income"
     TRANSFERS = "Transfers"
@@ -55,12 +75,9 @@ class PrimaryCategories(str, Enum):
     GOVERNMENT_AND_CHARITY = "Government & charity"
     OTHER = "Other"
 
-    def __str__(self):
-        return str(self.value)
 
 
-
-class DetailedCategories(str, Enum):
+class DetailedCategories(CategoriesEnum):
     """Enum class for detailed categories of transactions."""
     # Income subcategories
     WAGES = "Wages"
@@ -72,17 +89,17 @@ class DetailedCategories(str, Enum):
     OTHER_INCOME = "Other income"
 
     # Transfers subcategories
-    ACCOUNT_TRANSFERS = "Account transfers"
-    INVESTMENT_TRANSFERS = "Investment transfers"
-    SAVINGS_TRANSFERS = "Savings transfers"
-    CASH_DEPOSITS = "Cash deposits"
-    CASH_WITHDRAWALS = "Cash withdrawals"
-    LOANS_AND_CASH_ADVANCES = "Loans & cash advances"
-    PERSON_TO_PERSON_PAYMENTS = "Person to person payments"
+    ACCOUNT_TRANSFERS = "Account transfers" # Exclude
+    INVESTMENT_TRANSFERS = "Investment transfers" # Exclude but track
+    SAVINGS_TRANSFERS = "Savings transfers" # Exclude
+    CASH_DEPOSITS = "Cash deposits" # Income?
+    CASH_WITHDRAWALS = "Cash withdrawals" 
+    LOANS_AND_CASH_ADVANCES = "Loans & cash advances" 
+    PERSON_TO_PERSON_PAYMENTS = "Person to person payments" # Observe NET? Tie to other transactions?
     OTHER_TRANSFERS = "Other transfers"
 
     # Debt payments subcategories
-    CREDIT_CARD_PAYMENTS = "Credit card payments"
+    CREDIT_CARD_PAYMENTS = "Credit card payments" # Exclude
     AUTO_LOAN_PAYMENTS = "Auto loan payments"
     STUDENT_LOAN_PAYMENTS = "Student loan payments"
     PERSONAL_LOAN_PAYMENTS = "Personal loan payments"
@@ -191,12 +208,6 @@ class DetailedCategories(str, Enum):
     GOVERNMENT_FEES = "Government fees"
     CHARITY = "Charity"
     OTHER_GOVERNMENT_AND_CHARITY = "Other government & charity"
-
-    # Other subcategories
-    OTHER = "Other"
-
-    def __str__(self):
-        return str(self.value)
 
 
 # Mapping of primary categories to the detailed categories that fall under them
@@ -330,11 +341,15 @@ CATEGORY_MAPPING = {
         DetailedCategories.GOVERNMENT_FEES,
         DetailedCategories.CHARITY,
         DetailedCategories.OTHER_GOVERNMENT_AND_CHARITY
-    ],
-    PrimaryCategories.OTHER: [
-        DetailedCategories.OTHER
     ]
 }
 
 # The opposite of the above mapping, for looking up primary categories by detailed category
 REVERSE_CATEGORY_MAPPING = {detailed: primary for primary, detailed_list in CATEGORY_MAPPING.items() for detailed in detailed_list}
+
+EXCLUDE_CATEGORIES = [
+    DetailedCategories.ACCOUNT_TRANSFERS, 
+    DetailedCategories.CREDIT_CARD_PAYMENTS, 
+    DetailedCategories.INVESTMENT_TRANSFERS,
+    DetailedCategories.SAVINGS_TRANSFERS
+]
