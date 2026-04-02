@@ -166,3 +166,25 @@ def clean_summaries_database(clean_budgets_database):
     finally:
         db_manager.clear_table()
         db_manager.end_session()
+
+
+@pytest.fixture()
+def full_summaries_database(clean_budgets_database, full_transactions_database):
+    """Fixture to provide and clean the summaries table before and after each test.
+    Depends on clean_budgets_database since SummariesTable has a FK to budgets.
+    """
+    db_manager = test_summaries_manager
+    for month, year in full_transactions_database.retrieve_month_year_pairs():
+        summary = full_transactions_database.generate_monthly_category_report(month, year)
+        db_manager.upload_monthly_summary(month, year, summary, budget_id=1)
+
+    try:
+        yield db_manager, clean_budgets_database
+
+    except Exception:
+        db_manager.session.rollback()
+        raise
+
+    finally:
+        db_manager.clear_table()
+        db_manager.end_session()

@@ -51,7 +51,7 @@ class DatabaseController:
         """Performs a mass upload to summaries table by iterating over all month / year pairs found in transactions table."""
         logger.info(f"Initializing summaries table bulk upload")
 
-        month_year_pairs = set(self.transactions_manager.fetch_month_year_pairs())
+        month_year_pairs = set(self.transactions_manager.retrieve_month_year_pairs())
 
         for month, year in month_year_pairs:
             summary = self.transactions_manager.generate_monthly_category_report(month, year)
@@ -69,6 +69,9 @@ class DatabaseController:
         pass
 
     # Calculate average category spending based on category counts and summary
+    def calculate_average_category_spending(self) -> dict:
+        """"""
+        self.transactions_manager.individual_category_average_spending
 
     # Calculate total category spending based on category counts and summary
 

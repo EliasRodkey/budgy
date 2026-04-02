@@ -120,9 +120,11 @@ class TestTransactionsTableManager:
         all_category_values = pd.Series(
             [m.value for m in PrimaryCategories] + [m.value for m in DetailedCategories]
         )
+        assert report_df.shape == (len(all_category_values), 3)
+
         all_valid_columns = set(format_column_names(all_category_values))
-        invalid_cols = [col for col in report_df.columns if col not in all_valid_columns]
-        assert not invalid_cols, f"Report contains unexpected column names: {invalid_cols}"
+        invalid_cats = [cat for cat in report_df.index if cat not in all_valid_columns]
+        assert not invalid_cats, f"Report contains unexpected column names: {invalid_cats}"
 
         for col in report_df.columns:
             assert pd.api.types.is_numeric_dtype(report_df[col]), \
@@ -398,3 +400,51 @@ class TestTransactionsTableManager:
 
         starbucks = next(item for item in result if item.description == "Starbucks")
         assert starbucks.detailed_category == "Coffee"
+    
+
+def test_generate_monthly_category_report_speed(full_transactions_database):
+    """Test that generate_monthly_category_report executes within an acceptable time frame."""
+    import time
+    times = []
+    for i in range(10):
+        start_time = time.time()
+        full_transactions_database.generate_monthly_category_report(12, 2025)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        times.append(elapsed_time)
+        logger.info(f"generate_monthly_category_report executed in {elapsed_time:.6f} seconds.")
+    avg_time = sum(times) / len(times)
+    logger.info(f"Average execution time over 10 runs: {avg_time:.6f} seconds.")
+
+
+def test_category_total_spending_repeat_speed(full_transactions_database):
+    """Test that generate_monthly_category_report executes within an acceptable time frame."""
+    import time
+    from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
+    times = []
+    for i in range(10):
+        start_time = time.time()
+        for member in list(PrimaryCategories) + list(DetailedCategories):
+            full_transactions_database.category_total_spending(member, month=12, year=2025)
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        times.append(elapsed_time)
+        logger.info(f"category_total_spending for all categories executed in {elapsed_time:.6f} seconds.")
+        avg_time = sum(times) / len(times)
+    logger.info(f"Average execution time over 10 runs: {avg_time:.6f} seconds.")
+
+
+def test_all_category_average_spending_speed(full_transactions_database):
+    """Test that generate_monthly_category_report executes within an acceptable time frame."""
+    import time
+    times = []
+    for i in range(10):
+        start_time = time.time()
+        full_transactions_database.all_category_average_spending(month=12, year=2025)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        times.append(elapsed_time)
+        logger.info(f"all_category_average_spending for all categories executed in {elapsed_time:.6f} seconds.")
+        avg_time = sum(times) / len(times)
+    logger.info(f"Average execution time over 10 runs: {avg_time:.6f} seconds.")

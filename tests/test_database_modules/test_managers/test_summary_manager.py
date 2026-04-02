@@ -24,6 +24,7 @@ from tests.conftest import (
     test_summaries_manager,
     full_transactions_database,
     clean_summaries_database,
+    full_summaries_database
 )
 
 # Initialize module logger
@@ -387,3 +388,19 @@ class TestFetchSummariesOverPeriod:
         assert isinstance(result, pd.DataFrame)
         assert result.empty
         assert any("No records found" in msg for msg in caplog.messages)
+    
+
+def test_calculate_total_spending_over_period_speed(full_summaries_database):
+    """Tests the average speed of calculate_total_spending_over_period; should complete within 1 second."""
+    summaries_manager, _ = full_summaries_database
+    import time
+    times = []
+    for i in range (10):
+        start_time = time.time()
+        result = summaries_manager.calculate_total_spending_over_period(12, 2025)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        times.append(elapsed_time)
+        logger.info(f"Run {i+1}: calculate_total_spending_over_period took {elapsed_time:.6f} seconds.")
+    average_time = sum(times) / len(times)
+    logger.info(f"Average execution time over 10 runs: {average_time:.6f} seconds.")
