@@ -4,7 +4,7 @@ tests.test_database_modules.test_managers.test_summary_manager.py
 
 Tests for budgy.database_modules.managers.summary_manager.py — SummariesTableManager.
 
-Input data for upload/update functions is generated via TransactionsTableManager.generate_monthly_category_report.
+Input data for upload/update functions is generated via TransactionsTableManager.generate_monthly_summary.
 """
 # Standard library imports
 from datetime import datetime
@@ -18,7 +18,7 @@ from pleasant_database import ItemNotFoundError
 
 # Local imports
 from budgy.database_modules.models.budgets import BudgetsTable
-from budgy.database_modules.models.summaries import SummariesTable, summary_columns
+from budgy.database_modules.models.summaries import SummariesTable
 from budgy.utils.analysis_utils import PrimaryCategories
 from tests.conftest import (
     test_summaries_manager,
@@ -34,9 +34,16 @@ logger = logging.getLogger(__name__)
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 
-def _make_minimal_summary(income: float = 1000.0) -> pd.DataFrame:
-    """Returns a minimal one-row DataFrame with a valid income column."""
-    return pd.DataFrame({"income": [float(income)]})
+def _make_minimal_summary(income_sum: float = 1000.0, income_mean: float = 500.0, income_count: int = 2) -> pd.DataFrame:
+    """Returns a sparse DataFrame matching generate_monthly_summary output with only income.
+
+    Index: category name ('income'), columns: ['sum', 'mean', 'count'].
+    Reflects the sparse output of generate_monthly_summary — only categories with transactions are present.
+    """
+    return pd.DataFrame(
+        {'sum': [float(income_sum)], 'mean': [float(income_mean)], 'count': [int(income_count)]},
+        index=pd.Index(['income'], name='category'),
+    )
 
 
 def _make_db_budget_record(uq_hash: str = "testhash1") -> dict:
@@ -48,15 +55,20 @@ def _make_db_budget_record(uq_hash: str = "testhash1") -> dict:
 
 
 def _make_db_summary_record(month: int, year: int, budget_id: int) -> dict:
-    """Returns a dict suitable for direct add_item insertion into the summaries table."""
-    non_scalar = {"date", "month", "year", "budget_id"}
-    record = {col.dest: 0.0 for col in summary_columns if col.dest not in non_scalar}
-    record["date"] = datetime(year, month, 1)
-    record["month"] = month
-    record["year"] = year
-    record["budget_id"] = budget_id
-    record["income"] = 1000.0
-    return record
+    """Returns a dict suitable for direct add_item insertion into the summaries table.
+
+    Only required fields and income are provided; all other category columns default to 0/0.0
+    via the SQLAlchemy column defaults defined in SummariesTable.
+    """
+    return {
+        "date": datetime(year, month, 1),
+        "month": month,
+        "year": year,
+        "budget_id": budget_id,
+        "sum_income": 1000.0,
+        "mean_income": 500.0,
+        "count_income": 2,
+    }
 
 
 # ─── TestCheckSummaryExists ───────────────────────────────────────────────────
@@ -111,24 +123,25 @@ class TestGetSummaryId:
 
 class TestCleanMonthlySummary:
 
-    def test_output_shape_and_types(self):
-        """Returns a dict with all summary_columns keys; floats for category columns; missing columns default to 0.0."""
+    def test_output_contains_required_fields_and_sparse_category_keys(self):
+        """Returns a dict with required scalar fields plus sparse sum_*/mean_*/count_* keys for provided categories."""
         summary = _make_minimal_summary()
         result = test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
 
         assert isinstance(result, dict)
-        assert {col.dest for col in summary_columns}.issubset(result.keys())
+        required = {SummariesTable.date.name, SummariesTable.month.name,
+                    SummariesTable.year.name, SummariesTable.budget_id.name}
+        for key in required:
+            assert key in result, f"Missing required field '{key}'"
 
-        skip = {SummariesTable.date.name, SummariesTable.month.name,
-                SummariesTable.year.name, SummariesTable.budget_id.name}
-        for key, value in result.items():
-            if key not in skip:
-                assert isinstance(value, float), (
-                    f"Expected float for '{key}', got {type(value).__name__} = {value!r}"
-                )
+        # Income keys present (were in the summary)
+        assert "sum_income" in result
+        assert "mean_income" in result
+        assert "count_income" in result
 
-        assert result["groceries"] == 0.0
-        assert result["food_and_drink"] == 0.0
+        # Sparse — categories not in the summary are absent (DB defaults fill them)
+        assert "sum_groceries" not in result
+        assert "sum_food_and_drink" not in result
 
     def test_date_fields_match_args(self):
         """month, year, and date fields in the returned dict match the arguments."""
@@ -141,17 +154,20 @@ class TestCleanMonthlySummary:
         assert result[SummariesTable.date.name] == datetime(2024, 6, 1)
 
     def test_raises_on_invalid_column_name(self):
-        """Raises KeyError when input DataFrame has a column not in SummariesTable."""
-        summary = pd.DataFrame({"not_a_real_column": [100.0]})
+        """Raises KeyError when input DataFrame has an index value not in known categories."""
+        summary = pd.DataFrame(
+            {'sum': [100.0], 'mean': [50.0], 'count': [2]},
+            index=pd.Index(['not_a_real_column'], name='category'),
+        )
         with pytest.raises(KeyError):
             test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
 
     def test_raises_on_invalid_month(self):
-        """month=0 and month=13 both raise (datetime constructor or assertion)."""
+        """month=0 and month=13 both raise AssertionError."""
         summary = _make_minimal_summary()
-        with pytest.raises((AssertionError, ValueError)):
+        with pytest.raises(AssertionError):
             test_summaries_manager._clean_monthly_summary(0, 2025, summary, budget_id=1)
-        with pytest.raises((AssertionError, ValueError)):
+        with pytest.raises(AssertionError):
             test_summaries_manager._clean_monthly_summary(13, 2025, summary, budget_id=1)
 
     def test_raises_on_invalid_year(self):
@@ -163,14 +179,14 @@ class TestCleanMonthlySummary:
             test_summaries_manager._clean_monthly_summary(1, datetime.now().year + 1, summary, budget_id=1)
 
     def test_raises_on_negative_income(self):
-        """Negative income value raises AssertionError from the income >= 0 check."""
-        summary = _make_minimal_summary(income=-500.0)
+        """Negative income sum raises AssertionError from the income >= 0 check."""
+        summary = _make_minimal_summary(income_sum=-500.0)
         with pytest.raises(AssertionError):
             test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
 
-    def test_real_report_cleans_without_error(self, full_transactions_database):
-        """A real Dec 2025 report from generate_monthly_category_report cleans without raising."""
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
+    def test_real_summary_cleans_without_error(self, full_transactions_database):
+        """A real Dec 2025 summary from generate_monthly_summary cleans without raising."""
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
         result = test_summaries_manager._clean_monthly_summary(12, 2025, summary, budget_id=1)
         assert isinstance(result, dict)
         assert result[SummariesTable.month.name] == 12
@@ -203,7 +219,7 @@ class TestUploadMonthlySummary:
         budgets_manager.add_item(**_make_db_budget_record())
         budget_id = budgets_manager.fetch_all_items()[0].id
 
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
         summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
 
         assert summaries_manager._check_summary_exists(12, 2025)
@@ -218,7 +234,7 @@ class TestUploadMonthlySummary:
         budgets_manager.add_item(**_make_db_budget_record())
         budget_id = budgets_manager.fetch_all_items()[0].id
 
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
         summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
 
         with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
@@ -234,10 +250,10 @@ class TestUploadMonthlySummary:
         budget_id = budgets_manager.fetch_all_items()[0].id
 
         summaries_manager.upload_monthly_summary(
-            12, 2025, full_transactions_database.generate_monthly_category_report(12, 2025), budget_id=budget_id
+            12, 2025, full_transactions_database.generate_monthly_summary(12, 2025), budget_id=budget_id
         )
         summaries_manager.upload_monthly_summary(
-            11, 2025, full_transactions_database.generate_monthly_category_report(11, 2025), budget_id=budget_id
+            11, 2025, full_transactions_database.generate_monthly_summary(11, 2025), budget_id=budget_id
         )
 
         assert summaries_manager._check_summary_exists(12, 2025)
@@ -287,10 +303,10 @@ class TestUpdateSummary:
         budgets_manager.add_item(**_make_db_budget_record())
         budget_id = budgets_manager.fetch_all_items()[0].id
 
-        summary = full_transactions_database.generate_monthly_category_report(12, 2025)
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
         summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
 
-        summary["income"] = 10000
+        summary.loc["income", "sum"] = 10000.0
         caplog.clear()
         with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
             summaries_manager.update_summary(12, 2025, summary)
@@ -388,19 +404,40 @@ class TestFetchSummariesOverPeriod:
         assert isinstance(result, pd.DataFrame)
         assert result.empty
         assert any("No records found" in msg for msg in caplog.messages)
-    
 
-def test_calculate_total_spending_over_period_speed(full_summaries_database):
-    """Tests the average speed of calculate_total_spending_over_period; should complete within 1 second."""
-    summaries_manager, _ = full_summaries_database
-    import time
-    times = []
-    for i in range (10):
-        start_time = time.time()
-        result = summaries_manager.calculate_total_spending_over_period(12, 2025)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        times.append(elapsed_time)
-        logger.info(f"Run {i+1}: calculate_total_spending_over_period took {elapsed_time:.6f} seconds.")
-    average_time = sum(times) / len(times)
-    logger.info(f"Average execution time over 10 runs: {average_time:.6f} seconds.")
+
+# ─── TestFlattenSummary ───────────────────────────────────────────────────────
+
+class TestFlattenSummary:
+
+    def test_returns_dict_with_prefixed_keys(self):
+        """_flatten_summary returns a dict with sum_<cat>, mean_<cat>, count_<cat> keys for each input row."""
+        summary = _make_minimal_summary()
+        result = test_summaries_manager._flatten_summary(summary)
+
+        assert isinstance(result, dict)
+        assert 'sum_income' in result
+        assert 'mean_income' in result
+        assert 'count_income' in result
+
+    def test_values_are_preserved(self):
+        """Values in the flattened dict match the input sum/mean/count for income."""
+        summary = _make_minimal_summary(income_sum=1000.0, income_mean=500.0, income_count=2)
+        result = test_summaries_manager._flatten_summary(summary)
+
+        assert result['sum_income'] == pytest.approx(1000.0)
+        assert result['mean_income'] == pytest.approx(500.0)
+        assert result['count_income'] == 2
+
+    def test_sparse_summary_produces_only_present_keys(self, full_transactions_database):
+        """Flattening a sparse real summary produces only 3 keys per category that had transactions."""
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
+        result = test_summaries_manager._flatten_summary(summary)
+
+        assert isinstance(result, dict)
+        present_categories = set(summary.index.tolist())
+        assert len(result) == 3 * len(present_categories)
+        for cat in present_categories:
+            assert f"sum_{cat}" in result
+            assert f"mean_{cat}" in result
+            assert f"count_{cat}" in result
