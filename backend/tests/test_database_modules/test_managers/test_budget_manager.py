@@ -14,7 +14,7 @@ import pytest
 from backend.database_modules.managers.common import DuplicateError
 from backend.database_modules.models.budgets import BudgetsTable
 from backend.utils.analysis_utils import PrimaryCategories
-from tests.conftest import (
+from backend.tests.conftest import (
     test_budgets_manager,
     clean_budgets_database,
 )

@@ -14,7 +14,7 @@ from pleasant_database import DatabaseIntegrityError
 
 # Local imports
 from backend.database_modules.models.common import TableStatus
-from tests.conftest import TEST_CSV_DIR, TEST_DB_FILEPATH
+from backend.tests.conftest import TEST_CSV_DIR, TEST_DB_FILEPATH
 
 import logging
 logger = logging.getLogger(__name__)

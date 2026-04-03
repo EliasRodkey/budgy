@@ -15,7 +15,7 @@ import time
 import pytest
 
 # Local imports
-from tests.conftest import (
+from backend.tests.conftest import (
     full_transactions_database,
     full_summaries_database,
     clean_summaries_database,
@@ -44,36 +44,6 @@ def test_generate_monthly_summary_speed(full_transactions_database):
 
 
 # ─── SummariesTableManager ────────────────────────────────────────────────────
-
-def test_calculate_total_spending_over_period_speed(full_summaries_database):
-    """Log per-run and average elapsed time for calculate_total_spending_over_period over 10 iterations."""
-    summaries_manager, _ = full_summaries_database
-    times = []
-    for i in range(10):
-        start = time.time()
-        summaries_manager.calculate_total_spending_over_period(12, 2025)
-        elapsed = time.time() - start
-        times.append(elapsed)
-        logger.info(f"  Run {i + 1:>2}: calculate_total_spending_over_period took {elapsed:.6f}s")
-    avg = sum(times) / len(times)
-    logger.info(f"  Average over 10 runs: {avg:.6f}s")
-    print(f"\n[PERF] calculate_total_spending_over_period — avg {avg:.4f}s over 10 runs")
-
-
-def test_calculate_average_total_spending_over_period_speed(full_summaries_database):
-    """Log per-run and average elapsed time for calculate_average_total_spending_over_period over 10 iterations."""
-    summaries_manager, _ = full_summaries_database
-    times = []
-    for i in range(10):
-        start = time.time()
-        summaries_manager.calculate_average_total_spending_over_period(12, 2025)
-        elapsed = time.time() - start
-        times.append(elapsed)
-        logger.info(f"  Run {i + 1:>2}: calculate_average_total_spending_over_period took {elapsed:.6f}s")
-    avg = sum(times) / len(times)
-    logger.info(f"  Average over 10 runs: {avg:.6f}s")
-    print(f"\n[PERF] calculate_average_total_spending_over_period — avg {avg:.4f}s over 10 runs")
-
 
 def test_fetch_summaries_over_period_speed(full_summaries_database):
     """Log per-run and average elapsed time for fetch_summaries_over_period over 10 iterations.

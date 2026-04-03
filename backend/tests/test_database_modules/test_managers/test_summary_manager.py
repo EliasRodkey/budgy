@@ -20,7 +20,7 @@ from pleasant_database import ItemNotFoundError
 from backend.database_modules.models.budgets import BudgetsTable
 from backend.database_modules.models.summaries import SummariesTable
 from backend.utils.analysis_utils import PrimaryCategories
-from tests.conftest import (
+from backend.tests.conftest import (
     test_summaries_manager,
     full_transactions_database,
     clean_summaries_database,

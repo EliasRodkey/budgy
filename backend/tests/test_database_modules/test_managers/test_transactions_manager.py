@@ -18,7 +18,7 @@ from backend.database_modules.models.common import TableStatus
 from backend.database_modules.models.transactions import TransactionsTable
 from backend.database_modules.managers.common import format_column_names
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
-from tests.conftest import TEST_CSV_DIR, full_transactions_database
+from backend.tests.conftest import TEST_CSV_DIR, full_transactions_database
 
 # Initialize module logger
 import logging
@@ -100,7 +100,7 @@ class TestUpdatesTableManager:
             # Otherwise the filepath should not appear in the retrieved db values
             else:
                 assert csv not in uploaded_files
-                from tests.conftest import update_items
+                from backend.tests.conftest import update_items
                 assert csv not in [item["filepath"] for item in update_items]
 
 
