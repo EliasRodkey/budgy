@@ -30,7 +30,7 @@ from backend.database_modules.models.common import Field, TableStatus
 from backend.database_modules.models.transactions import TransactionsTable, UpdatesTable, transaction_columns
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
 from backend.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
-from backend.database_modules.io.transactions_csv_loader import iter_val_csv_file
+from backend.csv_modules.transactions_csv_loader import iter_val_csv_file
 
 # initialize module logger
 import logging
