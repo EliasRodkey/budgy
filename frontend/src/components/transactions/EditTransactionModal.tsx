@@ -100,15 +100,15 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   useEffect(() => {
     if (transaction) {
       reset({
-        date: transaction.date,
+        date: transaction.authorizedDate,
         description: transaction.description,
-        merchant: transaction.merchant,
+        merchant: transaction.account_name,
         amount: transaction.amount,
         primaryCategory: transaction.primaryCategory,
         detailedCategory: transaction.detailedCategory,
         isFlagged: transaction.isFlagged,
-        isExcluded: transaction.isExcluded,
-        isRepayment: transaction.isRepayment,
+        isExcluded: transaction.exclude,
+        isRepayment: transaction.repayment,
         notes: transaction.notes ?? "",
         tags: transaction.tags ?? [],
       });

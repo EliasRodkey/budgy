@@ -115,7 +115,7 @@ export default function Transactions() {
 
   const { data, isLoading, isError, refetch } = useTransactions({
     search: search || undefined,
-    category: category || undefined,
+    primaryCategory: category || undefined,
     detailedCategory: detailedCategory || undefined,
     tags: filterTags.length > 0 ? filterTags : undefined,
     showExcluded,

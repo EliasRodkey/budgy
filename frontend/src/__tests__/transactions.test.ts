@@ -43,7 +43,7 @@ describe("getTransactions", () => {
     for (const tx of result.data) {
       const hit =
         tx.description.toLowerCase().includes("whole foods") ||
-        tx.merchant.toLowerCase().includes("whole foods");
+        tx.account_name.toLowerCase().includes("whole foods");
       expect(hit).toBe(true);
     }
   });
@@ -55,7 +55,7 @@ describe("getTransactions", () => {
   });
 
   it("filters by primary category", async () => {
-    const result = await getTransactions({ category: "Food & drink" });
+    const result = await getTransactions({ primaryCategory: "Food & drink" });
     expect(result.total).toBeGreaterThan(0);
     for (const tx of result.data) {
       expect(
@@ -67,22 +67,22 @@ describe("getTransactions", () => {
   it("filters by date range", async () => {
     const result = await getTransactions({ dateFrom: "2025-01-01", dateTo: "2025-01-31" });
     for (const tx of result.data) {
-      expect(tx.date >= "2025-01-01").toBe(true);
-      expect(tx.date <= "2025-01-31").toBe(true);
+      expect(tx.authorizedDate >= "2025-01-01").toBe(true);
+      expect(tx.authorizedDate <= "2025-01-31").toBe(true);
     }
   });
 
   it("sorts by date descending by default", async () => {
     const result = await getTransactions({ sortBy: "date", sortOrder: "desc", pageSize: 100 });
     for (let i = 1; i < result.data.length; i++) {
-      expect(result.data[i - 1].date >= result.data[i].date).toBe(true);
+      expect(result.data[i - 1].authorizedDate >= result.data[i].authorizedDate).toBe(true);
     }
   });
 
   it("sorts by date ascending", async () => {
     const result = await getTransactions({ sortBy: "date", sortOrder: "asc", pageSize: 100 });
     for (let i = 1; i < result.data.length; i++) {
-      expect(result.data[i - 1].date <= result.data[i].date).toBe(true);
+      expect(result.data[i - 1].authorizedDate <= result.data[i].authorizedDate).toBe(true);
     }
   });
 
@@ -95,7 +95,7 @@ describe("getTransactions", () => {
 
   it("total reflects filtered count, not full dataset", async () => {
     const all = await getTransactions();
-    const filtered = await getTransactions({ category: "Income" });
+    const filtered = await getTransactions({ primaryCategory: "Income" });
     expect(filtered.total).toBeLessThan(all.total);
   });
 
@@ -103,22 +103,22 @@ describe("getTransactions", () => {
     const result = await getTransactions({ pageSize: 5 });
     for (const tx of result.data) {
       expect(typeof tx.id).toBe("string");
-      expect(typeof tx.date).toBe("string");
+      expect(typeof tx.authorizedDate).toBe("string");
       expect(typeof tx.description).toBe("string");
-      expect(typeof tx.merchant).toBe("string");
+      expect(typeof tx.account_name).toBe("string");
       expect(typeof tx.amount).toBe("number");
       expect(typeof tx.primaryCategory).toBe("string");
       expect(typeof tx.detailedCategory).toBe("string");
-      expect(typeof tx.isFlagged).toBe("boolean");
-      expect(typeof tx.isExcluded).toBe("boolean");
-      expect(typeof tx.isRepayment).toBe("boolean");
+      expect(typeof tx.status).toBe("string");
+      expect(typeof tx.exclude).toBe("boolean");
+      expect(typeof tx.repayment).toBe("boolean");
     }
   });
 });
 
 describe("updateTransaction", () => {
   it("returns the updated transaction with new values", async () => {
-    const target = mockTransactions.find((t) => !t.isFlagged);
+    const target = mockTransactions.find((t) => !t.status || t.status !== "Unchecked"); // Find a non-flagged transaction to update
     if (!target) throw new Error("No non-flagged transaction in mock data");
     const result = await updateTransaction(target.id, {
       description: "Updated description",

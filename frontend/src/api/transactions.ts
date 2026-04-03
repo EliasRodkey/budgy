@@ -7,7 +7,7 @@ const USE_MOCK = true;
 
 export interface TransactionFilters {
   search?: string;
-  category?: string;
+  primaryCategory?: string;
   detailedCategory?: string;
   tags?: string[];        // OR logic: match any of these tags
   showExcluded?: boolean; // default false — excluded transactions are hidden
@@ -38,7 +38,7 @@ function applyFilters(txs: Transaction[], filters: TransactionFilters): Transact
 
   // Hide excluded transactions by default
   if (!filters.showExcluded) {
-    result = result.filter((t) => !t.isExcluded);
+    result = result.filter((t) => !t.exclude);
   }
 
   if (filters.search) {
@@ -46,12 +46,12 @@ function applyFilters(txs: Transaction[], filters: TransactionFilters): Transact
     result = result.filter(
       (t) =>
         t.description.toLowerCase().includes(q) ||
-        t.merchant.toLowerCase().includes(q),
+        t.account_name.toLowerCase().includes(q),
     );
   }
 
-  if (filters.category) {
-    result = result.filter((t) => t.primaryCategory === filters.category);
+  if (filters.primaryCategory) {
+    result = result.filter((t) => t.primaryCategory === filters.primaryCategory);
   }
 
   if (filters.detailedCategory) {
@@ -65,11 +65,11 @@ function applyFilters(txs: Transaction[], filters: TransactionFilters): Transact
   }
 
   if (filters.dateFrom) {
-    result = result.filter((t) => t.date >= filters.dateFrom!);
+    result = result.filter((t) => t.authorizedDate >= filters.dateFrom!);
   }
 
   if (filters.dateTo) {
-    result = result.filter((t) => t.date <= filters.dateTo!);
+    result = result.filter((t) => t.authorizedDate <= filters.dateTo!);
   }
 
   const sortBy = filters.sortBy ?? "date";
@@ -78,7 +78,7 @@ function applyFilters(txs: Transaction[], filters: TransactionFilters): Transact
   result.sort((a, b) => {
     let cmp = 0;
     if (sortBy === "date") {
-      cmp = a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+      cmp = a.authorizedDate < b.authorizedDate ? -1 : a.authorizedDate > b.authorizedDate ? 1 : 0;
     } else {
       cmp = a.amount - b.amount;
     }
@@ -129,7 +129,7 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
 
 export async function getFlaggedTransactions(): Promise<Transaction[]> {
   if (USE_MOCK) {
-    return mutableTransactions.filter((t) => t.isFlagged);
+    return mutableTransactions.filter((t) => t.status === "Unchecked"); // TODO: Add table status class / enum to front end.
   }
 
   // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
@@ -161,7 +161,7 @@ export async function getAvailableTags(): Promise<string[]> {
 
 export async function updateTransaction(
   id: string,
-  updates: Partial<Pick<Transaction, "description" | "merchant" | "amount" | "date" | "primaryCategory" | "detailedCategory" | "isFlagged" | "isExcluded" | "isRepayment" | "notes" | "tags">>,
+  updates: Partial<Pick<Transaction, "authorizedDate" | "postedDate" | "status" | "account_name" | "description" | "primaryCategory" | "detailedCategory" | "amount" | "repayment" | "exclude" | "notes" | "tags">>,
 ): Promise<Transaction> {
   if (USE_MOCK) {
     const idx = mutableTransactions.findIndex((t) => t.id === id);
@@ -170,6 +170,8 @@ export async function updateTransaction(
     mutableTransactions[idx] = updated;
     return updated;
   }
+
+  
 
   // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
   // const res = await fetch(`/api/transactions/${id}`, {
@@ -203,7 +205,7 @@ export async function assignCategory(
   detailedCategory: string,
 ): Promise<Transaction> {
   if (USE_MOCK) {
-    return updateTransaction(transactionId, { primaryCategory, detailedCategory, isFlagged: false });
+    return updateTransaction(transactionId, { primaryCategory, detailedCategory, status });
   }
 
   // Real fetch stub — uncomment and remove mock block above when FastAPI is ready

@@ -119,15 +119,15 @@ export async function getCategoryOverview(_month: string): Promise<CategorySpend
     // Filter to the requested month; fall back to the latest available mock month if none match
     // (mock data uses fixed past dates and won't match the real current month)
     const monthTransactions = mockTransactions.filter(
-      (tx) => !tx.isExcluded && tx.date.startsWith(_month),
+      (tx) => !tx.exclude && tx.authorizedDate.startsWith(_month),
     );
     let txSource = monthTransactions;
     if (txSource.length === 0) {
       const latestMonth = mockTransactions
-        .map((tx) => tx.date.slice(0, 7))
+        .map((tx) => tx.authorizedDate.slice(0, 7))
         .sort()
         .at(-1) ?? "";
-      txSource = mockTransactions.filter((tx) => !tx.isExcluded && tx.date.startsWith(latestMonth));
+      txSource = mockTransactions.filter((tx) => !tx.exclude && tx.authorizedDate.startsWith(latestMonth));
     }
 
     for (const tx of txSource) {
@@ -195,34 +195,34 @@ export async function getCategoryDetail(primaryCategory: string): Promise<Catego
 
     // Resolve current-month transactions (fall back to latest mock month if no match)
     const monthTxs = mockTransactions.filter(
-      (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory && tx.date.startsWith(currentMonth),
+      (tx) => !tx.exclude && tx.primaryCategory === primaryCategory && tx.authorizedDate.startsWith(currentMonth),
     );
     const latestMonth = mockTransactions
-      .map((tx) => tx.date.slice(0, 7))
+      .map((tx) => tx.authorizedDate.slice(0, 7))
       .sort()
       .at(-1) ?? "";
     const txSource = monthTxs.length > 0
       ? monthTxs
       : mockTransactions.filter(
-          (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory && tx.date.startsWith(latestMonth),
+          (tx) => !tx.exclude && tx.primaryCategory === primaryCategory && tx.authorizedDate.startsWith(latestMonth),
         );
 
     const currentMonthSubcategories = buildSubcategorySpend(txSource, primaryCategory);
     const currentMonthTotal = txSource.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
     const currentMonthTxCount = txSource.length;
-    const currentMonthTransactions = [...txSource].sort((a, b) => b.date.localeCompare(a.date));
+    const currentMonthTransactions = [...txSource].sort((a, b) => b.authorizedDate.localeCompare(a.authorizedDate));
 
     // Year average: monthly totals for the current year, fall back to latest available year
     const currentYear = currentMonth.slice(0, 4);
     const yearTxs = mockTransactions.filter(
-      (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory && tx.date.startsWith(currentYear),
+      (tx) => !tx.exclude && tx.primaryCategory === primaryCategory && tx.authorizedDate.startsWith(currentYear),
     );
     const yearTxSource = yearTxs.length > 0 ? yearTxs : mockTransactions.filter(
-      (tx) => !tx.isExcluded && tx.primaryCategory === primaryCategory,
+      (tx) => !tx.exclude && tx.primaryCategory === primaryCategory,
     );
     const monthlyTotals = new Map<string, number>();
     for (const tx of yearTxSource) {
-      const m = tx.date.slice(0, 7);
+      const m = tx.authorizedDate.slice(0, 7);
       monthlyTotals.set(m, (monthlyTotals.get(m) ?? 0) + Math.abs(tx.amount));
     }
     const totalsArr = Array.from(monthlyTotals.values());
@@ -260,7 +260,7 @@ export async function getSubcategoryDetail(
       (t) =>
         t.primaryCategory === primaryCategory &&
         t.detailedCategory === detailedCategory &&
-        !t.isExcluded,
+        !t.exclude,
     );
 
     const totalAmount = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
@@ -270,10 +270,10 @@ export async function getSubcategoryDetail(
     // Aggregate top vendors
     const vendorMap = new Map<string, { amount: number; count: number }>();
     for (const tx of transactions) {
-      const entry = vendorMap.get(tx.merchant) ?? { amount: 0, count: 0 };
+      const entry = vendorMap.get(tx.account_name) ?? { amount: 0, count: 0 };
       entry.amount += Math.abs(tx.amount);
       entry.count += 1;
-      vendorMap.set(tx.merchant, entry);
+      vendorMap.set(tx.account_name, entry);
     }
     const topVendors = Array.from(vendorMap.entries())
       .map(([name, v]) => ({ name, amount: v.amount, count: v.count }))
@@ -282,7 +282,7 @@ export async function getSubcategoryDetail(
 
     // Sort transactions by date descending
     const sortedTransactions = [...transactions].sort((a, b) =>
-      b.date.localeCompare(a.date),
+      b.authorizedDate.localeCompare(a.authorizedDate),
     );
 
     return {

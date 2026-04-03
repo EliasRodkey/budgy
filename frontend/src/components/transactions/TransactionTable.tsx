@@ -37,11 +37,11 @@ function TransactionRow({ tx, onEdit, onDelete }: RowProps) {
   return (
     <tr className="border-b border-border hover:bg-muted/30 transition-colors group">
       <td className="py-3 px-4 text-sm text-muted-foreground whitespace-nowrap">
-        {formatDate(tx.date)}
+        {formatDate(tx.authorizedDate)}
       </td>
       <td className="py-3 px-4 max-w-xs">
         <p className="text-sm font-medium truncate">{tx.description}</p>
-        <p className="text-xs text-muted-foreground truncate">{tx.merchant}</p>
+        <p className="text-xs text-muted-foreground truncate">{tx.account_name}</p>
       </td>
       <td className={`py-3 px-4 text-sm font-medium tabular-nums text-right whitespace-nowrap ${isExpense ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
         {formatCurrency(tx.amount)}

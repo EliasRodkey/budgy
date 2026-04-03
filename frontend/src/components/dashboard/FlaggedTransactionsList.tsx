@@ -55,10 +55,10 @@ function AssignRow({ tx, onAssign, isPending }: AssignRowProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-3 py-3 border-b border-border last:border-0">
-      <span className="text-xs text-muted-foreground w-24 shrink-0">{formatDate(tx.date)}</span>
+      <span className="text-xs text-muted-foreground w-24 shrink-0">{formatDate(tx.authorizedDate)}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{tx.description}</p>
-        <p className="text-xs text-muted-foreground">{tx.merchant}</p>
+        <p className="text-xs text-muted-foreground">{tx.account_name}</p>
       </div>
       <span className="text-sm font-medium tabular-nums text-red-600 dark:text-red-400 shrink-0">
         {formatCurrency(tx.amount)}

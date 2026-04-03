@@ -60,7 +60,7 @@ describe("getFlaggedTransactions", () => {
     const result = await getFlaggedTransactions();
     expect(result.length).toBeGreaterThan(0);
     for (const tx of result) {
-      expect(tx.isFlagged).toBe(true);
+      expect(tx.status).toBe("Unchecked");
     }
   });
 
@@ -68,7 +68,7 @@ describe("getFlaggedTransactions", () => {
     const result = await getFlaggedTransactions();
     for (const tx of result) {
       expect(typeof tx.id).toBe("string");
-      expect(typeof tx.date).toBe("string");
+      expect(typeof tx.authorizedDate).toBe("string");
       expect(typeof tx.amount).toBe("number");
     }
   });
@@ -82,7 +82,7 @@ describe("assignCategory", () => {
     expect(result.id).toBe(target.id);
     expect(result.primaryCategory).toBe("Food & drink");
     expect(result.detailedCategory).toBe("Groceries");
-    expect(result.isFlagged).toBe(false);
+    expect(result.status).not.toBe("Unchecked");
   });
 
   it("throws when given a non-existent transaction ID", async () => {
