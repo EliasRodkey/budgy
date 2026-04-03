@@ -21,9 +21,9 @@ import os
 from typing import Dict, Generator, List
 
 # Local imports
-from budgy.database_modules.models.common import Field, TableStatus
-from budgy.database_modules.models.transactions import TransactionsTable
-from budgy.utils.file_utils import LoggingExtras
+from backend.database_modules.models.common import Field, TableStatus
+from backend.database_modules.models.transactions import TransactionsTable
+from backend.utils.file_utils import LoggingExtras
 
 # initialize module logger
 import logging

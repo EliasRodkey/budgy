@@ -14,10 +14,10 @@ import hashlib
 from pleasant_database import DatabaseIntegrityError, DatabaseFile, DatabaseManager, ItemNotFoundError
 
 # Local imports
-from budgy.database_modules.managers.common import DB_FILE, DuplicateError
-from budgy.database_modules.models.budgets import BudgetsTable, budget_columns
-from budgy.utils.analysis_utils import PrimaryCategories
-from budgy.utils.file_utils import LoggingExtras
+from backend.database_modules.managers.common import DB_FILE, DuplicateError
+from backend.database_modules.models.budgets import BudgetsTable, budget_columns
+from backend.utils.analysis_utils import PrimaryCategories
+from backend.utils.file_utils import LoggingExtras
 
 # initialize module logger
 import logging

@@ -13,11 +13,11 @@ import pandas as pd
 import pytest
 
 # Local imports
-from budgy.database_modules.managers.common import DuplicateError
-from budgy.database_modules.models.common import TableStatus
-from budgy.database_modules.models.transactions import TransactionsTable
-from budgy.database_modules.managers.common import format_column_names
-from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
+from backend.database_modules.managers.common import DuplicateError
+from backend.database_modules.models.common import TableStatus
+from backend.database_modules.models.transactions import TransactionsTable
+from backend.database_modules.managers.common import format_column_names
+from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from tests.conftest import TEST_CSV_DIR, full_transactions_database
 
 # Initialize module logger

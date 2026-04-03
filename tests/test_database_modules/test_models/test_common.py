@@ -11,7 +11,7 @@ from datetime import datetime
 import pytest
 
 # Local imports
-from budgy.database_modules.models.common import Field, TableStatus, parse_date
+from backend.database_modules.models.common import Field, TableStatus, parse_date
 
 # Initialize module logger
 import logging

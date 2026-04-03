@@ -33,7 +33,10 @@ Columns:
 
 ## Challenges
 
-- pass
+- Database schema and relationship structuring.
+- Layer responsibility allocation.
+- Vertical integration between frontend UI and backedn database.
+- Performance tradeoffs
 
 ## Version History
 

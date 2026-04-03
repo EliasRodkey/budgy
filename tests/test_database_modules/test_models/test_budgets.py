@@ -11,7 +11,7 @@ from datetime import datetime
 import pytest
 
 # Local imports
-from budgy.database_modules.models.budgets import BudgetsTable, budget_columns
+from backend.database_modules.models.budgets import BudgetsTable, budget_columns
 
 # Initialize module logger
 import logging

@@ -11,9 +11,9 @@ import datetime
 import pytest
 
 # Local imports
-from budgy.database_modules.managers.common import DuplicateError
-from budgy.database_modules.models.budgets import BudgetsTable
-from budgy.utils.analysis_utils import PrimaryCategories
+from backend.database_modules.managers.common import DuplicateError
+from backend.database_modules.models.budgets import BudgetsTable
+from backend.utils.analysis_utils import PrimaryCategories
 from tests.conftest import (
     test_budgets_manager,
     clean_budgets_database,

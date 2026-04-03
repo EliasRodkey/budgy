@@ -14,8 +14,8 @@ import pytest
 from pleasant_database import DatabaseIntegrityError
 
 # Local imports
-from budgy.database_modules.models.summaries import SummariesTable, summary_columns
-from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
+from backend.database_modules.models.summaries import SummariesTable, summary_columns
+from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 
 # Initialize module logger
 import logging

@@ -17,9 +17,9 @@ import pytest
 from pleasant_database import ItemNotFoundError
 
 # Local imports
-from budgy.database_modules.models.budgets import BudgetsTable
-from budgy.database_modules.models.summaries import SummariesTable
-from budgy.utils.analysis_utils import PrimaryCategories
+from backend.database_modules.models.budgets import BudgetsTable
+from backend.database_modules.models.summaries import SummariesTable
+from backend.utils.analysis_utils import PrimaryCategories
 from tests.conftest import (
     test_summaries_manager,
     full_transactions_database,

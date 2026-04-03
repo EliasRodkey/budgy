@@ -13,7 +13,7 @@ import pytest
 from pleasant_database import DatabaseIntegrityError
 
 # Local imports
-from budgy.database_modules.models.common import TableStatus
+from backend.database_modules.models.common import TableStatus
 from tests.conftest import TEST_CSV_DIR, TEST_DB_FILEPATH
 
 import logging

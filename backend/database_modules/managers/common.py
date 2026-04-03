@@ -20,8 +20,8 @@ import pandas as pd
 from pleasant_database import DatabaseFile
 
 # Local imports
-from budgy.utils.analysis_utils import CategoriesEnum
-from budgy.utils.file_utils import EDirectories
+from backend.utils.analysis_utils import CategoriesEnum
+from backend.utils.file_utils import EDirectories
 
 # initialize module logger
 import logging

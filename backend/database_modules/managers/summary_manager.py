@@ -17,8 +17,8 @@ import pandas as pd
 from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityError, ItemNotFoundError
 
 # Local imports
-from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories
-from budgy.utils.file_utils import LoggingExtras
+from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
+from backend.utils.file_utils import LoggingExtras
 from .common import convert_datetime_nums_to_range
 from ..models.summaries import SummariesTable
 

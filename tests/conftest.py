@@ -24,11 +24,11 @@ from pleasant_database import DatabaseFile
 from pleasant_loggers import configure_logging, LoggingMode
 
 # Local imports
-from budgy.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
-from budgy.database_modules.managers.budget_manager import BudgetsTableManager
-from budgy.database_modules.managers.summary_manager import SummariesTableManager
-from budgy.database_modules.models.common import TableStatus
-from budgy.utils.file_utils import EDirectories
+from backend.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
+from backend.database_modules.managers.budget_manager import BudgetsTableManager
+from backend.database_modules.managers.summary_manager import SummariesTableManager
+from backend.database_modules.models.common import TableStatus
+from backend.utils.file_utils import EDirectories
 
 
 @pytest.fixture(scope="session", autouse=True)

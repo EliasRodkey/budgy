@@ -25,12 +25,12 @@ import pandas as pd
 from pleasant_database import DatabaseFile, DatabaseIntegrityError, DatabaseManager
 
 # Local imports
-from budgy.database_modules.managers.common import DuplicateError, convert_datetime_nums_to_range, format_column_names
-from budgy.database_modules.models.common import Field, TableStatus
-from budgy.database_modules.models.transactions import TransactionsTable, UpdatesTable, transaction_columns
-from budgy.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
-from budgy.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
-from budgy.database_modules.io.transactions_csv_loader import iter_val_csv_file
+from backend.database_modules.managers.common import DuplicateError, convert_datetime_nums_to_range, format_column_names
+from backend.database_modules.models.common import Field, TableStatus
+from backend.database_modules.models.transactions import TransactionsTable, UpdatesTable, transaction_columns
+from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
+from backend.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
+from backend.database_modules.io.transactions_csv_loader import iter_val_csv_file
 
 # initialize module logger
 import logging

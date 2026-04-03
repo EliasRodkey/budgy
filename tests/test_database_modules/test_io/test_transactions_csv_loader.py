@@ -9,8 +9,8 @@ from datetime import datetime
 import os
 
 # Local imports
-from budgy.database_modules.io.transactions_csv_loader import generate_base_hash, iter_val_csv_file
-from budgy.database_modules.models.transactions import transaction_columns
+from backend.database_modules.io.transactions_csv_loader import generate_base_hash, iter_val_csv_file
+from backend.database_modules.models.transactions import transaction_columns
 from tests.conftest import TEST_CSV_DIR
 
 # Initialize module logger

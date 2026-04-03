@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 
 # Local imports
-from budgy.database_modules.managers.common import convert_datetime_nums_to_range, format_column_names
+from backend.database_modules.managers.common import convert_datetime_nums_to_range, format_column_names
 
 # Initialize module logger
 import logging
