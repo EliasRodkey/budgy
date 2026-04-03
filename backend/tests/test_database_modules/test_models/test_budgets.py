@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_models.test_budgets
 
-Tests for budgy.database_modules.models.budgets — BudgetsTable ORM definition and budget_columns list.
+Tests for backend.database_modules.models.budgets — BudgetsTable ORM definition and budget_columns list.
 """
 # Standard library imports
 from datetime import datetime

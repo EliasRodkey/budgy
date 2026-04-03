@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_models.test_common
 
-Tests for budgy.database_modules.models.common — Column namedtuple, TableStatus enum, and parse_date helper.
+Tests for backend.database_modules.models.common — Column namedtuple, TableStatus enum, and parse_date helper.
 """
 # Standard library imports
 from datetime import datetime

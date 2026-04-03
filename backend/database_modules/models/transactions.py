@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.models.transactions.py -
+backend.database_modules.models.transactions.py -
 Contains ORM table definitions, database managers, and CSV column mappings for budgy.
 
 Classes:

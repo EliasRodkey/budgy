@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.models.summaries.py -
+backend.database_modules.models.summaries.py -
 Contains ORM table definitions, database managers, and CSV column mappings for budgy summaries db table.
 
 Classes:

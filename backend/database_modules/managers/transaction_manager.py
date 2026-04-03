@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.managers.transaction_manager.py -
+backend.database_modules.managers.transaction_manager.py -
 Module containing class-based managers for the transactions and updates tables.
 
 Classes:

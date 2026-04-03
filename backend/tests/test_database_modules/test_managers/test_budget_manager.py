@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_managers.test_budget_manager.py
 
-Tests for budgy.database_modules.managers.budget_manager.py — BudgetsTableManager.
+Tests for backend.database_modules.managers.budget_manager.py — BudgetsTableManager.
 """
 # Standard library imports
 import datetime
@@ -167,7 +167,7 @@ class TestFetchBudgetById:
 
     def test_not_found_returns_class_and_warns(self, clean_budgets_database, caplog):
         """fetch_budget_by_id returns the BudgetsTable class and logs a warning for a missing ID."""
-        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.budget_manager"):
+        with caplog.at_level(logging.WARNING, logger="backend.database_modules.managers.budget_manager"):
             result = clean_budgets_database.fetch_budget_by_id(9999)
         assert result is BudgetsTable
         assert any("No budget exists with ID" in message for message in caplog.messages)

@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_managers.test_transactions_manager.py
 
-Tests for budgy.database_modules.managers.transactions_manager.py module — Database query and update functions for Transactions and Updates
+Tests for backend.database_modules.managers.transactions_manager.py module — Database query and update functions for Transactions and Updates
 """
 # Standard library imports
 from datetime import datetime

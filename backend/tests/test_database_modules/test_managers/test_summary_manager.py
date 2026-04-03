@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_managers.test_summary_manager.py
 
-Tests for budgy.database_modules.managers.summary_manager.py — SummariesTableManager.
+Tests for backend.database_modules.managers.summary_manager.py — SummariesTableManager.
 
 Input data for upload/update functions is generated via TransactionsTableManager.generate_monthly_summary.
 """
@@ -237,7 +237,7 @@ class TestUploadMonthlySummary:
         summary = full_transactions_database.generate_monthly_summary(12, 2025)
         summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
 
-        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
+        with caplog.at_level(logging.WARNING, logger="backend.database_modules.managers.summary_manager"):
             summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
 
         assert any("already exists" in msg for msg in caplog.messages)
@@ -293,7 +293,7 @@ class TestUpdateSummary:
     def test_update_when_record_missing(self, clean_summaries_database, caplog):
         """update_summary logs a warning and does not raise when no record exists."""
         summaries_manager, _ = clean_summaries_database
-        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
+        with caplog.at_level(logging.WARNING, logger="backend.database_modules.managers.summary_manager"):
             summaries_manager.update_summary(12, 2025, _make_minimal_summary())
         assert any("doesn't exists" in msg or "doesn't exist" in msg for msg in caplog.messages)
 
@@ -308,7 +308,7 @@ class TestUpdateSummary:
 
         summary.loc["income", "sum"] = 10000.0
         caplog.clear()
-        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
+        with caplog.at_level(logging.WARNING, logger="backend.database_modules.managers.summary_manager"):
             summaries_manager.update_summary(12, 2025, summary)
 
         assert not any("doesn't exists" in msg or "doesn't exist" in msg for msg in caplog.messages)
@@ -346,7 +346,7 @@ class TestFetchSummaryById:
     def test_not_found_returns_class_and_warns(self, clean_summaries_database, caplog):
         """fetch_summary_by_id returns the SummariesTable class and logs a warning for a missing ID."""
         summaries_manager, _ = clean_summaries_database
-        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
+        with caplog.at_level(logging.WARNING, logger="backend.database_modules.managers.summary_manager"):
             result = summaries_manager.fetch_summary_by_id(9999)
         assert result is SummariesTable
         assert any("No budget exists with ID" in msg for msg in caplog.messages)
@@ -398,7 +398,7 @@ class TestFetchSummariesOverPeriod:
         budget_id = budgets_manager.fetch_all_items()[0].id
         summaries_manager.add_item(**_make_db_summary_record(11, 2025, budget_id))
 
-        with caplog.at_level(logging.WARNING, logger="budgy.database_modules.managers.summary_manager"):
+        with caplog.at_level(logging.WARNING, logger="backend.database_modules.managers.summary_manager"):
             result = summaries_manager.fetch_summaries_over_period(12, 2025)
 
         assert isinstance(result, pd.DataFrame)

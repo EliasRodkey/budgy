@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.managers.budget_manager.py -
+backend.database_modules.managers.budget_manager.py -
 Module containing the class-based manager for the budgets table.
 
 Classes:

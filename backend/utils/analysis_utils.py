@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.utils.analysis_utils.py
+backend.utils.analysis_utils.py
 
 A utility module for transaction categorization in the budgy budgeting application.
 This module provides comprehensive category mappings for financial transactions,

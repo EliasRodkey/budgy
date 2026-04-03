@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_models.test_transactions
 
-Tests for budgy.database_modules.models.transactions module — ORM table definitions and database managers.
+Tests for backend.database_modules.models.transactions module — ORM table definitions and database managers.
 """
 # Standard library imports
 import os

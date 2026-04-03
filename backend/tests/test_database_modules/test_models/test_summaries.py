@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_models.test_summaries
 
-Tests for budgy.database_modules.models.summaries — SummariesTable ORM definition and summary_columns list.
+Tests for backend.database_modules.models.summaries — SummariesTable ORM definition and summary_columns list.
 """
 # Standard library imports
 from datetime import datetime
