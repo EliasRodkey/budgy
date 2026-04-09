@@ -6,6 +6,8 @@ backend.main
 from fastapi import FastAPI
 
 # Local imports
-from backend.api import * # TODO: Fill in as we fill out
+from backend.api.transactions.transactions_router import router as transactions_router
 
 app = FastAPI()
+
+app.include_router(transactions_router)

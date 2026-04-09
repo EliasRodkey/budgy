@@ -26,6 +26,7 @@ export interface TransactionsPage {
   pageSize: number;
 }
 
+// TODO:
 export interface ImportResult {
   imported: number;
   failed: { row: number; reason: string }[];
@@ -107,24 +108,22 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
     };
   }
 
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const params = new URLSearchParams();
-  // if (filters.search) params.set("search", filters.search);
-  // if (filters.category) params.set("category", filters.category);
-  // if (filters.detailedCategory) params.set("detailed_category", filters.detailedCategory);
-  // if (filters.tags?.length) params.set("tags", filters.tags.join(","));
-  // if (filters.showExcluded) params.set("show_excluded", "true");
-  // if (filters.dateFrom) params.set("date_from", filters.dateFrom);
-  // if (filters.dateTo) params.set("date_to", filters.dateTo);
-  // if (filters.sortBy) params.set("sort_by", filters.sortBy);
-  // if (filters.sortOrder) params.set("sort_order", filters.sortOrder);
-  // params.set("page", String(filters.page ?? 1));
-  // params.set("page_size", String(filters.pageSize ?? 20));
-  // const res = await fetch(`/api/transactions?${params}`);
-  // if (!res.ok) throw new Error("Failed to fetch transactions");
-  // const json = await res.json();
-  // return { data: json.data, total: json.meta.total, page: json.meta.page, pageSize: json.meta.page_size };
-  throw new Error("Real API not implemented");
+  const params = new URLSearchParams();
+  if (filters.search) params.set("search", filters.search);
+  if (filters.primaryCategory) params.set("category", filters.primaryCategory);
+  if (filters.detailedCategory) params.set("detailed_category", filters.detailedCategory);
+  if (filters.tags?.length) params.set("tags", filters.tags.join(","));
+  if (filters.showExcluded) params.set("show_excluded", "true");
+  if (filters.dateFrom) params.set("date_from", filters.dateFrom);
+  if (filters.dateTo) params.set("date_to", filters.dateTo);
+  if (filters.sortBy) params.set("sort_by", filters.sortBy);
+  if (filters.sortOrder) params.set("sort_order", filters.sortOrder);
+  params.set("page", String(filters.page ?? 1));
+  params.set("page_size", String(filters.pageSize ?? 20));
+  const res = await fetch(`/api/transactions?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch transactions");
+  const json = await res.json();
+  return { data: json.data, total: json.meta.total, page: json.meta.page, pageSize: json.meta.page_size };
 }
 
 export async function getFlaggedTransactions(): Promise<Transaction[]> {
