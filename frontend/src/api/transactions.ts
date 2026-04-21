@@ -1,7 +1,6 @@
 import type { Transaction } from "../types";
-import { mockTransactions } from "../__tests__/fixtures";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,10 +26,22 @@ export interface TransactionsPage {
   hasNextPage: boolean;
 }
 
-// TODO:
 export interface ImportResult {
   imported: number;
   failed: { row: number; reason: string }[];
+}
+
+export interface UploadJobResponse {
+  jobId: string;
+  status: string;
+}
+
+export interface ImportJobStatus {
+  jobId: string;
+  status: "pending" | "processing" | "complete" | "failed";
+  rowsImported?: number;
+  rowsUpdated?: number;
+  errors?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -91,6 +102,7 @@ function applyFilters(txs: Transaction[], filters: TransactionFilters): Transact
 }
 
 // In-memory mutable copy for edit/delete mock operations
+import { mockTransactions } from "../__tests__/fixtures";
 let mutableTransactions = [...mockTransactions];
 
 // ─── API Functions ────────────────────────────────────────────────────────────
@@ -113,7 +125,7 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
 
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
-  if (filters.primaryCategory) params.set("category", filters.primaryCategory);
+  if (filters.primaryCategory) params.set("primary_category", filters.primaryCategory);
   if (filters.detailedCategory) params.set("detailed_category", filters.detailedCategory);
   if (filters.tags?.length) params.set("tags", filters.tags.join(","));
   if (filters.showExcluded) params.set("show_excluded", "true");
@@ -126,20 +138,24 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
   const res = await fetch(`/api/transactions?${params}`);
   if (!res.ok) throw new Error("Failed to fetch transactions");
   const json = await res.json();
-  return { data: json.data, total: json.meta.total, page: json.meta.page, pageSize: json.meta.page_size , hasNextPage: json.meta.has_next_page };
+  return {
+    data: json.data,
+    total: json.total,
+    page: json.page,
+    pageSize: json.pageSize,
+    hasNextPage: json.hasNextPage,
+  };
 }
 
 export async function getFlaggedTransactions(): Promise<Transaction[]> {
   if (USE_MOCK) {
-    return mutableTransactions.filter((t) => t.status === "Unchecked"); // TODO: Add table status class / enum to front end.
+    return mutableTransactions.filter((t) => t.status === "Unchecked");
   }
 
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const res = await fetch("/api/transactions?flagged=true&page_size=100");
-  // if (!res.ok) throw new Error("Failed to fetch flagged transactions");
-  // const json = await res.json();
-  // return json.data as Transaction[];
-  throw new Error("Real API not implemented");
+  const res = await fetch("/api/transactions?flagged=true&page_size=100");
+  if (!res.ok) throw new Error("Failed to fetch flagged transactions");
+  const json = await res.json();
+  return json.data as Transaction[];
 }
 
 export async function getAvailableTags(): Promise<string[]> {
@@ -153,12 +169,10 @@ export async function getAvailableTags(): Promise<string[]> {
     return [...tagSet].sort();
   }
 
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const res = await fetch("/api/transactions/tags");
-  // if (!res.ok) throw new Error("Failed to fetch tags");
-  // const json = await res.json();
-  // return json.data as string[];
-  throw new Error("Real API not implemented");
+  const res = await fetch("/api/transactions/tags");
+  if (!res.ok) throw new Error("Failed to fetch tags");
+  const json = await res.json();
+  return json.data as string[];
 }
 
 export async function updateTransaction(
@@ -173,18 +187,13 @@ export async function updateTransaction(
     return updated;
   }
 
-  
-
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const res = await fetch(`/api/transactions/${id}`, {
-  //   method: "PUT",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify(updates),
-  // });
-  // if (!res.ok) throw new Error("Failed to update transaction");
-  // const json = await res.json();
-  // return json.data as Transaction;
-  throw new Error("Real API not implemented");
+  const res = await fetch(`/api/transactions/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error("Failed to update transaction");
+  return res.json() as Promise<Transaction>;
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
@@ -195,10 +204,8 @@ export async function deleteTransaction(id: string): Promise<void> {
     return;
   }
 
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
-  // if (!res.ok) throw new Error("Failed to delete transaction");
-  throw new Error("Real API not implemented");
+  const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete transaction");
 }
 
 export async function assignCategory(
@@ -210,37 +217,62 @@ export async function assignCategory(
     return updateTransaction(transactionId, { primaryCategory, detailedCategory, status });
   }
 
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const res = await fetch(`/api/transactions/${transactionId}`, {
-  //   method: "PUT",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify({ primaryCategory, detailedCategory, isFlagged: false }),
-  // });
-  // if (!res.ok) throw new Error("Failed to assign category");
-  // const json = await res.json();
-  // return json.data as Transaction;
-  throw new Error("Real API not implemented");
+  const res = await fetch(`/api/transactions/${transactionId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ primaryCategory, detailedCategory }),
+  });
+  if (!res.ok) throw new Error("Failed to assign category");
+  const json = await res.json();
+  return json.data as Transaction;
 }
 
-export async function importTransactions(_file: File): Promise<ImportResult> {
+// ─── CSV Import (Async Job Pipeline) ─────────────────────────────────────────
+
+export async function importTransactions(file: File): Promise<UploadJobResponse> {
   if (USE_MOCK) {
-    // Simulate a realistic import: 5 successes, 2 failures
     await new Promise((r) => setTimeout(r, 600));
-    return {
-      imported: 5,
-      failed: [
-        { row: 3, reason: "Missing required field: date" },
-        { row: 7, reason: "Invalid amount format: 'not-a-number'" },
-      ],
-    };
+    return { jobId: "mock-job-id", status: "pending" };
   }
 
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const formData = new FormData();
-  // formData.append("file", _file);
-  // const res = await fetch("/api/transactions/import", { method: "POST", body: formData });
-  // if (!res.ok) throw new Error("Failed to import transactions");
-  // const json = await res.json();
-  // return json.data as ImportResult;
-  throw new Error("Real API not implemented");
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/transactions/import", { method: "POST", body: formData });
+  if (!res.ok) throw new Error("Failed to start import");
+  const json = await res.json();
+  return { jobId: json.jobId, status: json.status };
+}
+
+export async function getImportJobStatus(jobId: string): Promise<ImportJobStatus> {
+  if (USE_MOCK) {
+    return { jobId, status: "complete", rowsImported: 5, rowsUpdated: 0 };
+  }
+
+  const res = await fetch(`/api/transactions/import/${jobId}`);
+  if (!res.ok) throw new Error(`Failed to fetch import job status for ${jobId}`);
+  const json = await res.json();
+  return {
+    jobId: json.jobId,
+    status: json.status,
+    rowsImported: json.rowsImported,
+    rowsUpdated: json.rowsUpdated,
+    errors: json.errors,
+  };
+}
+
+export async function confirmImport(jobId: string): Promise<ImportJobStatus> {
+  if (USE_MOCK) {
+    return { jobId, status: "complete", rowsImported: 5, rowsUpdated: 0 };
+  }
+
+  const res = await fetch(`/api/transactions/import/${jobId}/confirm`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to confirm import job ${jobId}`);
+  const json = await res.json();
+  return {
+    jobId: json.jobId,
+    status: json.status,
+    rowsImported: json.rowsImported,
+    rowsUpdated: json.rowsUpdated,
+    errors: json.errors,
+  };
 }

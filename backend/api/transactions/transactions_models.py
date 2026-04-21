@@ -21,7 +21,7 @@ incoming_config = ConfigDict(
     alias_generator=to_camel # Convert to camelCase for front end consumption.
 )
 
-ouotgoing_config = ConfigDict(
+outgoing_config = ConfigDict(
     populate_by_name=True, # Accept both camelCase and snake_case for incoming data.
     alias_generator=to_camel # Convert to camelCase for front end consumption.
 )
@@ -29,8 +29,8 @@ ouotgoing_config = ConfigDict(
 
 
 class Transaction(BaseModel):
-    id: str
-    authoried_date: date
+    id: int
+    authorized_date: date
     posted_date: date
     status: str
     account_name: str
@@ -40,10 +40,10 @@ class Transaction(BaseModel):
     amount: float # dollars (negative = expense)
     repayment: bool
     exclude: bool
-    notes: str # max 300 chars, edit modal only
-    tags: str # max 10 tags, each max 30 chars, no spaces
+    notes: Optional[str] = None # max 300 chars, edit modal only
+    tags: Optional[str] = None # max 10 tags, each max 30 chars, no spaces
 
-    model_config =  ouotgoing_config
+    model_config = outgoing_config
 
 
 
@@ -64,11 +64,48 @@ class TransactionFilters(BaseModel):
 
 
 
-class TransactionsPage(BaseModel): # Pydantic model for get transacitons response with pagination metadata.
+class TransactionsPage(BaseModel): # Pydantic model for get transactions response with pagination metadata.
     data: list[Transaction]
     total: int
     page: int
     page_size: int
     has_next_page: bool
 
-    model_config = ouotgoing_config
+    model_config = outgoing_config
+
+
+class TransactionUpdate(BaseModel):
+    """
+    Request body for PUT /transactions/{id}.
+    Field names match exactly what the edit form sends (camelCase from the frontend).
+    All fields are optional — only provided fields are written to the DB.
+    """
+    model_config = ConfigDict(extra="ignore")   # silently drop isFlagged and any other unknown fields
+
+    date: Optional[date] = None             # → authorized_date
+    description: Optional[str] = None
+    merchant: Optional[str] = None          # → account_name
+    amount: Optional[float] = None
+    primaryCategory: Optional[str] = None   # → primary_category
+    detailedCategory: Optional[str] = None  # → detailed_category
+    isExcluded: Optional[bool] = None       # → exclude
+    isRepayment: Optional[bool] = None      # → repayment
+    notes: Optional[str] = None
+    tags: Optional[list[str]] = None        # joined to comma-string in DB
+
+
+class UploadJobResponse(BaseModel):
+    job_id: str
+    status: str
+
+    model_config = outgoing_config
+
+
+class ImportJobStatus(BaseModel):
+    job_id: str
+    status: str
+    rows_imported: Optional[int] = None
+    rows_updated: Optional[int] = None
+    errors: Optional[str] = None
+
+    model_config = outgoing_config

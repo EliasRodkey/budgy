@@ -27,7 +27,7 @@ from pleasant_database import DatabaseFile, DatabaseIntegrityError, DatabaseMana
 # Local imports
 from backend.database_modules.managers.common import DuplicateError, convert_datetime_nums_to_range, format_column_names
 from backend.database_modules.models.common import Field, TableStatus
-from backend.database_modules.models.transactions import TransactionsTable, UpdatesTable, transaction_columns
+from backend.database_modules.models.transactions import TransactionsTable, UpdatesTable, UploadJobsTable, transaction_columns
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
 from backend.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
 from backend.csv_modules.transactions_csv_loader import iter_val_csv_file
@@ -420,3 +420,43 @@ class TransactionsTableManager(DatabaseManager):
                     raise e
 
         return updated_records
+
+
+
+class UploadJobsManager(DatabaseManager):
+    """
+    Manager for the upload_jobs table. Tracks async CSV import jobs.
+
+    Methods:
+        - create_job: Creates a new upload job record and returns its UUID.
+        - set_status: Updates job status and optional result counts.
+        - get_job: Fetches a job record by its UUID job_id.
+    """
+
+    def __init__(self, db_file: DatabaseFile):
+        super().__init__(UploadJobsTable, db_file)
+
+    def create_job(self, file_path: str) -> str:
+        """Creates a new upload job with status 'pending' and returns the job_id (UUID)."""
+        import uuid
+        job_id = str(uuid.uuid4())
+        self.add_item(
+            job_id=job_id,
+            status="pending",
+            file_path=file_path,
+            created_at=datetime.now(),
+        )
+        return job_id
+
+    def set_status(self, job_id: str, status: str, **kwargs) -> None:
+        """Updates the status (and optional fields) of the job identified by job_id."""
+        records = self.fetch_items_by_attribute(job_id=job_id)
+        if not records:
+            logger.error(f"Upload job {job_id} not found")
+            return
+        self.update_item(records[0].id, status=status, **kwargs)
+
+    def get_job(self, job_id: str):
+        """Returns the upload job record for the given job_id, or None if not found."""
+        records = self.fetch_items_by_attribute(job_id=job_id)
+        return records[0] if records else None

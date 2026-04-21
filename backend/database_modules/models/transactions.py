@@ -86,6 +86,37 @@ transaction_columns = [
 
 
 
+class UploadJobsTable(BaseTable):
+    """
+    Class representing the upload_jobs table.
+    Tracks async CSV import jobs: status, file path, and result counts.
+
+    Database Structure:
+        table name: upload_jobs
+    Columns:
+        - id: Integer, Primary Key, Auto Increment
+        - job_id: String (UUID4, unique) — returned to the frontend immediately
+        - status: String — pending | processing | complete | failed
+        - file_path: String — temp file path used by the background task
+        - rows_imported: Integer (nullable) — new rows added to transactions table
+        - rows_updated: Integer (nullable) — rows whose categories were updated
+        - errors: String (nullable) — error message if processing failed
+        - created_at: DateTime
+    """
+
+    __tablename__ = "upload_jobs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(String, unique=True)
+    status = Column(String)
+    file_path = Column(String)
+    rows_imported = Column(Integer, nullable=True)
+    rows_updated = Column(Integer, nullable=True)
+    errors = Column(String, nullable=True)
+    created_at = Column(DateTime)
+
+
+
 class UpdatesTable(BaseTable):
     """
     Class representing the transaction_updates table in the database.
