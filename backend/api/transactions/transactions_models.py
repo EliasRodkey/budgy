@@ -79,10 +79,14 @@ class TransactionUpdate(BaseModel):
     Request body for PUT /transactions/{id}.
     Field names match exactly what the edit form sends (camelCase from the frontend).
     All fields are optional — only provided fields are written to the DB.
+
+    Note: the 'date' field (→ authorized_date) is intentionally absent here because
+    naming a Pydantic field 'date' shadows the datetime.date type in its own annotation,
+    causing Pydantic v2 to treat the type as NoneType. It is extracted manually in the
+    endpoint before this model is validated.
     """
     model_config = ConfigDict(extra="ignore")   # silently drop isFlagged and any other unknown fields
 
-    date: Optional[date] = None             # → authorized_date
     description: Optional[str] = None
     merchant: Optional[str] = None          # → account_name
     amount: Optional[float] = None

@@ -8,12 +8,16 @@ with optional filters/pagination and CSV import with async job tracking.
 Functions:
 """
 # Standard library imports
+import json as json_lib
+import logging
 import os
 from datetime import datetime
 
 # Third party imports
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 # Custom imports
 from pleasant_database import DatabaseFile, DatabaseManager
@@ -160,7 +164,7 @@ async def get_available_tags(db: DatabaseManager = Depends(get_db)) -> list[str]
 
 # Maps TransactionUpdate field names (camelCase, matching the form exactly) to DB column names
 _FIELD_TO_COLUMN = {
-    "date":             "authorized_date",
+    # 'date' is handled separately (Pydantic field-name/type collision — see endpoint)
     "description":      "description",
     "merchant":         "account_name",
     "amount":           "amount",
@@ -176,24 +180,48 @@ _FIELD_TO_COLUMN = {
 @router.put("/{transaction_id}", response_model=Transaction)
 async def update_transaction(
     transaction_id: int,
-    body: TransactionUpdate,
+    request: Request,
     db: DatabaseManager = Depends(get_db),
 ) -> Transaction:
     """
     Updates an existing transaction. Only fields present in the request body are changed.
     Returns the updated transaction record.
     """
+    raw = await request.body()
+    raw_data: dict = json_lib.loads(raw)
+    logger.info("PUT /transactions/%s body: %s", transaction_id, raw_data)
+
+    # Extract 'date' before Pydantic validation: naming a Pydantic field 'date' shadows
+    # the datetime.date type in its own annotation, causing type=none_required in Pydantic v2.
+    date_str: str | None = raw_data.pop("date", None)
+
+    # Normalise tags: DB stores as comma-joined string; frontend may send a string
+    # (old response shape) or an array (correct shape).
+    if "tags" in raw_data and isinstance(raw_data["tags"], str):
+        raw_data["tags"] = [t.strip() for t in raw_data["tags"].split(",") if t.strip()]
+
+    try:
+        body = TransactionUpdate.model_validate(raw_data)
+    except Exception as exc:
+        logger.error("TransactionUpdate validation failed for id=%s: %s | body=%s", transaction_id, exc, raw_data)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     data = body.model_dump(exclude_unset=True)
 
     updates = {}
+
+    # Handle date separately (extracted above to avoid Pydantic field/type name collision)
+    if date_str:
+        try:
+            updates["authorized_date"] = datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Invalid date format '{date_str}'. Expected YYYY-MM-DD.")
+
     for form_field, value in data.items():
         db_col = _FIELD_TO_COLUMN.get(form_field)
         if db_col is None:
             continue
-        if form_field == "date":
-            # Convert date → datetime for the DateTime column
-            updates[db_col] = datetime.combine(value, datetime.min.time())
-        elif form_field == "tags":
+        if form_field == "tags":
             updates[db_col] = ",".join(value) if value else ""
         else:
             updates[db_col] = value
