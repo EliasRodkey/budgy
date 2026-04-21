@@ -44,6 +44,8 @@ class TransactionsTable(BaseTable):
         - amount: Float
         - repayment: Boolean
         - exclude: Boolean
+        - notes: String (max 300 chars, edit modal only)
+        - tags: String (max 10 tags, each max 30 chars, no spaces
         - base_hash: a hash value generated based on the transaction information, tells us if 2 transactions have the same information.
         - uq_hash: a unique hash value generated based on the transaction information and number of occurances to ensure that we can detect duplicates
                   without relying on the position of the transaction in the csv file.
@@ -64,6 +66,8 @@ class TransactionsTable(BaseTable):
     amount = Column(Float)
     repayment = Column(Boolean)
     exclude = Column(Boolean)
+    notes = Column(String) # max 300 chars, edit modal only
+    tags = Column(String) # max 10 tags, each max 30 chars, no spaces
     base_hash = Column(String)
     uq_hash = Column(String, unique=True)
 

@@ -64,10 +64,11 @@ class TransactionFilters(BaseModel):
 
 
 
-class PaginatedTransactions(BaseModel): # Pydantic model fro get transacitons response with pagination metadata.
+class TransactionsPage(BaseModel): # Pydantic model for get transacitons response with pagination metadata.
     data: list[Transaction]
     total: int
     page: int
     page_size: int
+    has_next_page: bool
 
     model_config = ouotgoing_config

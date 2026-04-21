@@ -24,6 +24,7 @@ export interface TransactionsPage {
   total: number;
   page: number;
   pageSize: number;
+  hasNextPage: boolean;
 }
 
 // TODO:
@@ -100,11 +101,13 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
     const page = filters.page ?? 1;
     const pageSize = filters.pageSize ?? 20;
     const start = (page - 1) * pageSize;
+    const hasNextPage = true;
     return {
       data: filtered.slice(start, start + pageSize),
       total: filtered.length,
       page,
       pageSize,
+      hasNextPage
     };
   }
 
@@ -123,7 +126,7 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
   const res = await fetch(`/api/transactions?${params}`);
   if (!res.ok) throw new Error("Failed to fetch transactions");
   const json = await res.json();
-  return { data: json.data, total: json.meta.total, page: json.meta.page, pageSize: json.meta.page_size };
+  return { data: json.data, total: json.meta.total, page: json.meta.page, pageSize: json.meta.page_size , hasNextPage: json.meta.has_next_page };
 }
 
 export async function getFlaggedTransactions(): Promise<Transaction[]> {

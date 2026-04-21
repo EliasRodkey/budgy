@@ -125,6 +125,27 @@ class TransactionsTableManager(DatabaseManager):
         - total_income: Returns total income over a given period.
         - average_income: Returns average income over a given period.
     """
+    return_columns: List[str]  = [
+        TransactionsTable.id.name,
+        TransactionsTable.authorized_date.name,
+        TransactionsTable.posted_date.name,
+        TransactionsTable.status.name,
+        TransactionsTable.account_name.name,
+        TransactionsTable.description.name,
+        TransactionsTable.primary_category.name,
+        TransactionsTable.detailed_category.name,
+        TransactionsTable.amount.name,
+        TransactionsTable.repayment.name,
+        TransactionsTable.exclude.name,
+        TransactionsTable.notes.name,
+        TransactionsTable.tags.name
+    ]
+
+    search_columns: List[str] = [
+        TransactionsTable.description.name,
+        TransactionsTable.account_name.name,
+        TransactionsTable.notes.name
+    ]
 
     def __init__(self, db_file: DatabaseFile, updates_manager: UpdatesTableManager):
         super().__init__(TransactionsTable, db_file)
@@ -150,7 +171,7 @@ class TransactionsTableManager(DatabaseManager):
         """
 
         logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
-        logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
+        # logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
         transactions_original_state = self.to_dataframe()
 
@@ -175,7 +196,7 @@ class TransactionsTableManager(DatabaseManager):
 
         logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
         self.updates_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
-        logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
+        # logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
         return updated_records
 
@@ -204,8 +225,8 @@ class TransactionsTableManager(DatabaseManager):
             try:
                 updated_records.extend(self.upload_csv(csv_filepath, columns=columns))
 
-            except Exception:
-                logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}", extra={LoggingExtras.FILE: csv_filepath})
+            except Exception as e:
+                logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}. Error: {e}", extra={LoggingExtras.FILE: csv_filepath})
                 failed_files.append(csv_filepath)
 
         if failed_files:
