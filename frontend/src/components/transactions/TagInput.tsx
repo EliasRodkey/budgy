@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { tagPillStyle } from "@/lib/tagColors";
 import { X } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -78,17 +78,21 @@ export function TagInput({ value, onChange, availableTags, error }: TagInputProp
         onClick={() => inputRef.current?.focus()}
       >
         {value.map((tag) => (
-          <Badge key={tag} variant="secondary" className="text-xs gap-1 pr-1">
+          <span
+            key={tag}
+            style={tagPillStyle(tag)}
+            className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium"
+          >
             {tag}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-              className="hover:text-destructive transition-colors"
+              className="opacity-60 hover:opacity-100 transition-opacity"
               aria-label={`Remove tag ${tag}`}
             >
               <X size={10} />
             </button>
-          </Badge>
+          </span>
         ))}
         {!isAtLimit && (
           <div className="relative flex-1 min-w-20">
@@ -115,9 +119,14 @@ export function TagInput({ value, onChange, availableTags, error }: TagInputProp
                       <button
                         type="button"
                         onMouseDown={(e) => { e.preventDefault(); addTag(tag); }}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors flex items-center gap-2"
                       >
-                        {tag}
+                        <span
+                          style={tagPillStyle(tag)}
+                          className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium"
+                        >
+                          {tag}
+                        </span>
                       </button>
                     </li>
                   ))}

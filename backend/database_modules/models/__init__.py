@@ -1,0 +1,1 @@
+from backend.database_modules.models.rules import TransactionRulesTable

@@ -227,6 +227,70 @@ export async function assignCategory(
   return json.data as Transaction;
 }
 
+export interface BulkUpdatePayload {
+  transactionIds: number[];
+  primaryCategory?: string;
+  detailedCategory?: string;
+  tags?: string[];
+  saveAsRule?: boolean;
+  matchDescription?: string;
+  matchAccountName?: string;
+}
+
+export async function getSimilarTransactions(
+  description: string,
+  accountName: string,
+  excludeId?: number,
+): Promise<Transaction[]> {
+  if (USE_MOCK) return [];
+  const params = new URLSearchParams({ description, account_name: accountName });
+  if (excludeId !== undefined) params.set("exclude_id", String(excludeId));
+  const res = await fetch(`/api/transactions/similar?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch similar transactions");
+  return res.json() as Promise<Transaction[]>;
+}
+
+export async function bulkUpdateTransactions(payload: BulkUpdatePayload): Promise<{ updated: number }> {
+  if (USE_MOCK) return { updated: payload.transactionIds.length };
+  const res = await fetch("/api/transactions/bulk-update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      transaction_ids: payload.transactionIds,
+      primary_category: payload.primaryCategory,
+      detailed_category: payload.detailedCategory,
+      tags: payload.tags,
+      save_as_rule: payload.saveAsRule ?? false,
+      match_description: payload.matchDescription,
+      match_account_name: payload.matchAccountName,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to bulk update transactions");
+  return res.json() as Promise<{ updated: number }>;
+}
+
+// ─── CSV Import Helpers ───────────────────────────────────────────────────────
+
+/** Polls a job until complete/failed, then confirms and maps to ImportResult. */
+export async function pollJobUntilDone(
+  jobId: string,
+  maxAttempts = 40,
+  intervalMs = 1500,
+): Promise<ImportResult> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const status = await getImportJobStatus(jobId);
+    if (status.status === "complete" || status.status === "failed") {
+      await confirmImport(jobId);
+      return {
+        imported: status.rowsImported ?? 0,
+        failed: status.errors ? [{ row: 0, reason: status.errors }] : [],
+      };
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("Import timed out — please refresh and check your transactions.");
+}
+
 // ─── CSV Import (Async Job Pipeline) ─────────────────────────────────────────
 
 export async function importTransactions(file: File): Promise<UploadJobResponse> {

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import type { ImportResult } from "@/api/transactions";
+import { importTransactions, pollJobUntilDone, type ImportResult, type UploadJobResponse } from "@/api/transactions";
 import { CheckCircle, Upload, X, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import { useRef, useState } from "react";
@@ -7,7 +7,6 @@ import { useRef, useState } from "react";
 type Stage = "pick" | "preview" | "importing" | "result";
 
 interface CSVUploadModalProps {
-  onImport: (file: File) => Promise<ImportResult>;
   onClose: () => void;
 }
 
@@ -15,7 +14,8 @@ interface PreviewRow {
   [key: string]: string;
 }
 
-export function CSVUploadModal({ onImport, onClose }: CSVUploadModalProps) {
+
+export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
   const [stage, setStage] = useState<Stage>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -53,11 +53,12 @@ export function CSVUploadModal({ onImport, onClose }: CSVUploadModalProps) {
     if (!file) return;
     setStage("importing");
     try {
-      const res = await onImport(file);
-      setResult(res);
+      const job: UploadJobResponse = await importTransactions(file);
+      const importResult = await pollJobUntilDone(job.jobId);
+      setResult(importResult);
       setStage("result");
-    } catch {
-      setParseError("Import failed. Please try again.");
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "Import failed. Please try again.");
       setStage("preview");
     }
   }

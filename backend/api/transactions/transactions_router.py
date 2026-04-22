@@ -12,6 +12,7 @@ import json as json_lib
 import logging
 import os
 from datetime import datetime
+from typing import Optional
 
 # Third party imports
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
@@ -24,6 +25,7 @@ from pleasant_database import DatabaseFile, DatabaseManager
 
 # Local imports
 from backend.api.transactions.transactions_models import (
+    BulkUpdateRequest,
     Transaction,
     TransactionFilters,
     TransactionUpdate,
@@ -36,6 +38,7 @@ from backend.database_modules.managers.transaction_manager import (
     UpdatesTableManager,
     UploadJobsManager,
 )
+from backend.database_modules.managers.rules_manager import TransactionRulesManager
 from backend.database_modules.models.transactions import TransactionsTable
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from backend.utils.api_utils import RouterPrefixes
@@ -166,7 +169,7 @@ async def get_available_tags(db: DatabaseManager = Depends(get_db)) -> list[str]
 _FIELD_TO_COLUMN = {
     # 'date' is handled separately (Pydantic field-name/type collision — see endpoint)
     "description":      "description",
-    "merchant":         "account_name",
+    "account_name":     "account_name",
     "amount":           "amount",
     "primaryCategory":  "primary_category",
     "detailedCategory": "detailed_category",
@@ -266,6 +269,10 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
         rows_imported = count_after - count_before
         rows_updated = len(updated_records)
 
+        rules_mgr = TransactionRulesManager(db_file)
+        rules_mgr.apply_rules_to_all()
+        rules_mgr.end_session()
+
         jobs_mgr.set_status(
             job_id, "complete",
             rows_imported=rows_imported,
@@ -330,6 +337,88 @@ async def get_import_job_status(job_id: str) -> ImportJobStatus:
         "rows_updated": job.rows_updated,
         "errors": job.errors,
     }
+
+
+# ─── Similar Transactions Endpoint ───────────────────────────────────────────
+
+@router.get("/similar", response_model=list[Transaction])
+async def get_similar_transactions(
+    description: str,
+    account_name: str,
+    exclude_id: Optional[int] = None,
+    db: DatabaseManager = Depends(get_db),
+) -> list[Transaction]:
+    """
+    Returns transactions sharing the same description AND account_name,
+    optionally excluding a specific transaction id (the one being edited).
+    """
+    result = db.query(
+        columns=db.return_columns,
+        filters={
+            TransactionsTable.description.name: ("==", description),
+            TransactionsTable.account_name.name: ("==", account_name),
+        },
+    )
+    rows = result.data.to_dict(orient="records")
+    if exclude_id is not None:
+        rows = [r for r in rows if r["id"] != exclude_id]
+    return rows
+
+
+# ─── Bulk Update Endpoint ─────────────────────────────────────────────────────
+
+@router.post("/bulk-update")
+async def bulk_update_transactions(
+    body: BulkUpdateRequest,
+    db: DatabaseManager = Depends(get_db),
+) -> dict:
+    """
+    Applies category and/or tag changes to the provided list of transaction IDs.
+    Tags are merged with existing tags (not replaced).
+    Optionally saves a rule for the match pattern.
+    """
+    if not body.transaction_ids:
+        raise HTTPException(status_code=400, detail="transaction_ids must not be empty")
+
+    updates_applied = 0
+    for tx_id in body.transaction_ids:
+        row_result = db.query(
+            columns=db.return_columns,
+            filters={TransactionsTable.id.name: ("==", tx_id)},
+        )
+        if row_result.data.empty:
+            continue
+
+        row = row_result.data.to_dict(orient="records")[0]
+        col_updates: dict = {}
+
+        if body.primary_category is not None:
+            col_updates["primary_category"] = body.primary_category
+        if body.detailed_category is not None:
+            col_updates["detailed_category"] = body.detailed_category
+
+        if body.tags:
+            existing_tags: list[str] = [t for t in (row.get("tags") or "").split(",") if t]
+            merged = list(dict.fromkeys(existing_tags + body.tags))  # preserve order, deduplicate
+            col_updates["tags"] = ",".join(merged)
+
+        if col_updates:
+            db.update_item(tx_id, **col_updates)
+            updates_applied += 1
+
+    if body.save_as_rule and body.match_description and body.match_account_name:
+        db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
+        rules_mgr = TransactionRulesManager(db_file)
+        rules_mgr.upsert_rule(
+            match_description=body.match_description,
+            match_account_name=body.match_account_name,
+            primary_category=body.primary_category,
+            detailed_category=body.detailed_category,
+            tags=body.tags,
+        )
+        rules_mgr.end_session()
+
+    return {"updated": updates_applied}
 
 
 @router.post("/import/{job_id}/confirm", response_model=ImportJobStatus)

@@ -3,10 +3,39 @@ import { CATEGORY_MAPPING } from "@/constants/categories";
 import type { Transaction } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { TagInput } from "./TagInput";
+
+function ClickToEdit({ value, onCommit, label }: { value: string; onCommit: (v: string) => void; label: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { onCommit(draft); setEditing(false); }}
+        onKeyDown={(e) => { if (e.key === "Enter") { onCommit(draft); setEditing(false); } if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+        className="w-full h-8 rounded-md border border-input px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+        aria-label={label}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="w-full h-8 text-left px-3 text-sm text-foreground rounded-md border border-transparent hover:border-input hover:bg-muted/40 transition-colors truncate"
+      title="Click to edit"
+    >
+      {draft || <span className="text-muted-foreground italic">—</span>}
+    </button>
+  );
+}
 
 function containsSuspiciousContent(val: string | undefined): boolean {
   if (!val) return false;
@@ -20,8 +49,8 @@ function containsSuspiciousContent(val: string | undefined): boolean {
 
 const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
-  description: z.string().min(1, "Required"),
-  merchant: z.string().min(1, "Required"),
+  description: z.string().optional(),
+  account_name: z.string().optional(),
   amount: z.number({ error: "Must be a number" }),
   primaryCategory: z.string().min(1, "Required"),
   detailedCategory: z.string().min(1, "Required"),
@@ -88,21 +117,27 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   const watchedNotes = watch("notes") ?? "";
   const detailedOptions = CATEGORY_MAPPING[watchedPrimary] ?? [];
 
-  // Reset detailed category when primary category changes
-  const [prevPrimary, setPrevPrimary] = useState<string | undefined>(undefined);
+  // isResettingRef prevents the "clear detailedCategory" effect from firing
+  // during a programmatic reset (which also changes watchedPrimary)
+  const isResettingRef = useRef(false);
+
+  // Clear detailed category when the user manually changes the primary category
+  const prevPrimaryRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (prevPrimary !== undefined && watchedPrimary !== prevPrimary) {
+    if (!isResettingRef.current && prevPrimaryRef.current !== undefined && watchedPrimary !== prevPrimaryRef.current) {
       setValue("detailedCategory", "");
     }
-    setPrevPrimary(watchedPrimary);
-  }, [watchedPrimary, prevPrimary, setValue]);
+    prevPrimaryRef.current = watchedPrimary;
+    isResettingRef.current = false;
+  }, [watchedPrimary, setValue]);
 
   useEffect(() => {
     if (transaction) {
+      isResettingRef.current = true;
       reset({
         date: transaction.authorizedDate,
         description: transaction.description,
-        merchant: transaction.account_name,
+        account_name: transaction.account_name,
         amount: transaction.amount,
         primaryCategory: transaction.primaryCategory,
         detailedCategory: transaction.detailedCategory,
@@ -112,7 +147,7 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
         notes: transaction.notes ?? "",
         tags: transaction.tags ?? [],
       });
-      setPrevPrimary(transaction.primaryCategory);
+      prevPrimaryRef.current = transaction.primaryCategory;
     }
   }, [transaction, reset]);
 
@@ -121,6 +156,8 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   function onSubmit(values: FormValues) {
     onSave(transaction!.id, {
       ...values,
+      account_name: values.account_name ?? transaction!.account_name,
+      description: values.description ?? transaction!.description,
       notes: values.notes || undefined,
       tags: values.tags?.length ? values.tags : undefined,
     });
@@ -160,19 +197,31 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
             </Field>
           </div>
 
-          <Field label="Description" error={errors.description?.message}>
-            <input
-              type="text"
-              {...register("description")}
-              className={InputClass(!!errors.description)}
+          <Field label="Description">
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <ClickToEdit
+                  value={field.value ?? ""}
+                  onCommit={field.onChange}
+                  label="Description"
+                />
+              )}
             />
           </Field>
 
-          <Field label="Merchant" error={errors.merchant?.message}>
-            <input
-              type="text"
-              {...register("merchant")}
-              className={InputClass(!!errors.merchant)}
+          <Field label="Account">
+            <Controller
+              name="account_name"
+              control={control}
+              render={({ field }) => (
+                <ClickToEdit
+                  value={field.value ?? ""}
+                  onCommit={field.onChange}
+                  label="Account"
+                />
+              )}
             />
           </Field>
 

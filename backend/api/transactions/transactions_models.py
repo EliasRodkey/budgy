@@ -88,7 +88,7 @@ class TransactionUpdate(BaseModel):
     model_config = ConfigDict(extra="ignore")   # silently drop isFlagged and any other unknown fields
 
     description: Optional[str] = None
-    merchant: Optional[str] = None          # → account_name
+    account_name: Optional[str] = None      # editable account field (replaces merchant)
     amount: Optional[float] = None
     primaryCategory: Optional[str] = None   # → primary_category
     detailedCategory: Optional[str] = None  # → detailed_category
@@ -96,6 +96,22 @@ class TransactionUpdate(BaseModel):
     isRepayment: Optional[bool] = None      # → repayment
     notes: Optional[str] = None
     tags: Optional[list[str]] = None        # joined to comma-string in DB
+
+
+class BulkUpdateRequest(BaseModel):
+    """
+    Request body for POST /transactions/bulk-update.
+    Applies category and/or tag changes to a list of transaction IDs.
+    """
+    model_config = ConfigDict(extra="ignore")
+
+    transaction_ids: list[int]
+    primary_category: Optional[str] = None
+    detailed_category: Optional[str] = None
+    tags: Optional[list[str]] = None        # tags to ADD (merged with existing)
+    save_as_rule: bool = False              # if True, upsert a rule for the match pattern
+    match_description: Optional[str] = None # required when save_as_rule=True
+    match_account_name: Optional[str] = None # required when save_as_rule=True
 
 
 class UploadJobResponse(BaseModel):
