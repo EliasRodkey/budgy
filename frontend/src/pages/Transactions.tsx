@@ -195,6 +195,17 @@ export default function Transactions() {
     });
   }
 
+  const hasActiveFilters = !!(search || category || detailedCategory || tagsParam || showExcluded || dateFrom || dateTo);
+
+  function clearFilters() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams();
+      if (prev.get("sortBy")) next.set("sortBy", prev.get("sortBy")!);
+      if (prev.get("sortOrder")) next.set("sortOrder", prev.get("sortOrder")!);
+      return next;
+    });
+  }
+
   function toggleSort(field: "date" | "amount") {
     if (sortBy === field) {
       setParam("sortOrder", sortOrder === "asc" ? "desc" : "asc");
@@ -438,6 +449,14 @@ export default function Transactions() {
             </button>
           </div>
         </div>
+
+        {hasActiveFilters && (
+          <div className="flex justify-end pt-1">
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground h-7">
+              Clear filters
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Error state */}
@@ -473,13 +492,16 @@ export default function Transactions() {
       )}
 
       {/* Modals */}
-      <EditTransactionModal
-        transaction={editTarget}
-        isPending={updatePending}
-        availableTags={availableTags}
-        onSave={handleSave}
-        onClose={() => setEditTarget(null)}
-      />
+      {editTarget && (
+        <EditTransactionModal
+          key={editTarget.id}
+          transaction={editTarget}
+          isPending={updatePending}
+          availableTags={availableTags}
+          onSave={handleSave}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
       <DeleteConfirmDialog
         transaction={deleteTarget}
         isPending={deletePending}

@@ -73,7 +73,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 interface EditTransactionModalProps {
-  transaction: Transaction | null;
+  transaction: Transaction;
   isPending: boolean;
   availableTags: string[];
   onSave: (id: string, updates: Partial<Transaction>) => void;
@@ -104,38 +104,30 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   const {
     register,
     handleSubmit,
-    reset,
     watch,
     setValue,
     control,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      date: transaction.authorizedDate,
+      description: transaction.description,
+      accountName: transaction.accountName,
+      amount: transaction.amount,
+      primaryCategory: transaction.primaryCategory,
+      detailedCategory: transaction.detailedCategory,
+      isFlagged: transaction.isFlagged,
+      isExcluded: transaction.exclude,
+      isRepayment: transaction.repayment,
+      notes: transaction.notes ?? "",
+      tags: transaction.tags ?? [],
+    },
   });
 
   const watchedPrimary = watch("primaryCategory");
   const watchedNotes = watch("notes") ?? "";
   const detailedOptions = CATEGORY_MAPPING[watchedPrimary] ?? [];
-
-  useEffect(() => {
-    if (transaction) {
-      reset({
-        date: transaction.authorizedDate,
-        description: transaction.description,
-        accountName: transaction.accountName,
-        amount: transaction.amount,
-        primaryCategory: transaction.primaryCategory,
-        detailedCategory: transaction.detailedCategory,
-        isFlagged: transaction.isFlagged,
-        isExcluded: transaction.exclude,
-        isRepayment: transaction.repayment,
-        notes: transaction.notes ?? "",
-        tags: transaction.tags ?? [],
-      });
-    }
-  }, [transaction, reset]);
-
-  if (!transaction) return null;
 
   function onSubmit(values: FormValues) {
     onSave(transaction!.id, {

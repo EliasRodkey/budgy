@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Local imports
 from backend.api.transactions.transactions_router import router as transactions_router
+from backend.api.summaries.summaries_router import router as summaries_router
 
 app = FastAPI()
 
@@ -20,3 +21,4 @@ app.add_middleware(
 )
 
 app.include_router(transactions_router)
+app.include_router(summaries_router)

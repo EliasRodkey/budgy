@@ -25,6 +25,7 @@ export function useUpdateTransaction() {
       updateTransaction(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["availableTags"] });
     },
   });
 }
@@ -51,8 +52,9 @@ export function useImportTransactions() {
 
 export function useAvailableTags() {
   return useQuery({
-    queryKey: ["transactions", "tags"],
+    queryKey: ["availableTags"],
     queryFn: getAvailableTags,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -75,6 +77,7 @@ export function useBulkUpdateTransactions() {
     mutationFn: (payload: BulkUpdatePayload) => bulkUpdateTransactions(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["availableTags"] });
     },
   });
 }

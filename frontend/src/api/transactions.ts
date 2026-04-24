@@ -135,16 +135,16 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
 
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
-  if (filters.primaryCategory) params.set("primary_category", filters.primaryCategory);
-  if (filters.detailedCategory) params.set("detailed_category", filters.detailedCategory);
+  if (filters.primaryCategory) params.set("primaryCategory", filters.primaryCategory);
+  if (filters.detailedCategory) params.set("detailedCategory", filters.detailedCategory);
   if (filters.tags?.length) params.set("tags", filters.tags.join(","));
-  if (filters.showExcluded) params.set("show_excluded", "true");
-  if (filters.dateFrom) params.set("date_from", filters.dateFrom);
-  if (filters.dateTo) params.set("date_to", filters.dateTo);
-  if (filters.sortBy) params.set("sort_by", filters.sortBy);
-  if (filters.sortOrder) params.set("sort_order", filters.sortOrder);
+  if (filters.showExcluded) params.set("showExcluded", "true");
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
   params.set("page", String(filters.page ?? 1));
-  params.set("page_size", String(filters.pageSize ?? 20));
+  params.set("pageSize", String(filters.pageSize ?? 20));
   const res = await fetch(`/api/transactions?${params}`);
   if (!res.ok) throw new Error("Failed to fetch transactions");
   const json = await res.json();
@@ -182,7 +182,7 @@ export async function getAvailableTags(): Promise<string[]> {
   const res = await fetch("/api/transactions/tags");
   if (!res.ok) throw new Error("Failed to fetch tags");
   const json = await res.json();
-  return json.data as string[];
+  return json as string[];
 }
 
 export async function updateTransaction(

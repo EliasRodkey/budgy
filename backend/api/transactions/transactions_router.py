@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Optional
 
 # Third party imports
+import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 from uuid import uuid4
 
@@ -39,6 +40,8 @@ from backend.database_modules.managers.transaction_manager import (
     UploadJobsManager,
 )
 from backend.database_modules.managers.rules_manager import TransactionRulesManager
+from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
+from backend.database_modules.managers.summary_manager import SummariesTableManager
 from backend.database_modules.models.transactions import TransactionsTable
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from backend.utils.api_utils import RouterPrefixes
@@ -90,10 +93,10 @@ async def get_transaction_pages(
     if not filters.show_excluded:
         db_filters[TransactionsTable.exclude.name] = ("==", False)
 
-    if filters.primary_category in PrimaryCategories.__members__:
+    if filters.primary_category in [e.value for e in PrimaryCategories]:
         db_filters[TransactionsTable.primary_category.name] = ("==", filters.primary_category)
 
-    if filters.detailed_category in DetailedCategories.__members__:
+    if filters.detailed_category in [e.value for e in DetailedCategories]:
         db_filters[TransactionsTable.detailed_category.name] = ("==", filters.detailed_category)
 
     if filters.date_from or filters.date_to:
@@ -232,7 +235,24 @@ async def update_transaction(
     if not updates:
         raise HTTPException(status_code=400, detail="No updatable fields provided")
 
+    # Capture existing date before update so we can mark the old month dirty if date changes
+    summary_dirty_fields = {"authorized_date", "primary_category", "detailed_category"}
+    needs_dirty_mark = bool(summary_dirty_fields.intersection(updates))
+    existing_date: datetime | None = None
+    if needs_dirty_mark:
+        existing = db.fetch_item_by_id(transaction_id)
+        existing_date = getattr(existing, "authorized_date", None)
+
     db.update_item(transaction_id, **updates)
+
+    if needs_dirty_mark and existing_date is not None:
+        new_date: datetime = updates.get("authorized_date", existing_date)
+        db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
+        dirty_mgr = DirtyMonthsManager(db_file)
+        dirty_mgr.mark_dirty(new_date.month, new_date.year)
+        if "authorized_date" in updates and existing_date.month != new_date.month:
+            dirty_mgr.mark_dirty(existing_date.month, existing_date.year)
+        dirty_mgr.end_session()
 
     result = db.query(
         columns=db.return_columns,
@@ -272,6 +292,28 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
         rules_mgr = TransactionRulesManager(db_file)
         rules_mgr.apply_rules_to_all()
         rules_mgr.end_session()
+
+        # Compute summaries for all months present in the DB after import
+        summary_mgr = SummariesTableManager(db_file)
+        all_tx_df = tx_mgr.to_dataframe()
+        if not all_tx_df.empty and "authorized_date" in all_tx_df.columns:
+            all_tx_df["authorized_date"] = pd.to_datetime(all_tx_df["authorized_date"])
+            affected_months = (
+                all_tx_df[["authorized_date"]]
+                .assign(month=all_tx_df["authorized_date"].dt.month, year=all_tx_df["authorized_date"].dt.year)
+                [["month", "year"]]
+                .drop_duplicates()
+                .itertuples(index=False)
+            )
+            for row in affected_months:
+                summary_df = tx_mgr.generate_monthly_summary(row.month, row.year)
+                if summary_df.empty:
+                    continue
+                if summary_mgr._check_summary_exists(row.month, row.year):
+                    summary_mgr.update_summary(row.month, row.year, summary_df)
+                else:
+                    summary_mgr.upload_monthly_summary(row.month, row.year, summary_df)
+        summary_mgr.end_session()
 
         jobs_mgr.set_status(
             job_id, "complete",
