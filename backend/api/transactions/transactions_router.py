@@ -43,7 +43,6 @@ from backend.database_modules.managers.rules_manager import TransactionRulesMana
 from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
 from backend.database_modules.managers.summary_manager import SummariesTableManager
 from backend.database_modules.models.transactions import TransactionsTable
-from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
 
@@ -86,38 +85,14 @@ async def get_transaction_pages(
     Returns:
         Paginated list of transactions matching the filters.
     """
-    # Build database filters (AND logic only)
-    db_filters = {}
-
-    # Only filter on exclude when show_excluded is False (hide excluded rows)
-    if not filters.show_excluded:
-        db_filters[TransactionsTable.exclude.name] = ("==", False)
-
-    if filters.primary_category in [e.value for e in PrimaryCategories]:
-        db_filters[TransactionsTable.primary_category.name] = ("==", filters.primary_category)
-
-    if filters.detailed_category in [e.value for e in DetailedCategories]:
-        db_filters[TransactionsTable.detailed_category.name] = ("==", filters.detailed_category)
-
-    if filters.date_from or filters.date_to:
-        date_from = filters.date_from or "1900-01-01"
-        date_to = filters.date_to or datetime.now().strftime("%Y-%m-%d")
-        db_filters[TransactionsTable.authorized_date.name] = (
-            "between",
-            (
-                datetime.strptime(date_from, "%Y-%m-%d"),
-                datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59),
-            ),
-        )
-
+    db_filters, tag_list = filters.to_db_filters()
     order_by_column = SORT_BY_COLUMN.get(filters.sort_by, TransactionsTable.authorized_date.name)
 
-    # Query returns a QueryResult; apply additional OR filters (tags) to the DataFrame afterward
     result = db.query(
         columns=db.return_columns,
         filters=db_filters,
         order_by=order_by_column,
-        ascending=(filters.sort_order != "desc"),
+        ascending=filters.sort_ascending,
         limit=filters.page_size,
         offset=(filters.page - 1) * filters.page_size,
         search=filters.search,
@@ -127,14 +102,12 @@ async def get_transaction_pages(
     transactions_df = result.data
 
     # Tags filtering uses OR logic — not supported by db filters, applied on the DataFrame
-    if filters.tags:
-        tags_list = [t.strip() for t in filters.tags.split(",") if t.strip()]
-        if tags_list:
-            masks = [transactions_df.tags.str.contains(tag, na=False) for tag in tags_list]
-            combined_mask = masks[0]
-            for mask in masks[1:]:
-                combined_mask = combined_mask | mask
-            transactions_df = transactions_df[combined_mask]
+    if tag_list:
+        masks = [transactions_df.tags.str.contains(tag, na=False) for tag in tag_list]
+        combined_mask = masks[0]
+        for mask in masks[1:]:
+            combined_mask = combined_mask | mask
+        transactions_df = transactions_df[combined_mask]
 
     transactions = transactions_df.to_dict(orient="records")
 
@@ -254,6 +227,11 @@ async def update_transaction(
             dirty_mgr.mark_dirty(existing_date.month, existing_date.year)
         dirty_mgr.end_session()
 
+    rules_db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
+    rules_mgr = TransactionRulesManager(rules_db_file)
+    rules_mgr.apply_rules_to_transaction(transaction_id, db)
+    rules_mgr.end_session()
+
     result = db.query(
         columns=db.return_columns,
         filters={TransactionsTable.id.name: ("==", transaction_id)},
@@ -290,7 +268,7 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
         rows_updated = len(updated_records)
 
         rules_mgr = TransactionRulesManager(db_file)
-        rules_mgr.apply_rules_to_all()
+        rules_mgr.apply_rules_to_all(tx_mgr)
         rules_mgr.end_session()
 
         # Compute summaries for all months present in the DB after import
@@ -435,6 +413,8 @@ async def bulk_update_transactions(
             col_updates["primary_category"] = body.primary_category
         if body.detailed_category is not None:
             col_updates["detailed_category"] = body.detailed_category
+        if body.exclude is not None:
+            col_updates["exclude"] = body.exclude
 
         if body.tags:
             existing_tags: list[str] = [t for t in (row.get("tags") or "").split(",") if t]
@@ -454,6 +434,7 @@ async def bulk_update_transactions(
             primary_category=body.primary_category,
             detailed_category=body.detailed_category,
             tags=body.tags,
+            exclude=body.exclude,
         )
         rules_mgr.end_session()
 

@@ -242,6 +242,7 @@ export interface BulkUpdatePayload {
   primaryCategory?: string;
   detailedCategory?: string;
   tags?: string[];
+  exclude?: boolean;
   saveAsRule?: boolean;
   matchDescription?: string;
   matchAccountName?: string;
@@ -271,6 +272,7 @@ export async function bulkUpdateTransactions(payload: BulkUpdatePayload): Promis
       primary_category: payload.primaryCategory,
       detailed_category: payload.detailedCategory,
       tags: payload.tags,
+      exclude: payload.exclude,
       save_as_rule: payload.saveAsRule ?? false,
       match_description: payload.matchDescription,
       match_account_name: payload.matchAccountName,

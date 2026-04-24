@@ -268,7 +268,10 @@ export default function Transactions() {
           (updates.primaryCategory !== undefined && updates.primaryCategory !== original.primaryCategory) ||
           (updates.detailedCategory !== undefined && updates.detailedCategory !== original.detailedCategory);
 
-        if (addedTags.length === 0 && !categoryChanged) return;
+        const excludedChanged =
+          updates.isExcluded !== undefined && updates.isExcluded !== original.exclude;
+
+        if (addedTags.length === 0 && !categoryChanged && !excludedChanged) return;
 
         // Fetch similar transactions
         const similar = await getSimilarTransactions(
@@ -282,6 +285,7 @@ export default function Transactions() {
           newTags: addedTags,
           primaryCategory: categoryChanged ? (updates.primaryCategory ?? original.primaryCategory) : undefined,
           detailedCategory: categoryChanged ? (updates.detailedCategory ?? original.detailedCategory) : undefined,
+          isExcluded: excludedChanged ? (updates.isExcluded as boolean) : undefined,
         };
 
         setSavedTx({ ...original, ...updates } as Transaction);
@@ -302,7 +306,9 @@ export default function Transactions() {
             .filter((t) =>
               bulkChange.newTags.length > 0
                 ? !(t.tags && t.tags.length > 0)
-                : !(t.primaryCategory),
+                : bulkChange.isExcluded !== undefined
+                  ? !t.exclude
+                  : !(t.primaryCategory),
             )
             .map((t) => Number(t.id))
         : selectedIds;
@@ -313,6 +319,7 @@ export default function Transactions() {
         primaryCategory: bulkChange.primaryCategory,
         detailedCategory: bulkChange.detailedCategory,
         tags: bulkChange.newTags.length > 0 ? bulkChange.newTags : undefined,
+        exclude: bulkChange.isExcluded,
         saveAsRule,
         matchDescription: savedTx.description,
         matchAccountName: savedTx.accountName,

@@ -7,7 +7,7 @@ Classes:
     - TransactionRulesTable: Stores rules that map (description, account_name) pairs
       to categories and/or tags. Applied automatically after CSV uploads.
 """
-from sqlalchemy import Column, Integer, String, DateTime, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, UniqueConstraint
 from pleasant_database import BaseTable
 
 from pleasant_loggers import get_logger
@@ -51,5 +51,6 @@ class TransactionRulesTable(BaseTable):
     primary_category = Column(String, nullable=True)
     detailed_category = Column(String, nullable=True)
     tags = Column(String, nullable=True)  # comma-separated
+    exclude = Column(Boolean, nullable=True)
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=False)

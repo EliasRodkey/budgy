@@ -3,18 +3,20 @@
 Tests for TransactionRulesManager.
 
 Covers:
-    - upsert_rule: create, update (idempotent upsert)
+    - upsert_rule: create, update (idempotent upsert), exclude field
     - get_rule: found and not found
     - list_rules: empty and populated
     - update_rule: field patching, auto updated_at, list coercion
     - delete_rule: removes the record
-    - apply_rules_to_transaction / apply_rules_to_all: stubs (no-op, no exceptions)
+    - apply_rules_to_transaction: applies matching rule to a single transaction
+    - apply_rules_to_all: applies all rules to matching transactions, merges tags, applies exclude
 """
 import pytest
 from datetime import datetime
 
 from pleasant_database import DatabaseFile
 from backend.database_modules.managers.rules_manager import TransactionRulesManager
+from backend.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
 from backend.tests.conftest import TEST_DB_DIR, TEST_DB_FILENAME, TEST_DB_FILEPATH
 
 
@@ -26,6 +28,50 @@ def rules_manager():
     yield manager
     manager.clear_table()
     manager.end_session()
+
+
+@pytest.fixture()
+def tx_and_rules():
+    """
+    Provides a TransactionsTableManager and a TransactionRulesManager sharing the test DB.
+    Seeds two transactions and tears down both tables after each test.
+    """
+    db_file = DatabaseFile(TEST_DB_FILEPATH, TEST_DB_DIR)
+    updates_mgr = UpdatesTableManager(db_file)
+    tx_mgr = TransactionsTableManager(db_file, updates_mgr)
+    rules_mgr = TransactionRulesManager(db_file)
+
+    now = datetime(2024, 3, 15)
+    tx_mgr.add_item(
+        authorized_date=now, posted_date=now, status="posted",
+        account_name="Chase Sapphire", description="TRADER JOES",
+        primary_category="Other", detailed_category="Other",
+        amount=-42.50, repayment=False, exclude=False,
+        base_hash="hash1", uq_hash="uq1",
+    )
+    tx_mgr.add_item(
+        authorized_date=now, posted_date=now, status="posted",
+        account_name="Chase Sapphire", description="TRADER JOES",
+        primary_category="Other", detailed_category="Other",
+        amount=-18.00, repayment=False, exclude=False,
+        base_hash="hash2", uq_hash="uq2",
+    )
+    tx_mgr.add_item(
+        authorized_date=now, posted_date=now, status="posted",
+        account_name="SoFi Checking", description="NETFLIX",
+        primary_category="Other", detailed_category="Other",
+        amount=-15.99, repayment=False, exclude=False,
+        base_hash="hash3", uq_hash="uq3",
+    )
+
+    yield tx_mgr, rules_mgr
+
+    rules_mgr.clear_table()
+    rules_mgr.end_session()
+    tx_mgr.clear_table()
+    updates_mgr.clear_table()
+    updates_mgr.end_session()
+    tx_mgr.end_session()
 
 
 # ── upsert_rule ───────────────────────────────────────────────────────────────
@@ -84,6 +130,19 @@ class TestUpsertRule:
         rules_manager.upsert_rule("TRADER JOES", "Chase Sapphire")
         rules_manager.upsert_rule("TRADER JOES", "Amex Gold")
         assert len(rules_manager.list_rules()) == 2
+
+    def test_exclude_stored_and_retrieved(self, rules_manager):
+        rule = rules_manager.upsert_rule("VENMO PAYMENT", "SoFi Checking", exclude=True)
+        assert rule.exclude is True
+
+    def test_exclude_false_stored(self, rules_manager):
+        rule = rules_manager.upsert_rule("VENMO PAYMENT", "SoFi Checking", exclude=False)
+        assert rule.exclude is False
+
+    def test_exclude_updated_on_upsert(self, rules_manager):
+        rules_manager.upsert_rule("VENMO PAYMENT", "SoFi Checking", exclude=False)
+        updated = rules_manager.upsert_rule("VENMO PAYMENT", "SoFi Checking", exclude=True)
+        assert updated.exclude is True
 
 
 # ── get_rule ──────────────────────────────────────────────────────────────────
@@ -161,11 +220,123 @@ class TestDeleteRule:
         assert remaining[0].id == r2.id
 
 
-# ── stubs ─────────────────────────────────────────────────────────────────────
+# ── apply_rules_to_transaction ────────────────────────────────────────────────
 
-class TestStubs:
-    def test_apply_rules_to_transaction_does_not_raise(self, rules_manager):
-        rules_manager.apply_rules_to_transaction(transaction_id=42)
+class TestApplyRulesToTransaction:
+    def test_applies_category_from_matching_rule(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        tx_id = int(rows.iloc[0]["id"])
 
-    def test_apply_rules_to_all_does_not_raise(self, rules_manager):
-        rules_manager.apply_rules_to_all()
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", primary_category="Food & drink", detailed_category="Groceries")
+        changed = rules_mgr.apply_rules_to_transaction(tx_id, tx_mgr)
+
+        assert changed is True
+        updated = tx_mgr.query(columns=tx_mgr.return_columns, filters={"id": ("==", tx_id)}).data.iloc[0]
+        assert updated["primary_category"] == "Food & drink"
+        assert updated["detailed_category"] == "Groceries"
+
+    def test_merges_tags_from_rule(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        tx_id = int(rows.iloc[0]["id"])
+        tx_mgr.update_item(tx_id, tags="existing")
+
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", tags=["groceries"])
+        rules_mgr.apply_rules_to_transaction(tx_id, tx_mgr)
+
+        updated = tx_mgr.query(columns=tx_mgr.return_columns, filters={"id": ("==", tx_id)}).data.iloc[0]
+        tags = updated["tags"].split(",")
+        assert "existing" in tags
+        assert "groceries" in tags
+
+    def test_applies_exclude_from_rule(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        tx_id = int(rows.iloc[0]["id"])
+
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", exclude=True)
+        rules_mgr.apply_rules_to_transaction(tx_id, tx_mgr)
+
+        updated = tx_mgr.query(columns=tx_mgr.return_columns, filters={"id": ("==", tx_id)}).data.iloc[0]
+        assert updated["exclude"] == True  # noqa: E712 — pandas returns np.True_, not Python True
+
+    def test_returns_false_when_no_rule_matches(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        tx_id = int(rows.iloc[0]["id"])
+
+        changed = rules_mgr.apply_rules_to_transaction(tx_id, tx_mgr)
+        assert changed is False
+
+    def test_returns_false_when_only_tags_change(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        tx_id = int(rows.iloc[0]["id"])
+
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", tags=["groceries"])
+        changed = rules_mgr.apply_rules_to_transaction(tx_id, tx_mgr)
+        assert changed is False
+
+
+# ── apply_rules_to_all ────────────────────────────────────────────────────────
+
+class TestApplyRulesToAll:
+    def test_updates_category_on_matching_transactions(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", primary_category="Food & drink")
+        rules_mgr.apply_rules_to_all(tx_mgr)
+
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        assert all(r == "Food & drink" for r in rows["primary_category"])
+
+    def test_merges_tags_without_overwriting_existing(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        tx_mgr.update_item(int(rows.iloc[0]["id"]), tags="existing")
+
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", tags=["groceries"])
+        rules_mgr.apply_rules_to_all(tx_mgr)
+
+        updated_row = tx_mgr.query(
+            columns=tx_mgr.return_columns,
+            filters={"id": ("==", int(rows.iloc[0]["id"]))}
+        ).data.iloc[0]
+        tags = updated_row["tags"].split(",")
+        assert "existing" in tags
+        assert "groceries" in tags
+
+    def test_applies_exclude_from_rule(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", exclude=True)
+        rules_mgr.apply_rules_to_all(tx_mgr)
+
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        assert all(r == True for r in rows["exclude"])  # noqa: E712 — pandas returns np.True_
+
+    def test_does_not_modify_non_matching_transactions(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", primary_category="Food & drink")
+        rules_mgr.apply_rules_to_all(tx_mgr)
+
+        netflix_row = tx_mgr.query(
+            columns=tx_mgr.return_columns, filters={"description": ("==", "NETFLIX")}
+        ).data.iloc[0]
+        assert netflix_row["primary_category"] == "Other"
+
+    def test_idempotent(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        rules_mgr.upsert_rule("TRADER JOES", "Chase Sapphire", primary_category="Food & drink", tags=["groceries"])
+
+        rules_mgr.apply_rules_to_all(tx_mgr)
+        rules_mgr.apply_rules_to_all(tx_mgr)
+
+        rows = tx_mgr.query(columns=tx_mgr.return_columns, filters={"description": ("==", "TRADER JOES")}).data
+        for _, row in rows.iterrows():
+            tags = [t for t in (row["tags"] or "").split(",") if t]
+            assert tags.count("groceries") == 1
+
+    def test_returns_empty_list_when_no_rules(self, tx_and_rules):
+        tx_mgr, rules_mgr = tx_and_rules
+        result = rules_mgr.apply_rules_to_all(tx_mgr)
+        assert result == []

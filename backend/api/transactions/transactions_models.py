@@ -5,7 +5,7 @@ Contains Pydantic models for transaction-related API endpoints,
 including request and response schemas for fetching transactions with optional month/year filters and pagination.
 """
 # Standard library imports
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -13,6 +13,9 @@ from typing import Optional
 
 # Third party imports
 from fastapi import Query
+
+# Local imports
+from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 
 
 incoming_config = ConfigDict(
@@ -62,6 +65,37 @@ class TransactionFilters(BaseModel):
 
     model_config = incoming_config
 
+    @property
+    def sort_ascending(self) -> bool:
+        return self.sort_order != "desc"
+
+    def to_db_filters(self) -> tuple[dict, list[str]]:
+        """Returns (db_filters dict, tag_list) for use in db.query()."""
+        db_filters: dict = {}
+
+        if not self.show_excluded:
+            db_filters["exclude"] = ("==", False)
+
+        if self.primary_category in [e.value for e in PrimaryCategories]:
+            db_filters["primary_category"] = ("==", self.primary_category)
+
+        if self.detailed_category in [e.value for e in DetailedCategories]:
+            db_filters["detailed_category"] = ("==", self.detailed_category)
+
+        if self.date_from or self.date_to:
+            date_from = self.date_from or "1900-01-01"
+            date_to = self.date_to or datetime.now().strftime("%Y-%m-%d")
+            db_filters["authorized_date"] = (
+                "between",
+                (
+                    datetime.strptime(date_from, "%Y-%m-%d"),
+                    datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59),
+                ),
+            )
+
+        tag_list = [t.strip() for t in self.tags.split(",") if t.strip()] if self.tags else []
+        return db_filters, tag_list
+
 
 
 class TransactionsPage(BaseModel): # Pydantic model for get transactions response with pagination metadata.
@@ -109,6 +143,7 @@ class BulkUpdateRequest(BaseModel):
     primary_category: Optional[str] = None
     detailed_category: Optional[str] = None
     tags: Optional[list[str]] = None        # tags to ADD (merged with existing)
+    exclude: Optional[bool] = None          # if set, mark matching transactions as excluded/included
     save_as_rule: bool = False              # if True, upsert a rule for the match pattern
     match_description: Optional[str] = None # required when save_as_rule=True
     match_account_name: Optional[str] = None # required when save_as_rule=True

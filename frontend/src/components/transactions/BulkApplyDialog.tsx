@@ -10,6 +10,7 @@ export interface BulkApplyChange {
   newTags: string[];          // tags that were added
   primaryCategory?: string;   // new primary category (if changed)
   detailedCategory?: string;  // new detailed category (if changed)
+  isExcluded?: boolean;       // new excluded state (if changed)
 }
 
 interface BulkApplyDialogProps {
@@ -40,6 +41,7 @@ export function BulkApplyDialog({
 
   const hasTags = change.newTags.length > 0;
   const hasCategory = !!(change.primaryCategory || change.detailedCategory);
+  const hasExcluded = change.isExcluded !== undefined;
 
   function toggleId(id: number) {
     setSelectedIds((prev) => {
@@ -90,6 +92,14 @@ export function BulkApplyDialog({
                 </span>
               </p>
             )}
+            {hasExcluded && (
+              <p className="text-muted-foreground">
+                Excluded:{" "}
+                <span className="font-medium text-foreground">
+                  {change.isExcluded ? "Yes" : "No"}
+                </span>
+              </p>
+            )}
           </div>
 
           <p className="text-xs text-muted-foreground">
@@ -104,7 +114,7 @@ export function BulkApplyDialog({
             {(
               [
                 ["all", "Apply to all matching transactions"],
-                ["no_existing", hasTags ? "Apply only to those with no tags yet" : "Apply only to those with no category yet"],
+                ["no_existing", hasTags ? "Apply only to those with no tags yet" : hasExcluded ? "Apply only to those not already excluded" : "Apply only to those with no category yet"],
                 ["only_this", "Only this transaction (already saved)"],
                 ["select", "Select specific transactions"],
               ] as [BulkApplyScope, string][]
