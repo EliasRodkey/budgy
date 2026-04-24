@@ -21,8 +21,8 @@ from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 from backend.tests.conftest import TEST_CSV_DIR, full_transactions_database
 
 # Initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 duplicate_update_item = {

@@ -16,8 +16,8 @@ from pleasant_database import DatabaseIntegrityError
 from backend.database_modules.models.common import TableStatus
 from backend.tests.conftest import TEST_CSV_DIR, TEST_DB_FILEPATH
 
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 def _make_db_transactions_record(uq_hash: str = "test_uq_hash_001") -> dict:

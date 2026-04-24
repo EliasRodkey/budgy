@@ -14,8 +14,8 @@ import pytest
 from backend.database_modules.models.budgets import BudgetsTable, budget_columns
 
 # Initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 EXPECTED_BUDGET_COLUMNS = [

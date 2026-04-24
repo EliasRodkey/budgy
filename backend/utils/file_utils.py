@@ -58,8 +58,8 @@ class LoggingExtras(str, Enum):
 
 
 # Initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 def get_csv_filenames(csv_directory: str=EDirectories.CSV_DIR) -> list[str]:

@@ -20,8 +20,8 @@ from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityEr
 from backend.database_modules.managers.common import DB_FILE
 from backend.database_modules.models.rules import TransactionRulesTable
 
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 class TransactionRulesManager(DatabaseManager):

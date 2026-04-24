@@ -9,7 +9,7 @@ Functions:
 """
 # Standard library imports
 import json as json_lib
-import logging
+from pleasant_loggers import get_logger
 import os
 from datetime import datetime
 from typing import Optional
@@ -19,7 +19,7 @@ import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 from uuid import uuid4
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Custom imports
 from pleasant_database import DatabaseFile, DatabaseManager

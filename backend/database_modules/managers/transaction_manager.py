@@ -33,8 +33,8 @@ from backend.utils.file_utils import EDirectories, LoggingExtras, get_csv_filena
 from backend.csv_modules.transactions_csv_loader import iter_val_csv_file
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 

@@ -5,8 +5,8 @@ from datetime import date, datetime
 from enum import Enum
 
 # Initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 Field = namedtuple('Column', 'src dest convert')
 

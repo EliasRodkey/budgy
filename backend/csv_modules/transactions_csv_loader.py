@@ -27,8 +27,8 @@ from backend.database_modules.models.transactions import TransactionsTable
 from backend.utils.file_utils import LoggingExtras
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 #============== Data validation funcitons ====================

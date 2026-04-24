@@ -21,7 +21,6 @@ import pytest
 
 # Custom imports
 from pleasant_database import DatabaseFile
-from pleasant_loggers import configure_logging, LoggingMode
 
 # Local imports
 from backend.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
@@ -29,15 +28,6 @@ from backend.database_modules.managers.budget_manager import BudgetsTableManager
 from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
 from backend.database_modules.managers.summary_manager import SummariesTableManager
 from backend.database_modules.models.common import TableStatus
-from backend.utils.file_utils import EDirectories
-
-
-@pytest.fixture(scope="session", autouse=True)
-def configure_test_logging():
-    configure_logging(
-        log_directory=EDirectories.LOG_DIR,
-        mode=LoggingMode.DAILY_DIRECTORY, # TODO: Seeing an issue with the log creation, Getting the single file per run instead of the daily directory! and no JSON
-        )
 
 
 TEST_CSV_DIR = os.path.join(os.getcwd(), "backend", "tests", "test_csv_download_files")

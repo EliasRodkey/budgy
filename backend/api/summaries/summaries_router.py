@@ -5,7 +5,7 @@ backend.api.summaries.summaries_router
 Endpoints for reading monthly summaries and managing the dirty-months recompute queue.
 """
 # Standard library imports
-import logging
+from pleasant_loggers import get_logger
 from datetime import datetime
 
 # Third party imports
@@ -22,7 +22,7 @@ from backend.database_modules.managers.transaction_manager import TransactionsTa
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix=RouterPrefixes.SUMMARIES.value, tags=["Summaries"])
 

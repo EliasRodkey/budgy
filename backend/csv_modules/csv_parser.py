@@ -11,5 +11,5 @@
 # Local imports
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)

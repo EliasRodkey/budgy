@@ -18,8 +18,8 @@ from backend.database_modules.models.summaries import SummariesTable, summary_co
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 
 # Initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 # All primary category column names as they appear in SummariesTable

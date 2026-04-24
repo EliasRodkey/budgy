@@ -14,8 +14,8 @@ import pytest
 from backend.database_modules.models.common import Field, TableStatus, parse_date
 
 # Initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 # =========================parse_date===================================
