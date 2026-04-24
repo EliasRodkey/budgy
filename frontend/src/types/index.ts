@@ -15,7 +15,7 @@ export interface Transaction {
   authorizedDate: string; // ISO 8601
   postedDate: string; // ISO 8601
   status: string
-  account_name: string;
+  accountName: string;
   description: string;
   primaryCategory: string;
   detailedCategory: string;

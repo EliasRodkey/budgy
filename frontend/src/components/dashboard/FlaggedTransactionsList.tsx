@@ -58,7 +58,7 @@ function AssignRow({ tx, onAssign, isPending }: AssignRowProps) {
       <span className="text-xs text-muted-foreground w-24 shrink-0">{formatDate(tx.authorizedDate)}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{tx.description}</p>
-        <p className="text-xs text-muted-foreground">{tx.account_name}</p>
+        <p className="text-xs text-muted-foreground">{tx.accountName}</p>
       </div>
       <span className="text-sm font-medium tabular-nums text-red-600 dark:text-red-400 shrink-0">
         {formatCurrency(tx.amount)}

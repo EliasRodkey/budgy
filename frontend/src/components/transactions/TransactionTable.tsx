@@ -43,7 +43,7 @@ function TransactionRow({ tx, onEdit, onDelete }: RowProps) {
       </td>
       <td className="py-3 px-4 max-w-xs">
         <p className="text-sm font-medium truncate">{tx.description}</p>
-        <p className="text-xs text-muted-foreground truncate">{tx.account_name}</p>
+        <p className="text-xs text-muted-foreground truncate">{tx.accountName}</p>
       </td>
       <td className={`py-3 px-4 text-sm font-medium tabular-nums text-right whitespace-nowrap ${isExpense ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
         {formatCurrency(tx.amount)}

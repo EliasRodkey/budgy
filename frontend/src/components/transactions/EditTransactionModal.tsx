@@ -3,7 +3,7 @@ import { CATEGORY_MAPPING } from "@/constants/categories";
 import type { Transaction } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { TagInput } from "./TagInput";
@@ -50,7 +50,7 @@ function containsSuspiciousContent(val: string | undefined): boolean {
 const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
   description: z.string().optional(),
-  account_name: z.string().optional(),
+  accountName: z.string().optional(),
   amount: z.number({ error: "Must be a number" }),
   primaryCategory: z.string().min(1, "Required"),
   detailedCategory: z.string().min(1, "Required"),
@@ -117,27 +117,12 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   const watchedNotes = watch("notes") ?? "";
   const detailedOptions = CATEGORY_MAPPING[watchedPrimary] ?? [];
 
-  // isResettingRef prevents the "clear detailedCategory" effect from firing
-  // during a programmatic reset (which also changes watchedPrimary)
-  const isResettingRef = useRef(false);
-
-  // Clear detailed category when the user manually changes the primary category
-  const prevPrimaryRef = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (!isResettingRef.current && prevPrimaryRef.current !== undefined && watchedPrimary !== prevPrimaryRef.current) {
-      setValue("detailedCategory", "");
-    }
-    prevPrimaryRef.current = watchedPrimary;
-    isResettingRef.current = false;
-  }, [watchedPrimary, setValue]);
-
   useEffect(() => {
     if (transaction) {
-      isResettingRef.current = true;
       reset({
         date: transaction.authorizedDate,
         description: transaction.description,
-        account_name: transaction.account_name,
+        accountName: transaction.accountName,
         amount: transaction.amount,
         primaryCategory: transaction.primaryCategory,
         detailedCategory: transaction.detailedCategory,
@@ -147,7 +132,6 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
         notes: transaction.notes ?? "",
         tags: transaction.tags ?? [],
       });
-      prevPrimaryRef.current = transaction.primaryCategory;
     }
   }, [transaction, reset]);
 
@@ -156,7 +140,7 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   function onSubmit(values: FormValues) {
     onSave(transaction!.id, {
       ...values,
-      account_name: values.account_name ?? transaction!.account_name,
+      accountName: values.accountName ?? transaction!.accountName,
       description: values.description ?? transaction!.description,
       notes: values.notes || undefined,
       tags: values.tags?.length ? values.tags : undefined,
@@ -213,7 +197,7 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
 
           <Field label="Account">
             <Controller
-              name="account_name"
+              name="accountName"
               control={control}
               render={({ field }) => (
                 <ClickToEdit
@@ -227,15 +211,28 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Category" error={errors.primaryCategory?.message}>
-              <select
-                {...register("primaryCategory")}
-                className={InputClass(!!errors.primaryCategory)}
-              >
-                <option value="">Select…</option>
-                {Object.keys(CATEGORY_MAPPING).map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              <Controller
+                name="primaryCategory"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    value={field.value ?? ""}
+                    onBlur={field.onBlur}
+                    onChange={(e) => {
+                      if (e.target.value !== field.value) {
+                        setValue("detailedCategory", "");
+                      }
+                      field.onChange(e);
+                    }}
+                    className={InputClass(!!errors.primaryCategory)}
+                  >
+                    <option value="">Select…</option>
+                    {Object.keys(CATEGORY_MAPPING).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+              />
             </Field>
             <Field label="Detailed Category" error={errors.detailedCategory?.message}>
               <select

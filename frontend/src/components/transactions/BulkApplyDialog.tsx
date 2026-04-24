@@ -15,7 +15,7 @@ export interface BulkApplyChange {
 interface BulkApplyDialogProps {
   /** The transaction that was just saved. */
   transaction: Transaction;
-  /** Other transactions sharing the same description + account_name. */
+  /** Other transactions sharing the same description + accountName. */
   similarTransactions: Transaction[];
   /** What was changed. */
   change: BulkApplyChange;
@@ -96,7 +96,7 @@ export function BulkApplyDialog({
             Found <strong>{similarTransactions.length}</strong> other transaction
             {similarTransactions.length !== 1 ? "s" : ""} from{" "}
             <strong className="text-foreground">&ldquo;{transaction.description}&rdquo;</strong>{" "}
-            on <strong className="text-foreground">{transaction.account_name}</strong>.
+            on <strong className="text-foreground">{transaction.accountName}</strong>.
           </p>
 
           {/* Scope radio options */}

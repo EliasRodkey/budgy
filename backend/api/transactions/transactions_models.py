@@ -77,15 +77,15 @@ class TransactionsPage(BaseModel): # Pydantic model for get transactions respons
 class TransactionUpdate(BaseModel):
     """
     Request body for PUT /transactions/{id}.
-    Field names match exactly what the edit form sends (camelCase from the frontend).
     All fields are optional — only provided fields are written to the DB.
+    Accepts both camelCase aliases (from frontend) and snake_case field names.
 
     Note: the 'date' field (→ authorized_date) is intentionally absent here because
     naming a Pydantic field 'date' shadows the datetime.date type in its own annotation,
     causing Pydantic v2 to treat the type as NoneType. It is extracted manually in the
     endpoint before this model is validated.
     """
-    model_config = ConfigDict(extra="ignore")   # silently drop isFlagged and any other unknown fields
+    model_config = ConfigDict(extra="ignore", alias_generator=to_camel, populate_by_name=True)
 
     description: Optional[str] = None
     account_name: Optional[str] = None      # editable account field (replaces merchant)

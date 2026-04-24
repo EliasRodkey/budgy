@@ -46,6 +46,16 @@ export interface ImportJobStatus {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function parseTags(tags: unknown): string[] {
+  if (!tags) return [];
+  if (Array.isArray(tags)) return tags as string[];
+  return String(tags).split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function normalizeTransaction(tx: Record<string, unknown>): Transaction {
+  return { ...tx, tags: parseTags(tx.tags) } as Transaction;
+}
+
 function applyFilters(txs: Transaction[], filters: TransactionFilters): Transaction[] {
   let result = [...txs];
 
@@ -59,7 +69,7 @@ function applyFilters(txs: Transaction[], filters: TransactionFilters): Transact
     result = result.filter(
       (t) =>
         t.description.toLowerCase().includes(q) ||
-        t.account_name.toLowerCase().includes(q),
+        t.accountName.toLowerCase().includes(q),
     );
   }
 
@@ -139,7 +149,7 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
   if (!res.ok) throw new Error("Failed to fetch transactions");
   const json = await res.json();
   return {
-    data: json.data,
+    data: (json.data as Record<string, unknown>[]).map(normalizeTransaction),
     total: json.total,
     page: json.page,
     pageSize: json.pageSize,
@@ -155,7 +165,7 @@ export async function getFlaggedTransactions(): Promise<Transaction[]> {
   const res = await fetch("/api/transactions?flagged=true&page_size=100");
   if (!res.ok) throw new Error("Failed to fetch flagged transactions");
   const json = await res.json();
-  return json.data as Transaction[];
+  return (json.data as Record<string, unknown>[]).map(normalizeTransaction);
 }
 
 export async function getAvailableTags(): Promise<string[]> {
@@ -177,7 +187,7 @@ export async function getAvailableTags(): Promise<string[]> {
 
 export async function updateTransaction(
   id: string,
-  updates: Partial<Pick<Transaction, "authorizedDate" | "postedDate" | "status" | "account_name" | "description" | "primaryCategory" | "detailedCategory" | "amount" | "repayment" | "exclude" | "notes" | "tags">>,
+  updates: Partial<Pick<Transaction, "authorizedDate" | "postedDate" | "status" | "accountName" | "description" | "primaryCategory" | "detailedCategory" | "amount" | "repayment" | "exclude" | "notes" | "tags">>,
 ): Promise<Transaction> {
   if (USE_MOCK) {
     const idx = mutableTransactions.findIndex((t) => t.id === id);
@@ -193,7 +203,7 @@ export async function updateTransaction(
     body: JSON.stringify(updates),
   });
   if (!res.ok) throw new Error("Failed to update transaction");
-  return res.json() as Promise<Transaction>;
+  return res.json().then(normalizeTransaction);
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
@@ -247,7 +257,8 @@ export async function getSimilarTransactions(
   if (excludeId !== undefined) params.set("exclude_id", String(excludeId));
   const res = await fetch(`/api/transactions/similar?${params}`);
   if (!res.ok) throw new Error("Failed to fetch similar transactions");
-  return res.json() as Promise<Transaction[]>;
+  const data = await res.json() as Record<string, unknown>[];
+  return data.map(normalizeTransaction);
 }
 
 export async function bulkUpdateTransactions(payload: BulkUpdatePayload): Promise<{ updated: number }> {

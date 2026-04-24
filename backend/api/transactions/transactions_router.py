@@ -99,11 +99,11 @@ async def get_transaction_pages(
     if filters.date_from or filters.date_to:
         date_from = filters.date_from or "1900-01-01"
         date_to = filters.date_to or datetime.now().strftime("%Y-%m-%d")
-        db_filters[TransactionsTable.posted_date.name] = (
+        db_filters[TransactionsTable.authorized_date.name] = (
             "between",
             (
                 datetime.strptime(date_from, "%Y-%m-%d"),
-                datetime.strptime(date_to, "%Y-%m-%d"),
+                datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59),
             ),
         )
 

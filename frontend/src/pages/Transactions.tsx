@@ -262,7 +262,7 @@ export default function Transactions() {
         // Fetch similar transactions
         const similar = await getSimilarTransactions(
           original.description,
-          original.account_name,
+          original.accountName,
           Number(id),
         );
         if (similar.length === 0) return;
@@ -304,7 +304,7 @@ export default function Transactions() {
         tags: bulkChange.newTags.length > 0 ? bulkChange.newTags : undefined,
         saveAsRule,
         matchDescription: savedTx.description,
-        matchAccountName: savedTx.account_name,
+        matchAccountName: savedTx.accountName,
       },
       { onSuccess: () => setBulkChange(null) },
     );

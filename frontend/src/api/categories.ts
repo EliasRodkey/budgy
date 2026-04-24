@@ -270,10 +270,10 @@ export async function getSubcategoryDetail(
     // Aggregate top vendors
     const vendorMap = new Map<string, { amount: number; count: number }>();
     for (const tx of transactions) {
-      const entry = vendorMap.get(tx.account_name) ?? { amount: 0, count: 0 };
+      const entry = vendorMap.get(tx.accountName) ?? { amount: 0, count: 0 };
       entry.amount += Math.abs(tx.amount);
       entry.count += 1;
-      vendorMap.set(tx.account_name, entry);
+      vendorMap.set(tx.accountName, entry);
     }
     const topVendors = Array.from(vendorMap.entries())
       .map(([name, v]) => ({ name, amount: v.amount, count: v.count }))

@@ -44,7 +44,7 @@ function makeTx(overrides: Partial<Transaction> = {}): Transaction {
     authorizedDate: "2026-01-01",
     postedDate: "2026-01-01",
     status: "Checked",
-    account_name: "Chase Sapphire",
+    accountName: "Chase Sapphire",
     description: "TRADER JOES",
     primaryCategory: "Food & drink",
     detailedCategory: "Groceries",

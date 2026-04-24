@@ -43,7 +43,7 @@ describe("getTransactions", () => {
     for (const tx of result.data) {
       const hit =
         tx.description.toLowerCase().includes("whole foods") ||
-        tx.account_name.toLowerCase().includes("whole foods");
+        tx.accountName.toLowerCase().includes("whole foods");
       expect(hit).toBe(true);
     }
   });
@@ -105,7 +105,7 @@ describe("getTransactions", () => {
       expect(typeof tx.id).toBe("string");
       expect(typeof tx.authorizedDate).toBe("string");
       expect(typeof tx.description).toBe("string");
-      expect(typeof tx.account_name).toBe("string");
+      expect(typeof tx.accountName).toBe("string");
       expect(typeof tx.amount).toBe("number");
       expect(typeof tx.primaryCategory).toBe("string");
       expect(typeof tx.detailedCategory).toBe("string");
