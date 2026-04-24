@@ -309,11 +309,7 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
                 summary_df = tx_mgr.generate_monthly_summary(row.month, row.year)
                 if summary_df.empty:
                     continue
-                if summary_mgr._check_summary_exists(row.month, row.year):
-                    summary_mgr.update_summary(row.month, row.year, summary_df)
-                else:
-                    summary_mgr.upload_monthly_summary(row.month, row.year, summary_df)
-        summary_mgr.end_session()
+                summary_mgr.upsert_summary(row.month, row.year, summary_df)
 
         jobs_mgr.set_status(
             job_id, "complete",
@@ -329,6 +325,7 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
             os.remove(tmp_path)
         tx_mgr.end_session()
         updates_mgr.end_session()
+        summary_mgr.end_session()
         jobs_mgr.end_session()
 
 

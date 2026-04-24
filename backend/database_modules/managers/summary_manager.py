@@ -73,6 +73,18 @@ class SummariesTableManager(DatabaseManager):
                 raise e
 
 
+    def upsert_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int = None) -> None:
+        """
+        Creates or updates the monthly summary for the given month/year.
+
+        Callers should prefer this over calling upload_monthly_summary or update_summary
+        directly — it encapsulates the exists-check and routes to the correct operation.
+        """
+        if self._check_summary_exists(month, year):
+            self.update_summary(month, year, summary)
+        else:
+            self.upload_monthly_summary(month, year, summary, budget_id=budget_id)
+
     def update_summary(self, month: int, year: int, summary: pd.DataFrame,):
         """
         Updates a summary entry in the summaries table. 

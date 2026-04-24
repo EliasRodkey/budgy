@@ -71,6 +71,71 @@ def _make_db_summary_record(month: int, year: int, budget_id: int) -> dict:
     }
 
 
+# ─── TestUpsertSummary ───────────────────────────────────────────────────────
+
+class TestUpsertSummary:
+
+    def test_creates_record_when_none_exists(self, full_transactions_database, clean_summaries_database):
+        """upsert_summary inserts a new record when no summary exists for that month/year."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
+        summaries_manager.upsert_summary(12, 2025, summary, budget_id=budget_id)
+
+        assert summaries_manager._check_summary_exists(12, 2025)
+        records = summaries_manager.fetch_items_by_attribute(month=12, year=2025)
+        assert len(records) == 1
+
+    def test_updates_record_when_already_exists(self, full_transactions_database, clean_summaries_database):
+        """upsert_summary updates an existing record rather than inserting a duplicate."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
+        summaries_manager.upload_monthly_summary(12, 2025, summary, budget_id=budget_id)
+
+        # Mutate the summary data then upsert — should update, not insert a second row
+        summary.loc["income", "sum"] = 99999.0
+        summaries_manager.upsert_summary(12, 2025, summary)
+
+        records = summaries_manager.fetch_items_by_attribute(month=12, year=2025)
+        assert len(records) == 1
+        assert records[0].sum_income == pytest.approx(99999.0)
+
+    def test_is_idempotent(self, full_transactions_database, clean_summaries_database):
+        """Calling upsert_summary twice with the same data leaves exactly one record."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+
+        summary = full_transactions_database.generate_monthly_summary(12, 2025)
+        summaries_manager.upsert_summary(12, 2025, summary, budget_id=budget_id)
+        summaries_manager.upsert_summary(12, 2025, summary, budget_id=budget_id)
+
+        records = summaries_manager.fetch_items_by_attribute(month=12, year=2025)
+        assert len(records) == 1
+
+    def test_multiple_months_upsert_independently(self, full_transactions_database, clean_summaries_database):
+        """upsert_summary for two different months each produce a separate record."""
+        summaries_manager, budgets_manager = clean_summaries_database
+        budgets_manager.add_item(**_make_db_budget_record())
+        budget_id = budgets_manager.fetch_all_items()[0].id
+
+        dec_summary = full_transactions_database.generate_monthly_summary(12, 2025)
+        nov_summary = full_transactions_database.generate_monthly_summary(11, 2025)
+
+        summaries_manager.upsert_summary(12, 2025, dec_summary, budget_id=budget_id)
+        summaries_manager.upsert_summary(11, 2025, nov_summary, budget_id=budget_id)
+
+        assert summaries_manager._check_summary_exists(12, 2025)
+        assert summaries_manager._check_summary_exists(11, 2025)
+        assert len(summaries_manager.fetch_items_by_attribute(month=12, year=2025)) == 1
+        assert len(summaries_manager.fetch_items_by_attribute(month=11, year=2025)) == 1
+
+
 # ─── TestCheckSummaryExists ───────────────────────────────────────────────────
 
 class TestCheckSummaryExists:

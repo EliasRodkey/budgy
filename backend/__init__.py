@@ -1,7 +1,7 @@
 __version__ = "2.0.0"
 __Author__ = "Elias Rodkey"
 
-from pleasant_loggers import configure_logging, LoggingMode, DirectoryLayout
+from pleasant_loggers import configure_logging, LoggingMode, DirectoryLayout, LogReader
 import logging
 from .utils.file_utils import EDirectories
 

@@ -60,10 +60,7 @@ def _recompute_dirty_months(dirty_months: list[tuple[int, int]]) -> list[DirtyMo
             if summary_df.empty:
                 dirty_mgr.clear(month, year)
                 continue
-            if summary_mgr._check_summary_exists(month, year):
-                summary_mgr.update_summary(month, year, summary_df)
-            else:
-                summary_mgr.upload_monthly_summary(month, year, summary_df)
+            summary_mgr.upsert_summary(month, year, summary_df)
             dirty_mgr.clear(month, year)
             recomputed.append(DirtyMonth(month=month, year=year))
     finally:
