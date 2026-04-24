@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.managers.common.py -
+backend.database_modules.managers.common.py -
 Contians shared functions and classes used by the database manager modules.
 
 Functions:

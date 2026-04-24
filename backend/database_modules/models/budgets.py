@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.models.budgets.py -
+backend.database_modules.models.budgets.py -
 Contains ORM table definitions, database managers, and CSV column mappings for budgy budgets db table.
 
 Classes:

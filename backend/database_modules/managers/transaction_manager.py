@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.managers.transaction_manager.py -
+backend.database_modules.managers.transaction_manager.py -
 Module containing class-based managers for the transactions and updates tables.
 
 Classes:
@@ -27,7 +27,7 @@ from pleasant_database import DatabaseFile, DatabaseIntegrityError, DatabaseMana
 # Local imports
 from backend.database_modules.managers.common import DuplicateError, convert_datetime_nums_to_range, format_column_names
 from backend.database_modules.models.common import Field, TableStatus
-from backend.database_modules.models.transactions import TransactionsTable, UpdatesTable, transaction_columns
+from backend.database_modules.models.transactions import TransactionsTable, UpdatesTable, UploadJobsTable, transaction_columns
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
 from backend.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
 from backend.csv_modules.transactions_csv_loader import iter_val_csv_file
@@ -125,6 +125,27 @@ class TransactionsTableManager(DatabaseManager):
         - total_income: Returns total income over a given period.
         - average_income: Returns average income over a given period.
     """
+    return_columns: List[str]  = [
+        TransactionsTable.id.name,
+        TransactionsTable.authorized_date.name,
+        TransactionsTable.posted_date.name,
+        TransactionsTable.status.name,
+        TransactionsTable.account_name.name,
+        TransactionsTable.description.name,
+        TransactionsTable.primary_category.name,
+        TransactionsTable.detailed_category.name,
+        TransactionsTable.amount.name,
+        TransactionsTable.repayment.name,
+        TransactionsTable.exclude.name,
+        TransactionsTable.notes.name,
+        TransactionsTable.tags.name
+    ]
+
+    search_columns: List[str] = [
+        TransactionsTable.description.name,
+        TransactionsTable.account_name.name,
+        TransactionsTable.notes.name
+    ]
 
     def __init__(self, db_file: DatabaseFile, updates_manager: UpdatesTableManager):
         super().__init__(TransactionsTable, db_file)
@@ -150,7 +171,7 @@ class TransactionsTableManager(DatabaseManager):
         """
 
         logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
-        logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
+        # logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
         transactions_original_state = self.to_dataframe()
 
@@ -175,7 +196,7 @@ class TransactionsTableManager(DatabaseManager):
 
         logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
         self.updates_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
-        logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
+        # logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
         return updated_records
 
@@ -204,8 +225,8 @@ class TransactionsTableManager(DatabaseManager):
             try:
                 updated_records.extend(self.upload_csv(csv_filepath, columns=columns))
 
-            except Exception:
-                logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}", extra={LoggingExtras.FILE: csv_filepath})
+            except Exception as e:
+                logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}. Error: {e}", extra={LoggingExtras.FILE: csv_filepath})
                 failed_files.append(csv_filepath)
 
         if failed_files:
@@ -399,3 +420,43 @@ class TransactionsTableManager(DatabaseManager):
                     raise e
 
         return updated_records
+
+
+
+class UploadJobsManager(DatabaseManager):
+    """
+    Manager for the upload_jobs table. Tracks async CSV import jobs.
+
+    Methods:
+        - create_job: Creates a new upload job record and returns its UUID.
+        - set_status: Updates job status and optional result counts.
+        - get_job: Fetches a job record by its UUID job_id.
+    """
+
+    def __init__(self, db_file: DatabaseFile):
+        super().__init__(UploadJobsTable, db_file)
+
+    def create_job(self, file_path: str) -> str:
+        """Creates a new upload job with status 'pending' and returns the job_id (UUID)."""
+        import uuid
+        job_id = str(uuid.uuid4())
+        self.add_item(
+            job_id=job_id,
+            status="pending",
+            file_path=file_path,
+            created_at=datetime.now(),
+        )
+        return job_id
+
+    def set_status(self, job_id: str, status: str, **kwargs) -> None:
+        """Updates the status (and optional fields) of the job identified by job_id."""
+        records = self.fetch_items_by_attribute(job_id=job_id)
+        if not records:
+            logger.error(f"Upload job {job_id} not found")
+            return
+        self.update_item(records[0].id, status=status, **kwargs)
+
+    def get_job(self, job_id: str):
+        """Returns the upload job record for the given job_id, or None if not found."""
+        records = self.fetch_items_by_attribute(job_id=job_id)
+        return records[0] if records else None

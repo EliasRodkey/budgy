@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_io.test_transactions_csv_loader.py
 
-Tests for budgy.database_modules.io.transactions_csv_loader.py module — CSV processing and database upload functions.
+Tests for backend.database_modules.io.transactions_csv_loader.py module — CSV processing and database upload functions.
 """
 # Standard library imports
 from datetime import datetime

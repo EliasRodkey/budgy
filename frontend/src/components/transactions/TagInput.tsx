@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { tagPillStyle } from "@/lib/tagColors";
 import { X } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -72,61 +72,76 @@ export function TagInput({ value, onChange, availableTags, error }: TagInputProp
   const displayError = error ?? validationError;
 
   return (
-    <div className="space-y-1">
-      <div
-        className={`min-h-8 w-full flex flex-wrap gap-1 items-center rounded-md border px-2 py-1 bg-background cursor-text ${displayError ? "border-destructive" : "border-input"} focus-within:ring-2 focus-within:ring-ring`}
-        onClick={() => inputRef.current?.focus()}
-      >
-        {value.map((tag) => (
-          <Badge key={tag} variant="secondary" className="text-xs gap-1 pr-1">
-            {tag}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-              className="hover:text-destructive transition-colors"
-              aria-label={`Remove tag ${tag}`}
+    <div className="space-y-1.5">
+      {/* Confirmed tags — displayed above the input */}
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {value.map((tag) => (
+            <span
+              key={tag}
+              style={tagPillStyle(tag)}
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium"
             >
-              <X size={10} />
-            </button>
-          </Badge>
-        ))}
-        {!isAtLimit && (
-          <div className="relative flex-1 min-w-20">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                setIsOpen(true);
-                setValidationError(null);
-              }}
-              onKeyDown={handleKeyDown}
-              onFocus={() => setIsOpen(true)}
-              onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-              placeholder={value.length === 0 ? "Add tags…" : ""}
-              className="w-full h-6 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground"
-            />
-            {isOpen && (inputValue || filteredSuggestions.length > 0) && filteredSuggestions.length > 0 && (
-              <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-md border border-border bg-popover shadow-md">
-                <ul className="py-1 max-h-40 overflow-y-auto">
-                  {filteredSuggestions.map((tag) => (
-                    <li key={tag}>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => { e.preventDefault(); addTag(tag); }}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+              {tag}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
+                className="opacity-60 hover:opacity-100 transition-opacity"
+                aria-label={`Remove tag ${tag}`}
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Text input */}
+      {!isAtLimit && (
+        <div
+          className={`relative w-full rounded-md border px-2 py-1 bg-background cursor-text ${displayError ? "border-destructive" : "border-input"} focus-within:ring-2 focus-within:ring-ring`}
+          onClick={() => inputRef.current?.focus()}
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              setIsOpen(true);
+              setValidationError(null);
+            }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsOpen(true)}
+            onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+            placeholder="Add tags…"
+            className="w-full h-6 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground"
+          />
+          {isOpen && filteredSuggestions.length > 0 && (
+            <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-md border border-border bg-popover shadow-md">
+              <ul className="py-1 max-h-40 overflow-y-auto">
+                {filteredSuggestions.map((tag) => (
+                  <li key={tag}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); addTag(tag); }}
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <span
+                        style={tagPillStyle(tag)}
+                        className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium"
                       >
                         {tag}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground">
         Press Enter or comma to add · No spaces · Max {MAX_TAG_LENGTH} chars · {value.length}/{MAX_TAGS} tags
       </p>

@@ -2,7 +2,7 @@
 """
 tests.test_database_modules.test_managers.test_common
 
-Tests for budgy.database_modules.managers.common — convert_datetime_nums_to_range and format_column_names.
+Tests for backend.database_modules.managers.common — convert_datetime_nums_to_range and format_column_names.
 """
 # Standard library imports
 from datetime import datetime, timedelta

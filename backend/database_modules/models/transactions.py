@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.models.transactions.py -
+backend.database_modules.models.transactions.py -
 Contains ORM table definitions, database managers, and CSV column mappings for budgy.
 
 Classes:
@@ -44,6 +44,8 @@ class TransactionsTable(BaseTable):
         - amount: Float
         - repayment: Boolean
         - exclude: Boolean
+        - notes: String (max 300 chars, edit modal only)
+        - tags: String (max 10 tags, each max 30 chars, no spaces
         - base_hash: a hash value generated based on the transaction information, tells us if 2 transactions have the same information.
         - uq_hash: a unique hash value generated based on the transaction information and number of occurances to ensure that we can detect duplicates
                   without relying on the position of the transaction in the csv file.
@@ -64,6 +66,8 @@ class TransactionsTable(BaseTable):
     amount = Column(Float)
     repayment = Column(Boolean)
     exclude = Column(Boolean)
+    notes = Column(String) # max 300 chars, edit modal only
+    tags = Column(String) # max 10 tags, each max 30 chars, no spaces
     base_hash = Column(String)
     uq_hash = Column(String, unique=True)
 
@@ -79,6 +83,37 @@ transaction_columns = [
     Field("Detailed Category", TransactionsTable.detailed_category.name, str),
     Field("Amount", TransactionsTable.amount.name, float),
 ]
+
+
+
+class UploadJobsTable(BaseTable):
+    """
+    Class representing the upload_jobs table.
+    Tracks async CSV import jobs: status, file path, and result counts.
+
+    Database Structure:
+        table name: upload_jobs
+    Columns:
+        - id: Integer, Primary Key, Auto Increment
+        - job_id: String (UUID4, unique) — returned to the frontend immediately
+        - status: String — pending | processing | complete | failed
+        - file_path: String — temp file path used by the background task
+        - rows_imported: Integer (nullable) — new rows added to transactions table
+        - rows_updated: Integer (nullable) — rows whose categories were updated
+        - errors: String (nullable) — error message if processing failed
+        - created_at: DateTime
+    """
+
+    __tablename__ = "upload_jobs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(String, unique=True)
+    status = Column(String)
+    file_path = Column(String)
+    rows_imported = Column(Integer, nullable=True)
+    rows_updated = Column(Integer, nullable=True)
+    errors = Column(String, nullable=True)
+    created_at = Column(DateTime)
 
 
 

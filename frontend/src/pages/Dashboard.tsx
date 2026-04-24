@@ -6,10 +6,12 @@ import { CategoryDonut } from "@/components/categories/CategoryDonut";
 import { Button } from "@/components/ui/button";
 import { useAISummary } from "@/hooks/useAISummary";
 import { useAssignCategory, useFlaggedTransactions } from "@/hooks/useFlaggedTransactions";
-import { useSummary } from "@/hooks/useSummary";
+import { useSummary, useDirtyMonths } from "@/hooks/useSummary";
 import { currentMonth, formatMonth } from "@/lib/formatters";
+import { recomputeSummaries } from "@/api/summary";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const MONTH = currentMonth();
@@ -17,6 +19,10 @@ const MONTH = currentMonth();
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [recomputing, setRecomputing] = useState(false);
+  const recomputeStarted = useRef(false);
+
+  const { data: dirtyData } = useDirtyMonths();
 
   const {
     data: summary,
@@ -24,6 +30,19 @@ export default function Dashboard() {
     isError: summaryError,
     refetch: refetchSummary,
   } = useSummary(MONTH);
+
+  useEffect(() => {
+    if (dirtyData?.dirty && !recomputeStarted.current) {
+      recomputeStarted.current = true;
+      setRecomputing(true);
+      recomputeSummaries()
+        .then(() => refetchSummary())
+        .finally(() => {
+          setRecomputing(false);
+          queryClient.invalidateQueries({ queryKey: ["summaries", "dirty"] });
+        });
+    }
+  }, [dirtyData, refetchSummary, queryClient]);
 
   const {
     data: aiSummary,
@@ -63,6 +82,13 @@ export default function Dashboard() {
             Retry
           </Button>
         </div>
+      )}
+
+      {recomputing && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <RefreshCw size={11} className="animate-spin" />
+          Updating summaries…
+        </p>
       )}
 
       {/* Financial snapshot cards */}

@@ -36,7 +36,7 @@ export function DeleteConfirmDialog({ transaction, isPending, onConfirm, onClose
 
           <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
             <p className="text-sm font-medium">{transaction.description}</p>
-            <p className="text-xs text-muted-foreground">{transaction.merchant} · {formatDate(transaction.date)}</p>
+            <p className="text-xs text-muted-foreground">{transaction.accountName} · {formatDate(transaction.authorizedDate)}</p>
             <p className={`text-sm font-semibold tabular-nums ${transaction.amount < 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
               {formatCurrency(transaction.amount)}
             </p>
