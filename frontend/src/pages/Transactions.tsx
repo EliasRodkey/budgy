@@ -5,7 +5,7 @@ import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDial
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { Button } from "@/components/ui/button";
-import { ALL_DETAILED_CATEGORIES, CATEGORY_MAPPING } from "@/constants/categories";
+import { useCategoryMapping } from "@/hooks/useCategories";
 import {
   useAvailableTags,
   useBulkUpdateTransactions,
@@ -220,10 +220,14 @@ export default function Transactions() {
     }
   }
 
+  const { data: categoryData } = useCategoryMapping();
+  const categoryMapping = categoryData?.categoryMapping ?? {};
+  const allDetailedCategories = Object.values(categoryMapping).flat().sort();
+
   // Detailed category options depend on selected primary category
   const detailedCategoryOptions = category
-    ? (CATEGORY_MAPPING[category] ?? [])
-    : ALL_DETAILED_CATEGORIES;
+    ? (categoryMapping[category] ?? [])
+    : allDetailedCategories;
 
   const { data, isLoading, isError, refetch } = useTransactions({
     search: search || undefined,
@@ -378,7 +382,7 @@ export default function Transactions() {
             className="h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">All categories</option>
-            {Object.keys(CATEGORY_MAPPING).map((c) => (
+            {(categoryData?.primaryCategories ?? []).map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>

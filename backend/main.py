@@ -7,8 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Local imports
-from backend.api.transactions.transactions_router import router as transactions_router
+from backend.api.categories.categories_router import router as categories_router
 from backend.api.summaries.summaries_router import router as summaries_router
+from backend.api.transactions.transactions_router import router as transactions_router
 
 app = FastAPI()
 
@@ -20,5 +21,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(categories_router)
 app.include_router(transactions_router)
 app.include_router(summaries_router)

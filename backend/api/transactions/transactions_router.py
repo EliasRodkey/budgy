@@ -22,7 +22,7 @@ from uuid import uuid4
 logger = get_logger(__name__)
 
 # Custom imports
-from pleasant_database import DatabaseFile, DatabaseManager
+from pleasant_database import DatabaseFile
 
 # Local imports
 from backend.api.transactions.transactions_models import (
@@ -34,14 +34,7 @@ from backend.api.transactions.transactions_models import (
     UploadJobResponse,
     ImportJobStatus,
 )
-from backend.database_modules.managers.transaction_manager import (
-    TransactionsTableManager,
-    UpdatesTableManager,
-    UploadJobsManager,
-)
-from backend.database_modules.managers.rules_manager import TransactionRulesManager
-from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
-from backend.database_modules.managers.summary_manager import SummariesTableManager
+from backend.database_modules.db_session import DatabaseSession
 from backend.database_modules.models.transactions import TransactionsTable
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
@@ -61,26 +54,24 @@ def get_db():
     Attached to live database file.
     """
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    updates_mgr = UpdatesTableManager(db_file)
-    db = TransactionsTableManager(db_file, updates_mgr)
+    session = DatabaseSession(db_file)
     try:
-        yield db
+        yield session
     finally:
-        db.end_session()
-        updates_mgr.end_session()
+        session.close()
 
 
 @router.get("", tags=["Transactions"], response_model=TransactionsPage)
 async def get_transaction_pages(
     filters: TransactionFilters = Depends(),
-    db: DatabaseManager = Depends(get_db)
+    db: DatabaseSession = Depends(get_db)
 ) -> TransactionsPage:
     """
     API endpoint to fetch transactions with optional filters and pagination.
 
     Args:
         filters (TransactionFilters): Query parameters for filtering and pagination.
-        db (DatabaseManager): Database session dependency.
+        db (DatabaseSession): Database session dependency.
 
     Returns:
         Paginated list of transactions matching the filters.
@@ -88,15 +79,15 @@ async def get_transaction_pages(
     db_filters, tag_list = filters.to_db_filters()
     order_by_column = SORT_BY_COLUMN.get(filters.sort_by, TransactionsTable.authorized_date.name)
 
-    result = db.query(
-        columns=db.return_columns,
+    result = db.transactions.query(
+        columns=db.transactions.return_columns,
         filters=db_filters,
         order_by=order_by_column,
         ascending=filters.sort_ascending,
         limit=filters.page_size,
         offset=(filters.page - 1) * filters.page_size,
         search=filters.search,
-        search_columns=db.search_columns,
+        search_columns=db.transactions.search_columns,
     )
 
     transactions_df = result.data
@@ -123,9 +114,9 @@ async def get_transaction_pages(
 # ─── Tags Endpoint (must be before /{transaction_id} to avoid route shadowing) ─
 
 @router.get("/tags", response_model=list[str])
-async def get_available_tags(db: DatabaseManager = Depends(get_db)) -> list[str]:
+async def get_available_tags(db: DatabaseSession = Depends(get_db)) -> list[str]:
     """Returns a sorted list of all unique tags present in the transactions table."""
-    result = db.query(columns=[TransactionsTable.tags.name])
+    result = db.transactions.query(columns=[TransactionsTable.tags.name])
     if result.data.empty:
         return []
 
@@ -160,7 +151,7 @@ _FIELD_TO_COLUMN = {
 async def update_transaction(
     transaction_id: int,
     request: Request,
-    db: DatabaseManager = Depends(get_db),
+    db: DatabaseSession = Depends(get_db),
 ) -> Transaction:
     """
     Updates an existing transaction. Only fields present in the request body are changed.
@@ -213,27 +204,21 @@ async def update_transaction(
     needs_dirty_mark = bool(summary_dirty_fields.intersection(updates))
     existing_date: datetime | None = None
     if needs_dirty_mark:
-        existing = db.fetch_item_by_id(transaction_id)
+        existing = db.transactions.fetch_item_by_id(transaction_id)
         existing_date = getattr(existing, "authorized_date", None)
 
-    db.update_item(transaction_id, **updates)
+    db.transactions.update_item(transaction_id, **updates)
 
     if needs_dirty_mark and existing_date is not None:
         new_date: datetime = updates.get("authorized_date", existing_date)
-        db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-        dirty_mgr = DirtyMonthsManager(db_file)
-        dirty_mgr.mark_dirty(new_date.month, new_date.year)
+        db.dirty_months.mark_dirty(new_date.month, new_date.year)
         if "authorized_date" in updates and existing_date.month != new_date.month:
-            dirty_mgr.mark_dirty(existing_date.month, existing_date.year)
-        dirty_mgr.end_session()
+            db.dirty_months.mark_dirty(existing_date.month, existing_date.year)
 
-    rules_db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    rules_mgr = TransactionRulesManager(rules_db_file)
-    rules_mgr.apply_rules_to_transaction(transaction_id, db)
-    rules_mgr.end_session()
+    db.rules.apply_rules_to_transaction(transaction_id, db.transactions)
 
-    result = db.query(
-        columns=db.return_columns,
+    result = db.transactions.query(
+        columns=db.transactions.return_columns,
         filters={TransactionsTable.id.name: ("==", transaction_id)},
     )
 
@@ -250,30 +235,25 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
     Background task: uploads a CSV file to the transactions table using the existing
     upload_csv() pipeline. Updates job status throughout and cleans up the temp file.
 
-    Creates its own DB sessions — background tasks must not reuse the request session.
+    Creates its own DB session — background tasks must not reuse the request session.
     """
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    jobs_mgr = UploadJobsManager(db_file)
-    updates_mgr = UpdatesTableManager(db_file)
-    tx_mgr = TransactionsTableManager(db_file, updates_mgr)
+    session = DatabaseSession(db_file)
 
     try:
-        jobs_mgr.set_status(job_id, "processing")
+        session.jobs.set_status(job_id, "processing")
 
-        count_before = tx_mgr.count_items()
-        updated_records = tx_mgr.upload_csv(tmp_path)
-        count_after = tx_mgr.count_items()
+        count_before = session.transactions.count_items()
+        updated_records = session.transactions.upload_csv(tmp_path)
+        count_after = session.transactions.count_items()
 
         rows_imported = count_after - count_before
         rows_updated = len(updated_records)
 
-        rules_mgr = TransactionRulesManager(db_file)
-        rules_mgr.apply_rules_to_all(tx_mgr)
-        rules_mgr.end_session()
+        session.rules.apply_rules_to_all(session.transactions)
 
         # Compute summaries for all months present in the DB after import
-        summary_mgr = SummariesTableManager(db_file)
-        all_tx_df = tx_mgr.to_dataframe()
+        all_tx_df = session.transactions.to_dataframe()
         if not all_tx_df.empty and "authorized_date" in all_tx_df.columns:
             all_tx_df["authorized_date"] = pd.to_datetime(all_tx_df["authorized_date"])
             affected_months = (
@@ -284,27 +264,24 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
                 .itertuples(index=False)
             )
             for row in affected_months:
-                summary_df = tx_mgr.generate_monthly_summary(row.month, row.year)
+                summary_df = session.transactions.generate_monthly_summary(row.month, row.year)
                 if summary_df.empty:
                     continue
-                summary_mgr.upsert_summary(row.month, row.year, summary_df)
+                session.summaries.upsert_summary(row.month, row.year, summary_df)
 
-        jobs_mgr.set_status(
+        session.jobs.set_status(
             job_id, "complete",
             rows_imported=rows_imported,
             rows_updated=rows_updated,
         )
 
     except Exception as e:
-        jobs_mgr.set_status(job_id, "failed", errors=str(e))
+        session.jobs.set_status(job_id, "failed", errors=str(e))
 
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-        tx_mgr.end_session()
-        updates_mgr.end_session()
-        summary_mgr.end_session()
-        jobs_mgr.end_session()
+        session.close()
 
 
 @router.post("/import", response_model=UploadJobResponse)
@@ -327,9 +304,9 @@ async def import_transactions_csv(
         f.write(contents)
 
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    jobs_mgr = UploadJobsManager(db_file)
-    job_id = jobs_mgr.create_job(tmp_path)
-    jobs_mgr.end_session()
+    jobs_session = DatabaseSession(db_file)
+    job_id = jobs_session.jobs.create_job(tmp_path)
+    jobs_session.close()
 
     background_tasks.add_task(_process_csv_upload, job_id, tmp_path)
 
@@ -340,9 +317,9 @@ async def import_transactions_csv(
 async def get_import_job_status(job_id: str) -> ImportJobStatus:
     """Returns the current status and result counts for a CSV import job."""
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    jobs_mgr = UploadJobsManager(db_file)
-    job = jobs_mgr.get_job(job_id)
-    jobs_mgr.end_session()
+    jobs_session = DatabaseSession(db_file)
+    job = jobs_session.jobs.get_job(job_id)
+    jobs_session.close()
 
     if not job:
         raise HTTPException(status_code=404, detail=f"Import job '{job_id}' not found")
@@ -363,14 +340,14 @@ async def get_similar_transactions(
     description: str,
     account_name: str,
     exclude_id: Optional[int] = None,
-    db: DatabaseManager = Depends(get_db),
+    db: DatabaseSession = Depends(get_db),
 ) -> list[Transaction]:
     """
     Returns transactions sharing the same description AND account_name,
     optionally excluding a specific transaction id (the one being edited).
     """
-    result = db.query(
-        columns=db.return_columns,
+    result = db.transactions.query(
+        columns=db.transactions.return_columns,
         filters={
             TransactionsTable.description.name: ("==", description),
             TransactionsTable.account_name.name: ("==", account_name),
@@ -387,7 +364,7 @@ async def get_similar_transactions(
 @router.post("/bulk-update")
 async def bulk_update_transactions(
     body: BulkUpdateRequest,
-    db: DatabaseManager = Depends(get_db),
+    db: DatabaseSession = Depends(get_db),
 ) -> dict:
     """
     Applies category and/or tag changes to the provided list of transaction IDs.
@@ -399,8 +376,8 @@ async def bulk_update_transactions(
 
     updates_applied = 0
     for tx_id in body.transaction_ids:
-        row_result = db.query(
-            columns=db.return_columns,
+        row_result = db.transactions.query(
+            columns=db.transactions.return_columns,
             filters={TransactionsTable.id.name: ("==", tx_id)},
         )
         if row_result.data.empty:
@@ -422,13 +399,11 @@ async def bulk_update_transactions(
             col_updates["tags"] = ",".join(merged)
 
         if col_updates:
-            db.update_item(tx_id, **col_updates)
+            db.transactions.update_item(tx_id, **col_updates)
             updates_applied += 1
 
     if body.save_as_rule and body.match_description and body.match_account_name:
-        db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-        rules_mgr = TransactionRulesManager(db_file)
-        rules_mgr.upsert_rule(
+        db.rules.upsert_rule(
             match_description=body.match_description,
             match_account_name=body.match_account_name,
             primary_category=body.primary_category,
@@ -436,7 +411,6 @@ async def bulk_update_transactions(
             tags=body.tags,
             exclude=body.exclude,
         )
-        rules_mgr.end_session()
 
     return {"updated": updates_applied}
 
@@ -449,9 +423,9 @@ async def confirm_import_job(job_id: str) -> ImportJobStatus:
     This endpoint acts as the frontend's confirmation handshake.
     """
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    jobs_mgr = UploadJobsManager(db_file)
-    job = jobs_mgr.get_job(job_id)
-    jobs_mgr.end_session()
+    jobs_session = DatabaseSession(db_file)
+    job = jobs_session.jobs.get_job(job_id)
+    jobs_session.close()
 
     if not job:
         raise HTTPException(status_code=404, detail=f"Import job '{job_id}' not found")

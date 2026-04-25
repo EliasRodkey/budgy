@@ -1,10 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  fetchCategoryMapping,
   getCategories,
   getCategoryDetail,
   getCategoryOverview,
   getSubcategoryDetail,
 } from "../api/categories";
+
+export function useCategoryMapping() {
+  return useQuery({
+    queryKey: ["categoryMapping"],
+    queryFn: fetchCategoryMapping,
+    staleTime: Infinity,
+  });
+}
 
 export function useCategories() {
   return useQuery({

@@ -16,9 +16,7 @@ from pydantic import BaseModel
 from pleasant_database import DatabaseFile
 
 # Local imports
-from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
-from backend.database_modules.managers.summary_manager import SummariesTableManager
-from backend.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
+from backend.database_modules.db_session import DatabaseSession
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
 
@@ -48,27 +46,16 @@ class RecomputeResponse(BaseModel):
 def _recompute_dirty_months(dirty_months: list[tuple[int, int]]) -> list[DirtyMonth]:
     """Recomputes summaries for each dirty month and clears them from the queue."""
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    updates_mgr = UpdatesTableManager(db_file)
-    tx_mgr = TransactionsTableManager(db_file, updates_mgr)
-    summary_mgr = SummariesTableManager(db_file)
-    dirty_mgr = DirtyMonthsManager(db_file)
-
     recomputed = []
-    try:
+    with DatabaseSession(db_file) as session:
         for month, year in dirty_months:
-            summary_df = tx_mgr.generate_monthly_summary(month, year)
+            summary_df = session.transactions.generate_monthly_summary(month, year)
             if summary_df.empty:
-                dirty_mgr.clear(month, year)
+                session.dirty_months.clear(month, year)
                 continue
-            summary_mgr.upsert_summary(month, year, summary_df)
-            dirty_mgr.clear(month, year)
+            session.summaries.upsert_summary(month, year, summary_df)
+            session.dirty_months.clear(month, year)
             recomputed.append(DirtyMonth(month=month, year=year))
-    finally:
-        tx_mgr.end_session()
-        updates_mgr.end_session()
-        summary_mgr.end_session()
-        dirty_mgr.end_session()
-
     return recomputed
 
 
@@ -78,9 +65,8 @@ def _recompute_dirty_months(dirty_months: list[tuple[int, int]]) -> list[DirtyMo
 async def get_dirty_status() -> DirtyStatusResponse:
     """Returns whether any months have stale summaries awaiting recompute."""
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    dirty_mgr = DirtyMonthsManager(db_file)
-    months = dirty_mgr.get_all_dirty()
-    dirty_mgr.end_session()
+    with DatabaseSession(db_file) as session:
+        months = session.dirty_months.get_all_dirty()
     return DirtyStatusResponse(
         dirty=len(months) > 0,
         months=[DirtyMonth(month=m, year=y) for m, y in months],
@@ -95,9 +81,8 @@ async def recompute_summaries(background_tasks: BackgroundTasks) -> RecomputeRes
     after a short delay.
     """
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    dirty_mgr = DirtyMonthsManager(db_file)
-    dirty_months = dirty_mgr.get_all_dirty()
-    dirty_mgr.end_session()
+    with DatabaseSession(db_file) as session:
+        dirty_months = session.dirty_months.get_all_dirty()
 
     if not dirty_months:
         return RecomputeResponse(recomputed=[])
@@ -119,9 +104,8 @@ async def get_monthly_summary(month_str: str) -> dict:
         raise HTTPException(status_code=422, detail="month_str must be in YYYY-MM format")
 
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
-    summary_mgr = SummariesTableManager(db_file)
-    rows = summary_mgr.fetch_items_by_attribute(month=dt.month, year=dt.year)
-    summary_mgr.end_session()
+    with DatabaseSession(db_file) as session:
+        rows = session.summaries.fetch_items_by_attribute(month=dt.month, year=dt.year)
 
     if not rows:
         raise HTTPException(status_code=404, detail=f"No summary found for {month_str}")

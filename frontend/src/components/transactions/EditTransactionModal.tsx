@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { CATEGORY_MAPPING } from "@/constants/categories";
+import { useCategoryMapping } from "@/hooks/useCategories";
 import type { Transaction } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
@@ -125,9 +125,10 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
     },
   });
 
+  const { data: categoryData } = useCategoryMapping();
   const watchedPrimary = watch("primaryCategory");
   const watchedNotes = watch("notes") ?? "";
-  const detailedOptions = CATEGORY_MAPPING[watchedPrimary] ?? [];
+  const detailedOptions = (categoryData?.categoryMapping ?? {})[watchedPrimary] ?? [];
 
   function onSubmit(values: FormValues) {
     onSave(transaction!.id, {
@@ -219,7 +220,7 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
                     className={InputClass(!!errors.primaryCategory)}
                   >
                     <option value="">Select…</option>
-                    {Object.keys(CATEGORY_MAPPING).map((c) => (
+                    {(categoryData?.primaryCategories ?? []).map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>

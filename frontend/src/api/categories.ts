@@ -10,6 +10,20 @@ import {
 
 const USE_MOCK = true;
 
+// ─── Category mapping (hierarchy for dropdowns/filters) ──────────────────────
+
+export interface CategoryMappingData {
+  primaryCategories: string[];
+  categoryMapping: Record<string, string[]>;
+  excludeCategories: string[];
+}
+
+export async function fetchCategoryMapping(): Promise<CategoryMappingData> {
+  const res = await fetch("/api/categories");
+  if (!res.ok) throw new Error("Failed to fetch category mapping");
+  return res.json();
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CategoryDetailData {

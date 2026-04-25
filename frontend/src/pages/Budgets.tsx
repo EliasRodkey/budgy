@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CATEGORY_MAPPING } from "@/constants/categories";
+import { useCategoryMapping } from "@/hooks/useCategories";
 import {
   useBudgetAssignments,
   useBudgets,
@@ -43,11 +43,11 @@ import {
 } from "recharts";
 import { z } from "zod";
 
-// ─── Primary spending categories ──────────────────────────────────────────────
+// ─── Non-budget primary categories (excluded from spending limit form) ────────
 
-const SPENDING_CATEGORIES = Object.keys(CATEGORY_MAPPING).filter(
-  (c) => !["Income", "Transfers", "Debt payments", "Investments", "Bank fees"].includes(c),
-);
+const NON_BUDGET_CATEGORIES = new Set([
+  "Income", "Transfers", "Debt payments", "Investments", "Bank fees",
+]);
 
 // ─── Chart colors ─────────────────────────────────────────────────────────────
 
@@ -342,6 +342,7 @@ function BudgetDeleteDialog({
 
 interface BudgetFormProps {
   defaultValues: BudgetFormValues;
+  spendingCategories: string[];
   isPending: boolean;
   submitLabel: string;
   pendingLabel: string;
@@ -351,6 +352,7 @@ interface BudgetFormProps {
 
 function BudgetForm({
   defaultValues,
+  spendingCategories,
   isPending,
   submitLabel,
   pendingLabel,
@@ -368,7 +370,7 @@ function BudgetForm({
   });
 
   const watched = watch();
-  const totalLimits = SPENDING_CATEGORIES.reduce(
+  const totalLimits = spendingCategories.reduce(
     (sum, c) => sum + (Number(watched.categoryLimits?.[c]) || 0),
     0,
   );
@@ -393,7 +395,7 @@ function BudgetForm({
       <div>
         <p className="text-sm font-medium mb-3">Category spending limits</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-          {SPENDING_CATEGORIES.map((category) => (
+          {spendingCategories.map((category) => (
             <div key={category} className="space-y-1">
               <label className="text-xs text-muted-foreground">{category}</label>
               <input
@@ -468,17 +470,21 @@ interface CreateBudgetFormProps {
 
 function CreateBudgetForm({ onSuccess, onCancel, prefillBudget }: CreateBudgetFormProps) {
   const { mutate, isPending } = useCreateBudget();
+  const { data: categoryData } = useCategoryMapping();
+  const spendingCategories = (categoryData?.primaryCategories ?? []).filter(
+    (c) => !NON_BUDGET_CATEGORIES.has(c),
+  );
 
   const defaultValues: BudgetFormValues = prefillBudget
     ? {
         categoryLimits: Object.fromEntries(
-          SPENDING_CATEGORIES.map((c) => [c, prefillBudget.categoryLimits[c] ?? 0]),
+          spendingCategories.map((c) => [c, prefillBudget.categoryLimits[c] ?? 0]),
         ),
         incomeEstimate: prefillBudget.monthlyIncomeEstimate,
         note: prefillBudget.note ?? "",
       }
     : {
-        categoryLimits: Object.fromEntries(SPENDING_CATEGORIES.map((c) => [c, 0])),
+        categoryLimits: Object.fromEntries(spendingCategories.map((c) => [c, 0])),
         incomeEstimate: 0,
         note: "",
       };
@@ -505,6 +511,7 @@ function CreateBudgetForm({ onSuccess, onCancel, prefillBudget }: CreateBudgetFo
   return (
     <BudgetForm
       defaultValues={defaultValues}
+      spendingCategories={spendingCategories}
       isPending={isPending}
       submitLabel="Create budget"
       pendingLabel="Saving…"
@@ -524,11 +531,15 @@ interface EditBudgetFormProps {
 
 function EditBudgetForm({ budget, onSuccess, onCancel }: EditBudgetFormProps) {
   const { mutate, isPending } = useUpdateBudget();
+  const { data: categoryData } = useCategoryMapping();
+  const spendingCategories = (categoryData?.primaryCategories ?? []).filter(
+    (c) => !NON_BUDGET_CATEGORIES.has(c),
+  );
 
   const limitSum = Object.values(budget.categoryLimits).reduce((s, v) => s + v, 0);
   const defaultValues: BudgetFormValues = {
     categoryLimits: Object.fromEntries(
-      SPENDING_CATEGORIES.map((c) => [c, budget.categoryLimits[c] ?? 0]),
+      spendingCategories.map((c) => [c, budget.categoryLimits[c] ?? 0]),
     ),
     incomeEstimate: budget.monthlyIncomeEstimate,
     note: budget.note ?? "",
@@ -559,6 +570,7 @@ function EditBudgetForm({ budget, onSuccess, onCancel }: EditBudgetFormProps) {
   return (
     <BudgetForm
       defaultValues={defaultValues}
+      spendingCategories={spendingCategories}
       isPending={isPending}
       submitLabel="Save changes"
       pendingLabel="Saving…"
