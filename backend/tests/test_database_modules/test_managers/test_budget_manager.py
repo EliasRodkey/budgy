@@ -6,6 +6,7 @@ Tests for backend.database_modules.managers.budget_manager.py — BudgetsTableMa
 """
 # Standard library imports
 import datetime
+import logging
 
 # Third party imports
 import pytest

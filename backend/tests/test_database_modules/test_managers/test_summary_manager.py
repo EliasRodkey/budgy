@@ -7,6 +7,7 @@ Tests for backend.database_modules.managers.summary_manager.py — SummariesTabl
 Input data for upload/update functions is generated via TransactionsTableManager.generate_monthly_summary.
 """
 # Standard library imports
+import logging
 from datetime import datetime
 
 # Third party imports

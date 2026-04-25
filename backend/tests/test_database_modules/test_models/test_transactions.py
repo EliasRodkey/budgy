@@ -33,6 +33,8 @@ def _make_db_transactions_record(uq_hash: str = "test_uq_hash_001") -> dict:
         "amount": 150.75,
         "repayment": False,
         "exclude": False,
+        "notes": "test note",
+        "tags": "tag1,tag2",
         "base_hash": "test_base_hash_001",
         "uq_hash": uq_hash,
     }

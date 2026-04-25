@@ -174,7 +174,7 @@ class SummariesTableManager(DatabaseManager):
             return pd.DataFrame()
 
         if not records:
-            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES: attributes})
+            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES.value: str(attributes)})
         
         return self.convert_orm_list_to_dataframe(records)
 
