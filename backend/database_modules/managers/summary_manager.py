@@ -18,7 +18,6 @@ from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityEr
 
 # Local imports
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
-from backend.utils.file_utils import LoggingExtras
 from .common import convert_datetime_nums_to_range
 from ..models.summaries import SummariesTable
 
@@ -157,10 +156,8 @@ class SummariesTableManager(DatabaseManager):
 
         logger.debug(
             f"Retrieving records from {start_date} to {end_date} using manager: {self}",
-            extra={
-                LoggingExtras.START_DATE.value: start_date.strftime(LoggingExtras.DATETIME_FORMAT),
-                LoggingExtras.END_DATE.value: end_date.strftime(LoggingExtras.DATETIME_FORMAT),
-            }
+            start_date=start_date.strftime("%d-%m-%Y %H:%M %Ss"),
+            end_date=end_date.strftime("%d-%m-%Y %H:%M %Ss"),
         )
 
         attributes = {}
@@ -174,7 +171,7 @@ class SummariesTableManager(DatabaseManager):
             return pd.DataFrame()
 
         if not records:
-            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES.value: str(attributes)})
+            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.")
         
         return self.convert_orm_list_to_dataframe(records)
 

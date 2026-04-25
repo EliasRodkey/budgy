@@ -24,7 +24,6 @@ from typing import Dict, Generator, List
 # Local imports
 from backend.database_modules.models.common import Field, TableStatus
 from backend.database_modules.models.transactions import TransactionsTable
-from backend.utils.file_utils import LoggingExtras
 
 # initialize module logger
 from pleasant_loggers import get_logger
@@ -85,7 +84,7 @@ def iter_val_csv_file(csv_filepath: str, columns: List[Field]) -> Generator:
         csv_filepath (str): the filepath of the csv being uploaded
         columns (List[Column]): the column mapping and conversion information for the csv upload
     """
-    logger.info(f"Iterating and validating CSV file: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
+    logger.info(f"Iterating and validating CSV file: {os.path.basename(csv_filepath)}", file=os.path.basename(csv_filepath))
 
     # First pass: count total occurrences of each base hash
     occurrence_counter = defaultdict(int)

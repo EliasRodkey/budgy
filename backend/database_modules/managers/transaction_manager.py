@@ -29,7 +29,7 @@ from backend.database_modules.managers.common import DuplicateError, convert_dat
 from backend.database_modules.models.common import Field, TableStatus
 from backend.database_modules.models.transactions import TransactionsTable, UpdatesTable, UploadJobsTable, transaction_columns
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories, CategoriesEnum
-from backend.utils.file_utils import EDirectories, LoggingExtras, get_csv_filenames
+from backend.utils.file_utils import EDirectories, get_csv_filenames
 from backend.csv_modules.transactions_csv_loader import iter_val_csv_file
 
 # initialize module logger
@@ -63,7 +63,7 @@ class UpdatesTableManager(DatabaseManager):
 
         if matching_items:
             if matching_items[0].status == TableStatus.COMPLETE:
-                logger.error(f"File {filepath} already exists in {self.table_name}", extra={LoggingExtras.FILE: filepath})
+                logger.error(f"File {filepath} already exists in {self.table_name}", file=os.path.basename(filepath))
                 raise DuplicateError(filepath, UpdatesTable, message="Entry for filepath already exists in:")
 
             else:
@@ -84,27 +84,27 @@ class UpdatesTableManager(DatabaseManager):
 
             # If no item is returned, yield the file path.
             if not item:
-                logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
+                logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", file=os.path.basename(filepath))
                 yield filepath
 
             # If more than one value is returned, an error occurred somewhere
             elif len(item) >= 2:
                 filepath = item[0].filepath
-                logger.error(f"Multiple items found with the same filepath, {filepath}", extra={LoggingExtras.FILE: filepath})
+                logger.error(f"Multiple items found with the same filepath, {filepath}", file=os.path.basename(filepath))
                 raise DuplicateError(filepath, UpdatesTable)
 
             # If the returned item has its status set to complete, do nothing
             elif item[0].status == TableStatus.COMPLETE:
-                logger.info(f"CSV file {os.path.basename(filepath)} has already been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
+                logger.info(f"CSV file {os.path.basename(filepath)} has already been uploaded to the database.", file=os.path.basename(filepath))
 
             # If the returned item's status is not set to complete, then yield the filepath
             elif item[0].status != TableStatus.COMPLETE:
-                logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", extra={LoggingExtras.FILE: filepath})
+                logger.info(f"CSV file {os.path.basename(filepath)} has not yet been uploaded to the database.", file=os.path.basename(filepath))
                 yield filepath
 
             # Raise an error for unhandled case
             else:
-                logger.error("Unhandled case encountered during CSV upload check", extra={LoggingExtras.FILE: filepath})
+                logger.error("Unhandled case encountered during CSV upload check", file=os.path.basename(filepath))
 
 
 
@@ -170,9 +170,7 @@ class TransactionsTableManager(DatabaseManager):
             List[TransactionTable]: A list of ORM objects that had their categories updated during the upload 
         """
 
-        logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
-        # logger.performance(f"Beginning csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
-
+        logger.info(f"Beginning upload of CSV file to database: {os.path.basename(csv_filepath)}", file=os.path.basename(csv_filepath))
         transactions_original_state = self.to_dataframe()
 
         updated_records = []
@@ -190,13 +188,12 @@ class TransactionsTableManager(DatabaseManager):
                     pass
 
                 except Exception as e:
-                    logger.exception(f"Exception encountered during data upload to {self}", extra={LoggingExtras.RECORD: record})
+                    logger.exception(f"Exception encountered during data upload to {self}")
                     self.updates_manager.generate_update_entry(csv_filepath, TableStatus.INCOMPLETE)
                     raise e
 
-        logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", extra={LoggingExtras.FILE: csv_filepath})
+        logger.info(f"Completed upload of CSV file to database: {os.path.basename(csv_filepath)}", file=os.path.basename(csv_filepath))
         self.updates_manager.generate_update_entry(csv_filepath, TableStatus.COMPLETE)
-        # logger.performance(f"Completed csv upload process for {csv_filepath}", process_id=LoggingExtras.UPLOAD)
 
         return updated_records
 
@@ -226,7 +223,7 @@ class TransactionsTableManager(DatabaseManager):
                 updated_records.extend(self.upload_csv(csv_filepath, columns=columns))
 
             except Exception as e:
-                logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}. Error: {e}", extra={LoggingExtras.FILE: csv_filepath})
+                logger.warning(f"Failed to upload {csv_filepath} to {self.table_name}. Error: {e}", file=os.path.basename(csv_filepath))
                 failed_files.append(csv_filepath)
 
         if failed_files:
@@ -256,11 +253,8 @@ class TransactionsTableManager(DatabaseManager):
 
         logger.debug(
             f"Retrieving records from {start_date} to {end_date} with attributes: {kwargs} using manager: {self}",
-            extra={
-                LoggingExtras.START_DATE.value: start_date.strftime(LoggingExtras.DATETIME_FORMAT),
-                LoggingExtras.END_DATE.value: end_date.strftime(LoggingExtras.DATETIME_FORMAT),
-                LoggingExtras.ATTRIBUTES.value: kwargs
-            }
+            start_date=start_date.strftime("%d-%m-%Y %H:%M %Ss"),
+            end_date=end_date.strftime("%d-%m-%Y %H:%M %Ss"),
         )
 
         attributes = {k: ("==", v) for k, v in kwargs.items()}
@@ -275,7 +269,7 @@ class TransactionsTableManager(DatabaseManager):
             return pd.DataFrame()
 
         if not records:
-            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES.value: str(attributes)})
+            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.")
 
         return self.convert_orm_list_to_dataframe(records)
 
@@ -311,7 +305,7 @@ class TransactionsTableManager(DatabaseManager):
             records_df = self.retrieve_records_by_attribute_over_period(month, year, detailed_category=category.value)
 
         else:
-            logger.error(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", extra={LoggingExtras.CATEGORY: category.value})
+            logger.error(f"The category {category} was not found in either PrimaryCategories or DetailedCategories", category=category.value)
             raise KeyError(f"The category {category} was not found in either PrimaryCategories or DetailedCategories")
 
         return records_df
@@ -405,7 +399,7 @@ class TransactionsTableManager(DatabaseManager):
         updated_records = []
         for db_record in db_records:
             if record[TransactionsTable.detailed_category.name] == db_record.detailed_category:
-                logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", extra={LoggingExtras.BASE_HASH: base_hash})
+                logger.debug(f"Categories are the same for record with base hash: {base_hash}. No update needed.", base_hash=base_hash)
                 continue
             else:
                 try:
@@ -416,7 +410,7 @@ class TransactionsTableManager(DatabaseManager):
                     )
                     updated_records.append(db_record)
                 except Exception as e:
-                    logger.exception(f"Exception encountered during category update for base hash: {base_hash}", extra={LoggingExtras.BASE_HASH: base_hash})
+                    logger.exception(f"Exception encountered during category update for base hash: {base_hash}", base_hash=base_hash)
                     raise e
 
         return updated_records

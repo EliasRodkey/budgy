@@ -17,7 +17,6 @@ from pleasant_database import DatabaseIntegrityError, DatabaseFile, DatabaseMana
 from backend.database_modules.managers.common import DB_FILE, DuplicateError
 from backend.database_modules.models.budgets import BudgetsTable, budget_columns
 from backend.utils.analysis_utils import PrimaryCategories
-from backend.utils.file_utils import LoggingExtras
 
 # initialize module logger
 from pleasant_loggers import get_logger
@@ -146,7 +145,7 @@ class BudgetsTableManager(DatabaseManager):
 
     def _uq_hash_exists(self, uq_hash: str) -> bool:
         """Checks to see if the given hash already exists in the budgets table."""
-        logger.debug(f"Checking if budget hash {uq_hash} already exists", extra={LoggingExtras.UQ_HASH: uq_hash})
+        logger.debug(f"Checking if budget hash {uq_hash} already exists", uq_hash=uq_hash)
 
         return_item = self.fetch_items_by_attribute(uq_hash=uq_hash)
         return bool(return_item)

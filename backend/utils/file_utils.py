@@ -35,28 +35,6 @@ class EDirectories(str, Enum):
 
 
 
-# NOTE: this should really live in the logging package for consistency!
-class LoggingExtras(str, Enum):
-    """Enum class that stores extra params used commonly in logging"""
-    DETAILED_CATEGORY = "detailed_category"
-    PRIMARY_CATEGORY = "primary_category"
-    CATEGORY = "category"
-    FILE = "file"
-    RECORD = "record"
-    UPLOAD = "csv_upload"
-    BASE_HASH = "base_hash"
-    UQ_HASH = "uq_hash"
-    START_DATE = "start_date"
-    END_DATE = "end_date"
-    ATTRIBUTES = "attributes"
-    DATE_FORMAT = "%d-%m-%Y"
-    DATETIME_FORMAT = f"{DATE_FORMAT} %H:%M %Ss"
-
-    def __str__(self):
-        return str(self.value)
-
-
-
 # Initialize module logger
 from pleasant_loggers import get_logger
 logger = get_logger(__name__)
