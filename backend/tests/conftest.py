@@ -24,6 +24,7 @@ from pleasant_database import DatabaseFile
 
 # Local imports
 from backend.database_modules.managers.transaction_manager import TransactionsTableManager, UpdatesTableManager
+from backend.database_modules.managers.budget_assignments_manager import BudgetAssignmentsManager
 from backend.database_modules.managers.budget_manager import BudgetsTableManager
 from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
 from backend.database_modules.managers.summary_manager import SummariesTableManager
@@ -39,6 +40,7 @@ test_db_file = DatabaseFile(TEST_DB_FILEPATH, TEST_DB_DIR)
 test_updates_manager = UpdatesTableManager(test_db_file)
 test_transaction_manager = TransactionsTableManager(test_db_file, test_updates_manager)
 test_budgets_manager = BudgetsTableManager(test_db_file)
+test_budget_assignments_manager = BudgetAssignmentsManager(test_db_file)
 test_dirty_months_manager = DirtyMonthsManager(test_db_file)
 test_summaries_manager = SummariesTableManager(test_db_file)
 
@@ -128,6 +130,23 @@ def full_transactions_database():
 def clean_budgets_database():
     """Fixture to provide and clean the budgets table before and after each test."""
     db_manager = test_budgets_manager
+
+    try:
+        yield db_manager
+
+    except Exception:
+        db_manager.session.rollback()
+        raise
+
+    finally:
+        db_manager.clear_table()
+        db_manager.end_session()
+
+
+@pytest.fixture()
+def clean_budget_assignments_database():
+    """Fixture to provide and clean the budget_assignments table before and after each test."""
+    db_manager = test_budget_assignments_manager
 
     try:
         yield db_manager

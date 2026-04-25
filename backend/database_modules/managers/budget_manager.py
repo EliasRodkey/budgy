@@ -143,6 +143,12 @@ class BudgetsTableManager(DatabaseManager):
             return False
 
 
+    def get_all(self) -> list:
+        return self.fetch_all_items()
+
+    def delete_by_id(self, budget_id: int) -> None:
+        self.delete_item(budget_id)
+
     def _uq_hash_exists(self, uq_hash: str) -> bool:
         """Checks to see if the given hash already exists in the budgets table."""
         logger.debug(f"Checking if budget hash {uq_hash} already exists", uq_hash=uq_hash)

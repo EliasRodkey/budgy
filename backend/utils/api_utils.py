@@ -14,3 +14,4 @@ class RouterPrefixes(Enum):
     CATEGORIES = "/categories"
     BUDGETS = "/budgets"
     SUMMARIES = "/summaries"
+    ANALYTICS = "/analytics"

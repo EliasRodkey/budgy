@@ -21,6 +21,8 @@ Usage (background task):
 """
 from pleasant_database import DatabaseFile
 
+from backend.database_modules.managers.budget_assignments_manager import BudgetAssignmentsManager
+from backend.database_modules.managers.budget_manager import BudgetsTableManager
 from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
 from backend.database_modules.managers.rules_manager import TransactionRulesManager
 from backend.database_modules.managers.summary_manager import SummariesTableManager
@@ -42,6 +44,8 @@ class DatabaseSession:
         self.dirty_months = DirtyMonthsManager(db_file)
         self.summaries = SummariesTableManager(db_file)
         self.jobs = UploadJobsManager(db_file)
+        self.budgets = BudgetsTableManager(db_file)
+        self.budget_assignments = BudgetAssignmentsManager(db_file)
 
     def close(self) -> None:
         for mgr in [
@@ -51,6 +55,8 @@ class DatabaseSession:
             self.dirty_months,
             self.summaries,
             self.jobs,
+            self.budgets,
+            self.budget_assignments,
         ]:
             mgr.end_session()
 

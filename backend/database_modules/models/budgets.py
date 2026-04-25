@@ -61,6 +61,7 @@ class BudgetsTable(BaseTable):
     other = Column(Float)
     net_gain_or_loss = Column(Float)
     uq_hash = Column(String, unique=True)
+    note = Column(String, nullable=True)
 
 
 
