@@ -8,7 +8,7 @@ import {
 } from "../__tests__/fixtures";
 import { getEffectiveBudget } from "../lib/budget";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,6 +86,7 @@ export async function getAnalytics(
         values: labelIndices.map((i) => dataset.values[i] ?? 0),
       }))
       .filter((dataset) => dataset.values.some((v) => v > 0));
+    // (mock path continues below — not reachable when USE_MOCK=false)
 
     const series: AnalyticsSeries = {
       labels: filteredLabels,
@@ -224,11 +225,9 @@ export async function getAnalytics(
     return { series, incomeExpenses, budgetPerformance, monthlyBudgetTotals };
   }
 
-  // Real fetch stub — uncomment and remove mock block above when FastAPI is ready
-  // const params = new URLSearchParams({ date_from: filters.dateFrom, date_to: filters.dateTo });
-  // const res = await fetch(`/api/analytics/series?${params}`);
-  // if (!res.ok) throw new Error("Failed to fetch analytics");
-  // const json = await res.json();
-  // return json.data as AnalyticsData;
-  throw new Error("Real API not implemented");
+  const params = new URLSearchParams({ date_from: filters.dateFrom, date_to: filters.dateTo });
+  const res = await fetch(`/api/analytics/series?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch analytics");
+  const json = await res.json();
+  return json.data as AnalyticsData;
 }
