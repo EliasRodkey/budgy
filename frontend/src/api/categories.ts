@@ -8,7 +8,7 @@ import {
   mockBudgetAssignments,
 } from "../__tests__/fixtures";
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // ─── Category mapping (hierarchy for dropdowns/filters) ──────────────────────
 
@@ -91,12 +91,10 @@ export async function getCategories(): Promise<Category[]> {
     return mockCategories;
   }
 
-  // Real fetch stub
-  // const res = await fetch("/api/categories");
-  // if (!res.ok) throw new Error("Failed to fetch categories");
-  // const json = await res.json();
-  // return json.data as Category[];
-  throw new Error("Real API not implemented");
+  const res = await fetch("/api/categories");
+  if (!res.ok) throw new Error("Failed to fetch categories");
+  const json = await res.json();
+  return json.data as Category[];
 }
 
 export async function getCategoryOverview(_month: string): Promise<CategorySpend[]> {
@@ -174,12 +172,10 @@ export async function getCategoryOverview(_month: string): Promise<CategorySpend
       .sort((a, b) => b.amount - a.amount);
   }
 
-  // Real fetch stub
-  // const res = await fetch(`/api/summary/${_month}`);
-  // if (!res.ok) throw new Error("Failed to fetch category overview");
-  // const json = await res.json();
-  // return (json.data as MonthlySummary).byCategory.filter((c) => c.transactionCount > 0);
-  throw new Error("Real API not implemented");
+  const res = await fetch(`/api/summaries/${_month}`);
+  if (!res.ok) throw new Error("Failed to fetch category overview");
+  const json = await res.json();
+  return (json.data as MonthlySummary).byCategory.filter((c) => c.transactionCount > 0);
 }
 
 export async function getCategoryDetail(primaryCategory: string): Promise<CategoryDetailData> {
@@ -257,12 +253,10 @@ export async function getCategoryDetail(primaryCategory: string): Promise<Catego
     };
   }
 
-  // Real fetch stub
-  // const res = await fetch(`/api/categories/${encodeURIComponent(primaryCategory)}`);
-  // if (!res.ok) throw new Error("Failed to fetch category detail");
-  // const json = await res.json();
-  // return json.data as CategoryDetailData;
-  throw new Error("Real API not implemented");
+  const res = await fetch(`/api/categories/${encodeURIComponent(primaryCategory)}`);
+  if (!res.ok) throw new Error("Failed to fetch category detail");
+  const json = await res.json();
+  return json.data as CategoryDetailData;
 }
 
 export async function getSubcategoryDetail(
@@ -309,12 +303,10 @@ export async function getSubcategoryDetail(
     };
   }
 
-  // Real fetch stub
-  // const res = await fetch(
-  //   `/api/categories/${encodeURIComponent(primaryCategory)}/${encodeURIComponent(detailedCategory)}`
-  // );
-  // if (!res.ok) throw new Error("Failed to fetch subcategory detail");
-  // const json = await res.json();
-  // return json.data as SubcategoryDetailData;
-  throw new Error("Real API not implemented");
+  const res = await fetch(
+    `/api/categories/${encodeURIComponent(primaryCategory)}/${encodeURIComponent(detailedCategory)}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch subcategory detail");
+  const json = await res.json();
+  return json.data as SubcategoryDetailData;
 }
