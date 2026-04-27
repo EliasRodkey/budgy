@@ -62,7 +62,7 @@ export interface AnalyticsSeries {
 }
 
 export interface Budget {
-  id: string;
+  id: number;
   dateCreated: string; // ISO 8601
   categoryLimits: Record<string, number>; // primaryCategory name → monthly limit
   monthlyIncomeEstimate: number; // user-entered expected monthly income
@@ -71,8 +71,8 @@ export interface Budget {
 }
 
 export interface BudgetAssignment {
-  id: string;
-  budgetId: string;
+  id: number;
+  budgetId: number;
   effectiveFrom: string; // YYYY-MM
   note: string | null;
 }

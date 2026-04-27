@@ -39,6 +39,7 @@ EXPECTED_BUDGET_COLUMNS = [
     "other",
     "net_gain_or_loss",
     "uq_hash",
+    "note",
 ]
 
 
