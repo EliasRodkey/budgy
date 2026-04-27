@@ -54,7 +54,7 @@ class SummariesTable(BaseTable):
     date = Column(DateTime)
     month = Column(Integer)
     year = Column(Integer)
-    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=False)
+    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=True)
 
     # Sum columns for each category - used for calculating total spending in each category for the month
     sum_income = Column(Float, default=0.0)

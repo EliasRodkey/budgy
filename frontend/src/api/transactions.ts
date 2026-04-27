@@ -29,6 +29,7 @@ export interface TransactionsPage {
 export interface ImportResult {
   imported: number;
   failed: { row: number; reason: string }[];
+  jobFailed: boolean;
 }
 
 export interface UploadJobResponse {
@@ -294,9 +295,13 @@ export async function pollJobUntilDone(
     const status = await getImportJobStatus(jobId);
     if (status.status === "complete" || status.status === "failed") {
       await confirmImport(jobId);
+      if (status.status === "failed") {
+        return { imported: 0, failed: [], jobFailed: true };
+      }
       return {
         imported: status.rowsImported ?? 0,
-        failed: status.errors ? [{ row: 0, reason: status.errors }] : [],
+        failed: [],
+        jobFailed: false,
       };
     }
     await new Promise((r) => setTimeout(r, intervalMs));

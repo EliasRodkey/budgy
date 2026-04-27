@@ -267,7 +267,10 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
                 summary_df = session.transactions.generate_monthly_summary(row.month, row.year)
                 if summary_df.empty:
                     continue
-                session.summaries.upsert_summary(row.month, row.year, summary_df)
+                month_str = f"{row.year:04d}-{row.month:02d}"
+                assignment = session.budget_assignments.get_effective_assignment(month_str)
+                budget_id = assignment.budget_id if assignment else None
+                session.summaries.upsert_summary(row.month, row.year, summary_df, budget_id=budget_id)
 
         session.jobs.set_status(
             job_id, "complete",

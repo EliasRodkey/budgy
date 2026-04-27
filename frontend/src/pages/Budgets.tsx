@@ -33,7 +33,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -46,7 +45,7 @@ import { z } from "zod";
 // ─── Non-budget primary categories (excluded from spending limit form) ────────
 
 const NON_BUDGET_CATEGORIES = new Set([
-  "Income", "Transfers", "Debt payments", "Investments", "Bank fees",
+  "Income", "Transfers", "Debt payments", "Bank fees",
 ]);
 
 // ─── Chart colors ─────────────────────────────────────────────────────────────
@@ -853,12 +852,20 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
     );
   }
 
-  // Build month range from earliest assignment to current month
+  const endMonth = currentMonth();
+
+  // Build a 12-month window ending at the current month, clamped to the earliest assignment.
+  const [ey, em] = endMonth.split("-").map(Number);
+  let sm = em - 11;
+  let sy = ey;
+  if (sm <= 0) { sm += 12; sy -= 1; }
+  const twelveMonthsAgo = `${sy}-${String(sm).padStart(2, "0")}`;
   const sortedAssignments = [...assignments].sort((a, b) =>
     a.effectiveFrom.localeCompare(b.effectiveFrom),
   );
-  const startMonth = sortedAssignments[0].effectiveFrom;
-  const endMonth = currentMonth();
+  const startMonth = twelveMonthsAgo > sortedAssignments[0].effectiveFrom
+    ? twelveMonthsAgo
+    : sortedAssignments[0].effectiveFrom;
 
   const months: string[] = [];
   let cursor = startMonth;
@@ -954,23 +961,33 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
                 activeDot={{ r: 4 }}
               />
             ) : (
-              <>
-                {allCategories.map((cat, i) => (
-                  <Line
-                    key={cat}
-                    type="stepAfter"
-                    dataKey={cat}
-                    stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                    strokeWidth={1.5}
-                    dot={false}
-                    activeDot={{ r: 3 }}
-                  />
-                ))}
-                <Legend wrapperStyle={{ fontSize: "11px" }} />
-              </>
+              allCategories.map((cat, i) => (
+                <Line
+                  key={cat}
+                  type="stepAfter"
+                  dataKey={cat}
+                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                  strokeWidth={1.5}
+                  dot={false}
+                  activeDot={{ r: 3 }}
+                />
+              ))
             )}
           </LineChart>
         </ResponsiveContainer>
+        {view === "per-category" && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 pl-[48px]">
+            {allCategories.map((cat, i) => (
+              <div key={cat} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span
+                  className="inline-block w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                />
+                {cat}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

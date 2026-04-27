@@ -119,9 +119,21 @@ class SummariesTableManager(DatabaseManager):
 
         try:
             self.update_item(summary_id, budget_id=budget_id)
-        
+
         except DatabaseIntegrityError as e:
                 logger.error(f"Summary {summary_id} budget id not updated for {month} / {year}: {e}")
+
+
+    def backfill_null_budget_ids(self, budget_id: int) -> int:
+        """Set budget_id on all summaries that currently have budget_id=None. Returns count updated."""
+        summaries = self.fetch_all_items()
+        updated = 0
+        for s in summaries:
+            if s.budget_id is None:
+                self.update_summary_budget_id(s.month, s.year, budget_id)
+                updated += 1
+        logger.info(f"Backfilled budget_id={budget_id} on {updated} summary rows")
+        return updated
 
 
     def fetch_summary_by_id(self, summary_id: int) -> SummariesTable:
@@ -212,7 +224,9 @@ class SummariesTableManager(DatabaseManager):
         flat[SummariesTable.date.name] = datetime(year, month, 1)
         flat[SummariesTable.month.name] = month
         flat[SummariesTable.year.name] = year
-        flat[SummariesTable.budget_id.name] = self._get_latest_budget_id() if budget_id is None else budget_id
+        resolved_budget_id = self._get_latest_budget_id() if budget_id is None else budget_id
+        if resolved_budget_id is not None:
+            flat[SummariesTable.budget_id.name] = resolved_budget_id
 
         return flat
         
@@ -238,14 +252,14 @@ class SummariesTableManager(DatabaseManager):
             raise ItemNotFoundError(float(f"{month}.{year}"), self.table_class)
     
 
-    def _get_latest_budget_id(self) -> int:
-        """Returns the budget_id from the most recently inserted summary record."""
+    def _get_latest_budget_id(self) -> int | None:
+        """Returns the budget_id from the most recently inserted summary record, or None."""
         logger.debug(f"Checking latest summary upload for budget_id...")
 
         summaries = self.fetch_all_items()
 
         if not summaries:
-            raise ItemNotFoundError("latest budget_id", self.table_class)
+            return None
 
         latest = max(summaries, key=lambda s: s.id)
         return latest.budget_id

@@ -39,20 +39,22 @@ def get_db():
 
 # ─── Budget Assignments (registered BEFORE /{budget_id} to avoid path shadowing) ──
 
-@router.get("/assignments", response_model=list[BudgetAssignmentResponse])
+@router.get("/assignments")
 async def get_budget_assignments(
     db: DatabaseSession = Depends(get_db),
-) -> list[BudgetAssignmentResponse]:
+) -> dict:
     rows = db.budget_assignments.get_all()
-    return [
-        BudgetAssignmentResponse(
-            id=r.id,
-            budget_id=r.budget_id,
-            effective_from=r.effective_from,
-            note=r.note,
-        )
-        for r in rows
-    ]
+    return {
+        "data": [
+            BudgetAssignmentResponse(
+                id=r.id,
+                budget_id=r.budget_id,
+                effective_from=r.effective_from,
+                note=r.note,
+            ).model_dump(by_alias=True)
+            for r in rows
+        ]
+    }
 
 
 @router.post("/assignments", response_model=BudgetAssignmentResponse, status_code=201)
@@ -95,10 +97,10 @@ async def delete_budget_assignment(
 
 # ─── Budget CRUD ──────────────────────────────────────────────────────────────
 
-@router.get("", response_model=list[BudgetResponse])
-async def get_budgets(db: DatabaseSession = Depends(get_db)) -> list[BudgetResponse]:
+@router.get("")
+async def get_budgets(db: DatabaseSession = Depends(get_db)) -> dict:
     rows = db.budgets.get_all()
-    return [db_row_to_budget_response(r) for r in rows]
+    return {"data": [db_row_to_budget_response(r).model_dump(by_alias=True) for r in rows]}
 
 
 @router.post("", response_model=BudgetResponse, status_code=201)
@@ -106,14 +108,41 @@ async def create_budget(
     payload: BudgetCreate,
     db: DatabaseSession = Depends(get_db),
 ) -> BudgetResponse:
+    existing_budgets = db.budgets.get_all()  # snapshot before insert
     kwargs = budget_create_to_db_kwargs(payload)
     kwargs["date_created"] = datetime.now()
     db.budgets.add_item(**kwargs)
     all_rows = db.budgets.get_all()
     if not all_rows:
         raise HTTPException(status_code=500, detail="Budget creation failed")
-    row = max(all_rows, key=lambda r: r.id)
-    return db_row_to_budget_response(row)
+    new_row = max(all_rows, key=lambda r: r.id)
+
+    # First-ever budget: retroactively link all existing summaries and create an assignment
+    # rooted at the earliest data in the DB.
+    if not existing_budgets:
+        db.summaries.backfill_null_budget_ids(new_row.id)
+        # Prefer the earliest transaction date, fall back to earliest summary, then current month.
+        effective_from = None
+        all_tx = db.transactions.fetch_all_items()
+        tx_dates = [tx.authorized_date for tx in all_tx if tx.authorized_date is not None]
+        if tx_dates:
+            earliest = min(tx_dates)
+            effective_from = f"{earliest.year:04d}-{earliest.month:02d}"
+        if effective_from is None:
+            all_summaries = db.summaries.fetch_all_items()
+            if all_summaries:
+                s = min(all_summaries, key=lambda x: (x.year, x.month))
+                effective_from = f"{s.year:04d}-{s.month:02d}"
+        if effective_from is None:
+            now = datetime.now()
+            effective_from = f"{now.year:04d}-{now.month:02d}"
+        db.budget_assignments.add_item(
+            budget_id=new_row.id,
+            effective_from=effective_from,
+            note="Auto-created on first budget",
+        )
+
+    return db_row_to_budget_response(new_row)
 
 
 @router.put("/{budget_id}", response_model=BudgetResponse)

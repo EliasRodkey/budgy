@@ -18,9 +18,19 @@ _DISPLAY_NAMES: list[str] = PrimaryCategories.as_list()
 _SNAKE_TO_DISPLAY: dict[str, str] = dict(zip(_SNAKE_KEYS, _DISPLAY_NAMES))
 _DISPLAY_TO_SNAKE: dict[str, str] = dict(zip(_DISPLAY_NAMES, _SNAKE_KEYS))
 
-# Expense category snake_case keys (income excluded from categoryLimits)
-_EXPENSE_SNAKE_KEYS: list[str] = [k for k in _SNAKE_KEYS if k != "income"]
-_VALID_DISPLAY_NAMES: set[str] = set(_DISPLAY_NAMES) - {"Income"}
+# Categories that count toward spending and net_gain_or_loss
+_SPENDING_SNAKE_KEYS: list[str] = [
+    k for k in _SNAKE_KEYS
+    if k not in ("income", "transfers", "debt_payments", "investments", "bank_fees")
+]
+# Categories shown/editable in the budget but NOT counted in net_gain_or_loss
+_TRACKING_SNAKE_KEYS: list[str] = ["investments"]
+# All keys included in the categoryLimits API response (spending + tracking)
+_RESPONSE_SNAKE_KEYS: list[str] = _SPENDING_SNAKE_KEYS + _TRACKING_SNAKE_KEYS
+# Alias kept for any internal callers that still reference _EXPENSE_SNAKE_KEYS
+_EXPENSE_SNAKE_KEYS: list[str] = _SPENDING_SNAKE_KEYS
+# Valid display names accepted in create/update payloads
+_VALID_DISPLAY_NAMES: set[str] = {_SNAKE_TO_DISPLAY[k] for k in _RESPONSE_SNAKE_KEYS}
 
 
 _camel_config = ConfigDict(
@@ -101,7 +111,7 @@ def db_row_to_budget_response(row) -> BudgetResponse:
     """Convert a BudgetsTable ORM row to a BudgetResponse."""
     category_limits = {
         _SNAKE_TO_DISPLAY[k]: getattr(row, k, 0) or 0
-        for k in _EXPENSE_SNAKE_KEYS
+        for k in _RESPONSE_SNAKE_KEYS
     }
     return BudgetResponse(
         id=row.id,
@@ -122,7 +132,7 @@ def budget_create_to_db_kwargs(payload: BudgetCreate) -> dict:
         if display_name == "Income":
             continue
         kwargs[snake_key] = (payload.category_limits or {}).get(display_name, 0.0)
-    # net_gain_or_loss = income - sum(expense limits)
-    total_expenses = sum(kwargs[k] for k in _EXPENSE_SNAKE_KEYS)
+    # net_gain_or_loss = income - sum(spending limits; investments excluded)
+    total_expenses = sum(kwargs[k] for k in _SPENDING_SNAKE_KEYS)
     kwargs["net_gain_or_loss"] = payload.monthly_income_estimate - total_expenses
     return kwargs

@@ -161,40 +161,24 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
           {/* Result stage */}
           {stage === "result" && result && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
-                <CheckCircle size={20} className="text-green-500 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium">Import complete</p>
-                  <p className="text-xs text-muted-foreground">
-                    {result.imported} transaction{result.imported !== 1 ? "s" : ""} imported successfully
-                    {result.failed.length > 0 && `, ${result.failed.length} failed`}
-                  </p>
-                </div>
-              </div>
-
-              {result.failed.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <XCircle size={14} className="text-destructive" />
-                    <p className="text-xs font-medium text-destructive">Failed rows</p>
+              {result.jobFailed ? (
+                <div className="flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+                  <XCircle size={20} className="text-destructive shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-destructive">Import failed</p>
+                    <p className="text-xs text-muted-foreground">
+                      Something went wrong while processing your file. Check that the file is a valid CSV and try again.
+                    </p>
                   </div>
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/30">
-                          <th className="py-2 px-3 text-left font-medium text-muted-foreground">Row</th>
-                          <th className="py-2 px-3 text-left font-medium text-muted-foreground">Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.failed.map((f) => (
-                          <tr key={f.row} className="border-b border-border last:border-0">
-                            <td className="py-2 px-3 tabular-nums">{f.row}</td>
-                            <td className="py-2 px-3 text-muted-foreground">{f.reason}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
+                  <CheckCircle size={20} className="text-green-500 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Import complete</p>
+                    <p className="text-xs text-muted-foreground">
+                      {result.imported} transaction{result.imported !== 1 ? "s" : ""} imported successfully
+                    </p>
                   </div>
                 </div>
               )}
