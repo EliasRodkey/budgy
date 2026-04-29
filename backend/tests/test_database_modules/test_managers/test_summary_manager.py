@@ -398,11 +398,10 @@ class TestGetLatestBudgetId:
         assert result == budget_b_id
         assert isinstance(result, int)
 
-    def test_raises_when_table_empty(self, clean_summaries_database):
-        """Raises ItemNotFoundError when the summaries table is empty."""
+    def test_returns_none_when_table_empty(self, clean_summaries_database):
+        """Returns None when the summaries table is empty."""
         summaries_manager, _ = clean_summaries_database
-        with pytest.raises(ItemNotFoundError):
-            summaries_manager._get_latest_budget_id()
+        assert summaries_manager._get_latest_budget_id() is None
 
 
 # ─── TestFetchSummaryById ─────────────────────────────────────────────────────

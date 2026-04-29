@@ -69,7 +69,7 @@ def _orm_row_to_transaction_item(row: dict) -> TransactionItem:
         repayment=bool(row.get("repayment", False)),
         exclude=bool(row.get("exclude", False)),
         notes=row.get("notes"),
-        tags=row.get("tags"),
+        tags=[t.strip() for t in raw.split(",") if t.strip()] if (raw := row.get("tags")) else [],
     )
 
 

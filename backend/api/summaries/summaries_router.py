@@ -103,7 +103,7 @@ def _build_monthly_summary(row, month_str: str, session: DatabaseSession) -> Mon
     by_category: list[CategorySpendResponse] = []
     for cat in PrimaryCategories:
         snake = cat.as_snake_case()
-        amount = getattr(row, f"sum_{snake}", 0.0) or 0.0
+        amount = abs(getattr(row, f"sum_{snake}", 0.0) or 0.0)
         count = getattr(row, f"count_{snake}", 0) or 0
         mean = getattr(row, f"mean_{snake}", 0.0) or 0.0
         limit = budget_limits.get(cat.value)

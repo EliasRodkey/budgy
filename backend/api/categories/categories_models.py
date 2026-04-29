@@ -46,7 +46,7 @@ class TransactionItem(BaseModel):
     repayment: bool
     exclude: bool
     notes: Optional[str] = None
-    tags: Optional[str] = None
+    tags: list[str] = []
 
 
 class CategoryDetailResponse(BaseModel):
