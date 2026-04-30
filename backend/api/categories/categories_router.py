@@ -84,7 +84,7 @@ def _build_subcategory_spend(
 
     for dc in detailed_cats:
         snake = dc.as_snake_case()
-        total_amount = sum(getattr(r, f"sum_{snake}", 0.0) or 0.0 for r in summary_rows)
+        total_amount = sum(abs(getattr(r, f"sum_{snake}", 0.0) or 0.0) for r in summary_rows)
         total_count = sum(getattr(r, f"count_{snake}", 0) or 0 for r in summary_rows)
         if total_count > 0:
             totals[dc.value] = {"amount": total_amount, "count": total_count}
@@ -117,7 +117,7 @@ def _build_subcategory_spend_single_row(
 
     for dc in detailed_cats:
         snake = dc.as_snake_case()
-        amount = getattr(row, f"sum_{snake}", 0.0) or 0.0
+        amount = abs(getattr(row, f"sum_{snake}", 0.0) or 0.0)
         count = getattr(row, f"count_{snake}", 0) or 0
         if count == 0:
             continue
@@ -235,7 +235,7 @@ async def get_category_detail(
     spend_over_time = [
         SpendOverTimePoint(
             month=f"{r.year}-{r.month:02d}",
-            amount=getattr(r, f"sum_{snake}", 0.0) or 0.0,
+            amount=abs(getattr(r, f"sum_{snake}", 0.0) or 0.0),
         )
         for r in all_rows
     ]
@@ -249,7 +249,7 @@ async def get_category_detail(
     current_rows = [r for r in all_rows if r.year == current_year and r.month == current_month]
     current_row = current_rows[0] if current_rows else None
 
-    current_month_total = getattr(current_row, f"sum_{snake}", 0.0) or 0.0 if current_row else 0.0
+    current_month_total = abs(getattr(current_row, f"sum_{snake}", 0.0) or 0.0) if current_row else 0.0
     current_month_tx_count = getattr(current_row, f"count_{snake}", 0) or 0 if current_row else 0
     current_month_subcategories = (
         _build_subcategory_spend_single_row(current_row, primary_cat_enum, None)
@@ -266,7 +266,7 @@ async def get_category_detail(
     # Year average: monthly totals for rows in the current year
     year_rows = [r for r in all_rows if r.year == current_year]
     if year_rows:
-        year_monthly_totals = [getattr(r, f"sum_{snake}", 0.0) or 0.0 for r in year_rows]
+        year_monthly_totals = [abs(getattr(r, f"sum_{snake}", 0.0) or 0.0) for r in year_rows]
         year_avg_spend = sum(year_monthly_totals) / len(year_monthly_totals)
     else:
         year_avg_spend = 0.0

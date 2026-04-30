@@ -37,6 +37,18 @@ import {
 
 const PAGE_SIZE = 10;
 
+function niceCeil(v: number): number {
+  if (v <= 200) return Math.ceil(v / 50) * 50;
+  if (v <= 1000) return Math.ceil(v / 100) * 100;
+  if (v <= 5000) return Math.ceil(v / 500) * 500;
+  return Math.ceil(v / 1000) * 1000;
+}
+
+function formatYAxisTick(v: number): string {
+  if (v >= 1000) return `$${(v / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `$${v}`;
+}
+
 interface ChartTooltipProps {
   active?: boolean;
   payload?: { value: number }[];
@@ -184,19 +196,20 @@ export default function CategoryDetail() {
                     axisLine={false}
                   />
                   <YAxis
-                    tickFormatter={(v) => `$${v}`}
+                    tickFormatter={formatYAxisTick}
                     tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
                     width={56}
+                    allowDecimals={false}
                     domain={[
                       0,
                       data.budget !== null
-                        ? Math.ceil(
+                        ? niceCeil(
                             Math.max(
                               ...data.spendOverTime.map((d) => d.amount),
                               data.budget,
-                            ) * 1.1,
+                            ),
                           )
                         : "auto",
                     ]}
@@ -411,15 +424,17 @@ export default function CategoryDetail() {
       </div>
 
       {/* Edit / Delete modals */}
-      <EditTransactionModal
-        transaction={editingTx}
-        isPending={updatePending}
-        availableTags={availableTags}
-        onClose={() => setEditingTx(null)}
-        onSave={(id, updates) => {
-          updateTx({ id, updates }, { onSuccess: () => setEditingTx(null) });
-        }}
-      />
+      {editingTx && (
+        <EditTransactionModal
+          transaction={editingTx}
+          isPending={updatePending}
+          availableTags={availableTags}
+          onClose={() => setEditingTx(null)}
+          onSave={(id, updates) => {
+            updateTx({ id, updates }, { onSuccess: () => setEditingTx(null) });
+          }}
+        />
+      )}
       <DeleteConfirmDialog
         transaction={deletingTx}
         isPending={deletePending}

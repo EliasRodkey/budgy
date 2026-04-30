@@ -119,11 +119,12 @@ def _build_monthly_summary(row, month_str: str, session: DatabaseSession) -> Mon
             is_over_budget=pct is not None and pct > 100,
         ))
 
+    _NON_SPENDING = {"Income", "Transfers", "Investments"}
     total_income = getattr(row, "sum_income", 0.0) or 0.0
     total_expenses = sum(
-        getattr(row, f"sum_{cat.as_snake_case()}", 0.0) or 0.0
+        abs(getattr(row, f"sum_{cat.as_snake_case()}", 0.0) or 0.0)
         for cat in PrimaryCategories
-        if cat.value != "Income"
+        if cat.value not in _NON_SPENDING
     )
 
     return MonthlySummaryResponse(

@@ -76,6 +76,7 @@ export default function Categories() {
               <CategoryCard
                 key={spend.categoryId}
                 spend={spend}
+                isNonSpending
                 onClick={() => handleCategoryClick(spend.categoryName)}
               />
             ))}
