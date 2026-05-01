@@ -9,11 +9,16 @@ description = "budget managing application"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = {text = "All Rights Reserved"}
 dependencies = [
-    "requests", 
-    "numpy", 
-    "sqlalchemy", 
-    "fastapi", 
-    "uvicorn", 
-    "pleasant_logger", 
+    "requests",
+    "numpy",
+    "pandas",
+    "sqlalchemy",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "pleasant_loggers",
     "pleasant_database"
 ]
+
+[project.optional-dependencies]
+dev = ["pytest"]
