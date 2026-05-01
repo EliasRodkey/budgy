@@ -101,6 +101,12 @@ class UploadJobsTable(BaseTable):
         - rows_imported: Integer (nullable) — new rows added to transactions table
         - rows_updated: Integer (nullable) — rows whose categories were updated
         - errors: String (nullable) — error message if processing failed
+        - rules_applied_from_cache: Integer (nullable) — mappings resolved from rules cache
+        - new_rules_saved: Integer (nullable) — new mappings saved after import approval
+          NOTE: In a future multi-user system, rules will be shared globally across users.
+          In that context this field is less meaningful (saving a rule benefits all users,
+          not just the importer). To remove: drop this column, ImportJobStatus.new_rules_saved,
+          and the counting logic in _process_csv_upload.
         - created_at: DateTime
     """
 
@@ -113,6 +119,8 @@ class UploadJobsTable(BaseTable):
     rows_imported = Column(Integer, nullable=True)
     rows_updated = Column(Integer, nullable=True)
     errors = Column(String, nullable=True)
+    rules_applied_from_cache = Column(Integer, nullable=True)
+    new_rules_saved = Column(Integer, nullable=True)
     created_at = Column(DateTime)
 
 

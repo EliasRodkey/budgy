@@ -171,5 +171,7 @@ class ImportJobStatus(BaseModel):
     rows_imported: Optional[int] = None
     rows_updated: Optional[int] = None
     errors: Optional[str] = None
+    rules_applied_from_cache: Optional[int] = None
+    new_rules_saved: Optional[int] = None  # See note in UploadJobsTable.new_rules_saved
 
     model_config = outgoing_config
