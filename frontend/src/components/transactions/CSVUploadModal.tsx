@@ -1,75 +1,162 @@
 import { Button } from "@/components/ui/button";
 import { importTransactions, pollJobUntilDone, type ImportResult, type UploadJobResponse } from "@/api/transactions";
+import { planCSV } from "@/api/ai";
+import type { NormalizationPlan } from "@/types";
+import { MappingReviewPanel } from "./MappingReviewPanel";
 import { CheckCircle, ChevronDown, Upload, X, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import { useRef, useState } from "react";
 
-type Stage = "pick" | "preview" | "importing" | "result";
+type Stage = "pick" | "analyzing" | "review" | "importing" | "result";
 
 interface CSVUploadModalProps {
   onClose: () => void;
 }
 
-interface PreviewRow {
-  [key: string]: string;
+// Budgy field keys that are required for import
+const REQUIRED_FIELDS = ["primary_category", "description", "authorized_date", "amount"];
+
+function buildFieldMappings(columnMap: NormalizationPlan["column_map"]): Record<string, string | null> {
+  // Invert column_map: rawHeader → budgyField  becomes  budgyField → rawHeader
+  const mappings: Record<string, string | null> = {
+    primary_category: null,
+    description: null,
+    date: null,
+    amount: null,
+    detailed_category: null,
+    account_name: null,
+    authorized_date: null,
+    status: null,
+    notes: null,
+    tags: null,
+  };
+  for (const [rawHeader, budgyField] of Object.entries(columnMap)) {
+    if (budgyField && budgyField in mappings) {
+      mappings[budgyField] = rawHeader;
+    }
+  }
+  return mappings;
 }
 
+function reconstructColumnMap(fieldMappings: Record<string, string | null>): Record<string, string | null> {
+  // Re-invert back to rawHeader → budgyField for the backend
+  const columnMap: Record<string, string | null> = {};
+  for (const [budgyField, rawHeader] of Object.entries(fieldMappings)) {
+    if (rawHeader) {
+      columnMap[rawHeader] = budgyField;
+    }
+  }
+  return columnMap;
+}
 
 export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
   const [stage, setStage] = useState<Stage>("pick");
   const [file, setFile] = useState<File | null>(null);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [rows, setRows] = useState<PreviewRow[]>([]);
-  const [parseError, setParseError] = useState<string | null>(null);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [plan, setPlan] = useState<NormalizationPlan | null>(null);
+  const [fieldMappings, setFieldMappings] = useState<Record<string, string | null>>({});
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [formatOpen, setFormatOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function resetTopick() {
+    setFile(null);
+    setCsvHeaders([]);
+    setPlan(null);
+    setFieldMappings({});
+    setAnalysisError(null);
+    if (inputRef.current) inputRef.current.value = "";
+    setStage("pick");
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
     if (!selected) return;
-    setParseError(null);
+    setAnalysisError(null);
     setFile(selected);
 
-    Papa.parse<PreviewRow>(selected, {
+    Papa.parse<Record<string, string>>(selected, {
       header: true,
       skipEmptyLines: true,
-      preview: 10,
-      complete: (res) => {
+      preview: 1,
+      complete: async (res) => {
         if (res.errors.length > 0) {
-          setParseError(res.errors[0].message);
+          setAnalysisError(res.errors[0].message);
           return;
         }
-        setHeaders(res.meta.fields ?? []);
-        setRows(res.data);
-        setStage("preview");
+        const headers = res.meta.fields ?? [];
+        setCsvHeaders(headers);
+        setStage("analyzing");
+
+        try {
+          const receivedPlan = await planCSV(selected);
+          setPlan(receivedPlan);
+
+          // Fast path: empty maps mean the CSV is already valid — skip review
+          const isAlreadyValid =
+            Object.keys(receivedPlan.column_map).length === 0 &&
+            Object.keys(receivedPlan.category_map).length === 0;
+
+          if (isAlreadyValid) {
+            setStage("importing");
+            const job: UploadJobResponse = await importTransactions(selected);
+            const importResult = await pollJobUntilDone(job.jobId);
+            setResult(importResult);
+            setStage("result");
+          } else {
+            setFieldMappings(buildFieldMappings(receivedPlan.column_map));
+            setStage("review");
+          }
+        } catch (err) {
+          setAnalysisError(err instanceof Error ? err.message : "Analysis failed. Please try again.");
+          resetToPickKeepError(err instanceof Error ? err.message : "Analysis failed. Please try again.");
+        }
       },
       error: (err) => {
-        setParseError(err.message);
+        setAnalysisError(err.message);
       },
     });
   }
 
-  async function handleConfirm() {
-    if (!file) return;
+  function resetToPickKeepError(errorMsg: string) {
+    setFile(null);
+    setCsvHeaders([]);
+    setPlan(null);
+    setFieldMappings({});
+    if (inputRef.current) inputRef.current.value = "";
+    setAnalysisError(errorMsg);
+    setStage("pick");
+  }
+
+  async function handleApproveAndImport() {
+    if (!file || !plan) return;
     setStage("importing");
     try {
-      const job: UploadJobResponse = await importTransactions(file);
+      const approvedPlan: NormalizationPlan = {
+        ...plan,
+        column_map: reconstructColumnMap(fieldMappings),
+      };
+      const job: UploadJobResponse = await importTransactions(file, approvedPlan);
       const importResult = await pollJobUntilDone(job.jobId);
       setResult(importResult);
       setStage("result");
     } catch (err) {
-      setParseError(err instanceof Error ? err.message : "Import failed. Please try again.");
-      setStage("preview");
+      setAnalysisError(err instanceof Error ? err.message : "Import failed. Please try again.");
+      setStage("review");
     }
   }
+
+  const canApprove = REQUIRED_FIELDS.every(
+    (f) => fieldMappings[f] !== null && fieldMappings[f] !== undefined && fieldMappings[f] !== ""
+  );
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
           <h2 className="text-sm font-semibold">Import CSV</h2>
@@ -87,9 +174,9 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
               <p className="text-sm text-muted-foreground">
                 Select a CSV file to import transactions. The AI will analyze your columns and categories before import.
               </p>
-              {parseError && (
+              {analysisError && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-                  {parseError}
+                  {analysisError}
                 </div>
               )}
               <button
@@ -198,44 +285,35 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
             </div>
           )}
 
-          {/* Preview stage */}
-          {stage === "preview" && (
-            <div className="space-y-3">
+          {/* Analyzing stage */}
+          {stage === "analyzing" && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              <p className="text-sm text-muted-foreground">Analyzing CSV structure…</p>
+              <p className="text-xs text-muted-foreground">{file?.name}</p>
+            </div>
+          )}
+
+          {/* Review stage */}
+          {stage === "review" && plan && (
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Preview — {file?.name}</p>
-                <button
-                  onClick={() => { setStage("pick"); setFile(null); setRows([]); setHeaders([]); if (inputRef.current) inputRef.current.value = ""; }}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Change file
-                </button>
+                <div>
+                  <p className="text-sm font-medium">Review Mappings</p>
+                  <p className="text-xs text-muted-foreground">{file?.name}</p>
+                </div>
               </div>
-              {parseError && (
+              {analysisError && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-                  {parseError}
+                  {analysisError}
                 </div>
               )}
-              <div className="rounded-lg border border-border overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30">
-                      {headers.map((h) => (
-                        <th key={h} className="py-2 px-3 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, i) => (
-                      <tr key={i} className="border-b border-border last:border-0">
-                        {headers.map((h) => (
-                          <td key={h} className="py-2 px-3 whitespace-nowrap">{row[h]}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-muted-foreground">Showing first {rows.length} rows</p>
+              <MappingReviewPanel
+                plan={plan}
+                csvHeaders={csvHeaders}
+                fieldMappings={fieldMappings}
+                onMappingsChange={setFieldMappings}
+              />
             </div>
           )}
 
@@ -280,11 +358,16 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
           {stage === "result" && (
             <Button onClick={onClose}>Done</Button>
           )}
-          {stage === "preview" && (
+          {stage === "review" && (
             <>
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button onClick={handleConfirm}>Import</Button>
+              <Button variant="outline" onClick={resetToPickKeepError.bind(null, "")}>Cancel</Button>
+              <Button onClick={handleApproveAndImport} disabled={!canApprove}>
+                Approve &amp; Import
+              </Button>
             </>
+          )}
+          {stage === "analyzing" && (
+            <Button variant="outline" onClick={resetToPickKeepError.bind(null, "")}>Cancel</Button>
           )}
           {stage === "pick" && (
             <Button variant="outline" onClick={onClose}>Cancel</Button>

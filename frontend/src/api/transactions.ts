@@ -1,4 +1,4 @@
-import type { Transaction } from "../types";
+import type { NormalizationPlan, Transaction } from "../types";
 import { useMockMode } from "../store/mockMode";
 
 const isMock = () => useMockMode.getState().isMockMode;
@@ -312,7 +312,7 @@ export async function pollJobUntilDone(
 
 // ─── CSV Import (Async Job Pipeline) ─────────────────────────────────────────
 
-export async function importTransactions(file: File): Promise<UploadJobResponse> {
+export async function importTransactions(file: File, normalizationPlan?: NormalizationPlan): Promise<UploadJobResponse> {
   if (isMock()) {
     await new Promise((r) => setTimeout(r, 600));
     return { jobId: "mock-job-id", status: "pending" };
@@ -320,6 +320,9 @@ export async function importTransactions(file: File): Promise<UploadJobResponse>
 
   const formData = new FormData();
   formData.append("file", file);
+  if (normalizationPlan) {
+    formData.append("normalization_plan", JSON.stringify(normalizationPlan));
+  }
   const res = await fetch("/api/transactions/import", { method: "POST", body: formData });
   if (!res.ok) throw new Error("Failed to start import");
   const json = await res.json();

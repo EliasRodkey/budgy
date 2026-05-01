@@ -8,6 +8,7 @@ import io
 import re
 from pleasant_loggers import get_logger
 
+import anthropic
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from pleasant_database import DatabaseFile
@@ -100,6 +101,33 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
     try:
         planner = CSVNormalizationPlanner(session.category_mapping_rules, AIClientService())
         plan, used_cache = planner.plan(headers, unique_categories)
+    except anthropic.AuthenticationError as exc:
+        logger.error(f"Anthropic API key missing or invalid: {exc}")
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is not configured. Ensure ANTHROPIC_API_KEY is set in your .env file.",
+        ) from exc
+    except anthropic.BadRequestError as exc:
+        if "credit balance is too low" in str(exc).lower():
+            logger.error(f"Anthropic account out of credits: {exc}")
+            raise HTTPException(
+                status_code=402,
+                detail="Anthropic account has no credits. Add credits at console.anthropic.com/settings/billing.",
+            ) from exc
+        logger.error(f"Anthropic bad request during CSV analysis: {exc}")
+        raise HTTPException(status_code=400, detail=f"AI service rejected the request: {exc}") from exc
+    except anthropic.APIError as exc:
+        logger.error(f"Anthropic API error during CSV analysis: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI service error: {exc}",
+        ) from exc
+    except Exception as exc:
+        logger.error(f"Unexpected error during CSV analysis: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"CSV analysis failed: {exc}",
+        ) from exc
     finally:
         session.close()
 
