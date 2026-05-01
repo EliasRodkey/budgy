@@ -69,7 +69,7 @@ class TestExactMatchFastPath:
 
     def test_column_map_is_empty(self):
         planner = _make_planner()
-        plan = planner.plan(self.EXACT_HEADERS, [])
+        plan, _ = planner.plan(self.EXACT_HEADERS, [])
         assert plan.column_map == {}
 
     def test_no_ai_call(self):
@@ -79,12 +79,12 @@ class TestExactMatchFastPath:
 
     def test_amount_transform_is_signed(self):
         planner = _make_planner()
-        plan = planner.plan(self.EXACT_HEADERS, [])
+        plan, _ = planner.plan(self.EXACT_HEADERS, [])
         assert plan.amount_transform == AmountTransform.SIGNED
 
     def test_no_unmapped_required_columns(self):
         planner = _make_planner()
-        plan = planner.plan(self.EXACT_HEADERS, [])
+        plan, _ = planner.plan(self.EXACT_HEADERS, [])
         assert plan.unmapped_required_columns == []
 
 
@@ -108,6 +108,18 @@ class TestFullCacheHit:
         planner.plan(["Txn Date", "Merchant", "Category", "Amount"], ["Dining Out"])
         planner._ai.plan_csv.assert_not_called()
 
+    def test_used_cache_true_on_full_cache_hit(self):
+        planner = _make_planner(
+            col_rules={
+                "Txn Date": "authorized_date",
+                "Merchant": "description",
+                "Category": "primary_category",
+                "Amount": "amount",
+            },
+        )
+        _, used_cache = planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
+        assert used_cache is True
+
     def test_column_map_built_from_cache(self):
         planner = _make_planner(
             col_rules={
@@ -117,7 +129,7 @@ class TestFullCacheHit:
                 "Amount": "amount",
             },
         )
-        plan = planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
+        plan, _ = planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
         assert plan.column_map["Txn Date"] == "authorized_date"
         assert plan.column_map["Amount"] == "amount"
 
@@ -133,7 +145,7 @@ class TestFullCacheHit:
                 "Dining Out": {"primary": "Food & drink", "detailed": "Restaurants & bars"},
             },
         )
-        plan = planner.plan(["Date", "Desc", "Cat", "Amt"], ["Dining Out"])
+        plan, _ = planner.plan(["Date", "Desc", "Cat", "Amt"], ["Dining Out"])
         assert isinstance(plan.category_map["Dining Out"], CategoryMapping)
         assert plan.category_map["Dining Out"].primary == "Food & drink"
 
@@ -159,6 +171,20 @@ class TestPartialCacheHit:
         ai_headers = planner._ai.plan_csv.call_args[0][0]
         assert "Txn Date" not in ai_headers
         assert "Merchant" in ai_headers
+
+    def test_used_cache_false_when_ai_called(self):
+        planner = _make_planner(
+            col_rules={"Txn Date": "authorized_date"},
+            ai_plan=_make_ai_plan(
+                column_map={
+                    "Merchant": "description",
+                    "Category": "primary_category",
+                    "Amount": "amount",
+                }
+            ),
+        )
+        _, used_cache = planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
+        assert used_cache is False
 
     def test_only_uncached_categories_sent_to_ai(self):
         planner = _make_planner(
@@ -192,7 +218,7 @@ class TestPartialCacheHit:
                 }
             ),
         )
-        plan = planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
+        plan, _ = planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
         assert plan.column_map["Txn Date"] == "authorized_date"
         assert plan.column_map["Merchant"] == "description"
         assert plan.column_map["Amount"] == "amount"
@@ -213,7 +239,7 @@ class TestMissingRequiredColumns:
                 }
             ),
         )
-        plan = planner.plan(["Date", "Desc", "Amt"], [])
+        plan, _ = planner.plan(["Date", "Desc", "Amt"], [])
         assert "primary_category" in plan.unmapped_required_columns
 
     def test_all_required_mapped_means_no_unmapped_required(self):
@@ -227,7 +253,7 @@ class TestMissingRequiredColumns:
                 }
             ),
         )
-        plan = planner.plan(["Date", "Desc", "Cat", "Amt"], [])
+        plan, _ = planner.plan(["Date", "Desc", "Cat", "Amt"], [])
         assert plan.unmapped_required_columns == []
 
     def test_multiple_unmapped_required_fields_listed(self):
@@ -237,7 +263,7 @@ class TestMissingRequiredColumns:
                 unmapped_required_columns=["description", "primary_category", "amount"],
             ),
         )
-        plan = planner.plan(["Date", "Unknown1", "Unknown2"], [])
+        plan, _ = planner.plan(["Date", "Unknown1", "Unknown2"], [])
         assert "description" in plan.unmapped_required_columns
         assert "primary_category" in plan.unmapped_required_columns
         assert "amount" in plan.unmapped_required_columns
@@ -275,7 +301,7 @@ class TestDebitCreditDetection:
                 credit_column="Credit",
             ),
         )
-        plan = planner.plan(["Date", "Desc", "Cat", "Debit", "Credit"], [])
+        plan, _ = planner.plan(["Date", "Desc", "Cat", "Debit", "Credit"], [])
         assert plan.amount_transform == AmountTransform.DEBIT_CREDIT
         assert plan.debit_column == "Debit"
         assert plan.credit_column == "Credit"

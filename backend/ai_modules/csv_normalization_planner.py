@@ -42,7 +42,7 @@ class CSVNormalizationPlanner:
         self,
         headers: list[str],
         unique_categories: list[str],
-    ) -> NormalizationPlan:
+    ) -> tuple[NormalizationPlan, bool]:
         """
         Produce a NormalizationPlan for the given CSV headers and category values.
 
@@ -51,7 +51,8 @@ class CSVNormalizationPlanner:
             unique_categories: Unique category values found in the CSV.
 
         Returns:
-            NormalizationPlan with column_map, category_map, amount_transform, and issues.
+            Tuple of (NormalizationPlan, used_cache) where used_cache is True when
+            all mappings came from the rules cache and no AI call was made.
         """
         # 1. Check rules cache for all headers and categories
         cached_col_rules: dict[str, str] = {}
@@ -92,6 +93,7 @@ class CSVNormalizationPlanner:
             debit_column = ai_plan.debit_column
             credit_column = ai_plan.credit_column
             issues = ai_plan.issues
+            used_cache = False
         else:
             logger.info("Full cache hit: returning plan without AI call")
             merged_column_map = dict(cached_col_rules)
@@ -103,6 +105,7 @@ class CSVNormalizationPlanner:
             debit_column = None
             credit_column = None
             issues = []
+            used_cache = True
 
         # 4. Strip identity mappings — headers already named as schema fields
         #    need no entry in column_map (the transform applicator passes them through)
@@ -116,7 +119,7 @@ class CSVNormalizationPlanner:
         covered_fields |= {h for h in headers if h in _ALL_SCHEMA_FIELD_SET}
         unmapped_required = [f for f in REQUIRED_SCHEMA_FIELDS if f not in covered_fields]
 
-        return NormalizationPlan(
+        plan = NormalizationPlan(
             column_map=final_column_map,
             category_map=merged_category_map,
             amount_transform=amount_transform,
@@ -125,3 +128,4 @@ class CSVNormalizationPlanner:
             issues=issues,
             unmapped_required_columns=unmapped_required,
         )
+        return plan, used_cache

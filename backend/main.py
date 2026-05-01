@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Local imports
+from backend.api.ai.ai_router import router as ai_router
 from backend.api.analytics.analytics_router import router as analytics_router
 from backend.api.budgets.budgets_router import router as budgets_router
 from backend.api.categories.categories_router import router as categories_router
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(ai_router)
 app.include_router(categories_router)
 app.include_router(transactions_router)
 app.include_router(summaries_router)
