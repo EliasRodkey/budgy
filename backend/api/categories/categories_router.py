@@ -188,7 +188,7 @@ async def get_subcategory_detail(
 
     vendor_totals: dict[str, dict] = defaultdict(lambda: {"amount": 0.0, "count": 0})
     for r in rows:
-        name = str(r.get("account_name", ""))
+        name = str(r.get("description", ""))
         vendor_totals[name]["amount"] += abs(float(r.get("amount", 0.0)))
         vendor_totals[name]["count"] += 1
 

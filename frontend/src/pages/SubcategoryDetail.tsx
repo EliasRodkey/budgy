@@ -143,10 +143,10 @@ export default function SubcategoryDetail() {
                 className="p-4 flex items-center justify-between gap-4"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{tx.accountName}</p>
+                  <p className="text-sm font-medium truncate">{tx.description}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(tx.authorizedDate)}</p>
-                  {tx.description && tx.description !== tx.accountName && (
-                    <p className="text-xs text-muted-foreground truncate">{tx.description}</p>
+                  {tx.accountName && tx.accountName !== tx.description && (
+                    <p className="text-xs text-muted-foreground truncate">{tx.accountName}</p>
                   )}
                 </div>
                 <p className="text-sm font-semibold tabular-nums shrink-0 text-destructive">

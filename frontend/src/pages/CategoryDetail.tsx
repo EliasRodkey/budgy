@@ -373,7 +373,7 @@ export default function CategoryDetail() {
               {sortByAmount ? "Sort: by amount" : "Sort: newest first"}
             </button>
             <Link
-              to="/transactions"
+              to={`/transactions?category=${encodeURIComponent(decoded)}`}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               View all
