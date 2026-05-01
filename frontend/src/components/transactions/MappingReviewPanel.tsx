@@ -12,11 +12,11 @@ interface MappingReviewPanelProps {
 const BUDGY_FIELDS = [
   { key: "primary_category", label: "Primary Category", required: true,  tooltip: "Main spending category (e.g. Food & drink, Transportation)" },
   { key: "description",      label: "Description",       required: true,  tooltip: "Merchant or transaction description" },
-  { key: "date",             label: "Date",              required: true,  tooltip: "Posted date — YYYY-MM-DD or MM/DD/YYYY" },
+  { key: "authorized_date",  label: "Date",              required: true,  tooltip: "Transaction date — YYYY-MM-DD or MM/DD/YYYY" },
   { key: "amount",           label: "Amount",            required: true,  tooltip: "Transaction amount — negative is expense, positive is income" },
   { key: "detailed_category",label: "Detailed Category", required: false, tooltip: "Subcategory within the primary category" },
   { key: "account_name",     label: "Account Name",      required: false, tooltip: "Account or institution name" },
-  { key: "authorized_date",  label: "Authorized Date",   required: false, tooltip: "Authorization date if different from posted date" },
+  { key: "posted_date",      label: "Posted Date",        required: false, tooltip: "Posted date if different from transaction date" },
   { key: "status",           label: "Status",            required: false, tooltip: "Transaction status" },
   { key: "notes",            label: "Notes",             required: false, tooltip: "Personal notes (max 300 characters)" },
   { key: "tags",             label: "Tags",              required: false, tooltip: "Comma-separated tags for filtering" },

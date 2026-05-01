@@ -14,7 +14,7 @@ interface CSVUploadModalProps {
 }
 
 // Budgy field keys that are required for import
-const REQUIRED_FIELDS = ["primary_category", "description", "date", "amount"];
+const REQUIRED_FIELDS = ["primary_category", "description", "authorized_date", "amount"];
 
 function buildFieldMappings(columnMap: NormalizationPlan["column_map"]): Record<string, string | null> {
   // Invert column_map: rawHeader → budgyField  becomes  budgyField → rawHeader

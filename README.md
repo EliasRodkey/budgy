@@ -24,11 +24,11 @@ You can explore the app without uploading any data. Use the **Demo Mode** toggle
 
 **Currently implemented:**
 
+- **Automatic transaction categorization** — classify imported transactions using a fine-tuned or few-shot model, reducing manual review.
 - **AI monthly summary** — the dashboard generates a natural-language summary of your month's spending, income, and notable patterns via an LLM call
 
 **Planned:**
 
-- **Automatic transaction categorization** — classify imported transactions using a fine-tuned or few-shot model, reducing manual review
 - **Anomaly detection** — flag unusual transactions or spending spikes relative to your history
 - **Natural language budget queries** — ask questions like "how much did I spend on food last quarter?" and get direct answers
 

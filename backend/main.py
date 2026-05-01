@@ -5,6 +5,25 @@ backend.main
 from dotenv import load_dotenv
 load_dotenv()
 
+import sqlite3
+import os
+
+def _migrate_db() -> None:
+    db_path = os.path.join(os.getcwd(), "data", "databases", "budgy_financial_transaction.db")
+    if not os.path.exists(db_path):
+        return
+    conn = sqlite3.connect(db_path)
+    try:
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(upload_jobs)")}
+        for col in ("rules_applied_from_cache", "new_rules_saved"):
+            if col not in existing:
+                conn.execute(f"ALTER TABLE upload_jobs ADD COLUMN {col} INTEGER")
+        conn.commit()
+    finally:
+        conn.close()
+
+_migrate_db()
+
 # Third party imports
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
