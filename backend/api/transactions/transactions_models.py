@@ -7,7 +7,7 @@ including request and response schemas for fetching transactions with optional m
 # Standard library imports
 from datetime import date, datetime
 from decimal import Decimal
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from typing import Optional
 
@@ -44,9 +44,18 @@ class Transaction(BaseModel):
     repayment: bool
     exclude: bool
     notes: Optional[str] = None # max 300 chars, edit modal only
-    tags: Optional[str] = None # max 10 tags, each max 30 chars, no spaces
+    tags: list[str] = []
 
     model_config = outgoing_config
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def parse_tags(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [t.strip() for t in v.split(",") if t.strip()]
+        return v
 
 
 

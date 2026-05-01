@@ -164,7 +164,7 @@ class DetailedCategories(CategoriesEnum):
     # Entertainment subcategories
     GAMBLING = "Gambling"
     BOOKS_AND_NEWS = "Books & news"
-    MOVIES_AND_TV = "Movies & tv"
+    MOVIES_AND_TV = "Movies & TV"
     MUSIC_AND_AUDIO = "Music & audio"
     GAMES = "Games"
     EVENTS_AND_RECREATION = "Events & recreation"
@@ -190,7 +190,7 @@ class DetailedCategories(CategoriesEnum):
     OTHER_SERVICES = "Other services"
 
     # Transportation subcategories
-    GAS_AND_EV_CHARGING = "Gas & ev charging"
+    GAS_AND_EV_CHARGING = "Gas & EV charging"
     CAR_SERVICES = "Car services"
     PUBLIC_TRANSIT = "Public transit"
     TAXI_AND_RIDE_SHARES = "Taxi & ride shares"

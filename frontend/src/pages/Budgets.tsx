@@ -828,6 +828,11 @@ function BudgetCard({
 
 type ChartView = "total" | "per-category";
 
+function formatBudgetTick(v: number): string {
+  if (v >= 1000) return `$${(v / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `$${Math.round(v)}`;
+}
+
 /** Compact axis label: "Jan '25" */
 function shortMonth(yyyyMm: string): string {
   const [y, m] = yyyyMm.split("-").map(Number);
@@ -932,11 +937,13 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
               interval="preserveStartEnd"
             />
             <YAxis
-              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+              tickFormatter={formatBudgetTick}
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickLine={false}
               axisLine={false}
-              width={48}
+              width={56}
+              domain={[0, "auto"]}
+              allowDecimals={false}
             />
             <RechartsTooltip
               formatter={(value: number, name: string) => [formatCurrency(value), name]}

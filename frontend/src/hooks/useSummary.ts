@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { checkDirtyMonths, getMonthlySummary } from "../api/summary";
+import { checkDirtyMonths, getAvailableYears, getMonthlySummary } from "../api/summary";
 import type { DirtyStatusResponse } from "../api/summary";
 import type { MonthlySummary } from "../types";
 
@@ -15,5 +15,13 @@ export function useDirtyMonths() {
     queryKey: ["summaries", "dirty"],
     queryFn: checkDirtyMonths,
     staleTime: 0,
+  });
+}
+
+export function useAvailableYears() {
+  return useQuery<number[], Error>({
+    queryKey: ["summaries", "years"],
+    queryFn: getAvailableYears,
+    staleTime: Infinity,
   });
 }
