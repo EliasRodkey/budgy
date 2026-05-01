@@ -49,8 +49,15 @@ def validate_transaction(csv_record: Dict, columns: List[Field]):
     """Validates each record against the Schema to ensure that the data is correctly uploaded to the database."""
     db_record = {}
     for col in columns:
-        value = csv_record[col.src].strip()
-        db_record[col.dest] = col.convert(value)
+        if col.src in csv_record:
+            raw = csv_record[col.src]
+        elif col.dest in csv_record:
+            raw = csv_record[col.dest]
+        else:
+            db_record[col.dest] = None
+            continue
+        value = (raw or "").strip()
+        db_record[col.dest] = col.convert(value) if value else None
 
     # Initialize repayment and exclude status to false for all transactions, we can update these later if needed
     db_record[TransactionsTable.repayment.name] = False
