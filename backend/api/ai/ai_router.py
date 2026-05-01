@@ -8,6 +8,7 @@ import io
 import re
 from pleasant_loggers import get_logger
 
+import anthropic
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from pleasant_database import DatabaseFile
@@ -100,6 +101,24 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
     try:
         planner = CSVNormalizationPlanner(session.category_mapping_rules, AIClientService())
         plan, used_cache = planner.plan(headers, unique_categories)
+    except anthropic.AuthenticationError as exc:
+        logger.error("Anthropic API key missing or invalid: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is not configured. Ensure ANTHROPIC_API_KEY is set in your .env file.",
+        ) from exc
+    except anthropic.APIError as exc:
+        logger.error("Anthropic API error during CSV analysis: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI service error: {exc}",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error during CSV analysis")
+        raise HTTPException(
+            status_code=500,
+            detail=f"CSV analysis failed: {exc}",
+        ) from exc
     finally:
         session.close()
 

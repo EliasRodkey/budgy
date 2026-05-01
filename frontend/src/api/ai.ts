@@ -42,6 +42,13 @@ export async function planCSV(file: File): Promise<NormalizationPlan> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch("/api/ai/plan-csv", { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Analysis failed (${res.status})`);
+  if (!res.ok) {
+    let detail = `Analysis failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch { /* ignore parse errors */ }
+    throw new Error(detail);
+  }
   return res.json() as Promise<NormalizationPlan>;
 }

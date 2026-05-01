@@ -100,14 +100,33 @@ Adding an AI summary card meant building an endpoint that assembles structured f
 
 **Prerequisites:** Python 3.11+, Node 18+
 
+### Environment setup
+
+Budgy's AI features (CSV analysis, monthly summary) require an Anthropic API key.
+
+1. Copy `.env.example` to `.env` at the repo root:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Open `.env` and set your key:
+
+   ```dotenv
+   ANTHROPIC_API_KEY=sk-ant-...
+   ```
+
+   Get a key at [console.anthropic.com](https://console.anthropic.com). The `.env` file is gitignored and will never be committed.
+
+> The app runs without a key — demo mode and all non-AI features work fine — but CSV import and AI summaries will show an error until the key is set.
+
 ### Backend
 
 ```bash
 # From the repo root
 pip install -e .
 
-cd backend
-uvicorn main:app --reload
+uvicorn backend.main:app --reload
 # API available at http://localhost:8000
 ```
 

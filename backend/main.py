@@ -2,6 +2,9 @@
 """
 backend.main
 """
+from dotenv import load_dotenv
+load_dotenv()
+
 # Third party imports
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
