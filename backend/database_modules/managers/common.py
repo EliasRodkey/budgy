@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.managers.common.py -
+backend.database_modules.managers.common.py -
 Contians shared functions and classes used by the database manager modules.
 
 Functions:
@@ -24,8 +24,8 @@ from backend.utils.analysis_utils import CategoriesEnum
 from backend.utils.file_utils import EDirectories
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 DB_FILE = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)

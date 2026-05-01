@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CATEGORY_MAPPING } from "@/constants/categories";
+import { useCategoryMapping } from "@/hooks/useCategories";
 import {
   useBudgetAssignments,
   useBudgets,
@@ -33,7 +33,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -43,11 +42,11 @@ import {
 } from "recharts";
 import { z } from "zod";
 
-// ─── Primary spending categories ──────────────────────────────────────────────
+// ─── Non-budget primary categories (excluded from spending limit form) ────────
 
-const SPENDING_CATEGORIES = Object.keys(CATEGORY_MAPPING).filter(
-  (c) => !["Income", "Transfers", "Debt payments", "Investments", "Bank fees"].includes(c),
-);
+const NON_BUDGET_CATEGORIES = new Set([
+  "Income", "Transfers", "Debt payments", "Bank fees",
+]);
 
 // ─── Chart colors ─────────────────────────────────────────────────────────────
 
@@ -342,6 +341,7 @@ function BudgetDeleteDialog({
 
 interface BudgetFormProps {
   defaultValues: BudgetFormValues;
+  spendingCategories: string[];
   isPending: boolean;
   submitLabel: string;
   pendingLabel: string;
@@ -351,6 +351,7 @@ interface BudgetFormProps {
 
 function BudgetForm({
   defaultValues,
+  spendingCategories,
   isPending,
   submitLabel,
   pendingLabel,
@@ -368,7 +369,7 @@ function BudgetForm({
   });
 
   const watched = watch();
-  const totalLimits = SPENDING_CATEGORIES.reduce(
+  const totalLimits = spendingCategories.reduce(
     (sum, c) => sum + (Number(watched.categoryLimits?.[c]) || 0),
     0,
   );
@@ -393,7 +394,7 @@ function BudgetForm({
       <div>
         <p className="text-sm font-medium mb-3">Category spending limits</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-          {SPENDING_CATEGORIES.map((category) => (
+          {spendingCategories.map((category) => (
             <div key={category} className="space-y-1">
               <label className="text-xs text-muted-foreground">{category}</label>
               <input
@@ -468,17 +469,21 @@ interface CreateBudgetFormProps {
 
 function CreateBudgetForm({ onSuccess, onCancel, prefillBudget }: CreateBudgetFormProps) {
   const { mutate, isPending } = useCreateBudget();
+  const { data: categoryData } = useCategoryMapping();
+  const spendingCategories = (categoryData?.primaryCategories ?? []).filter(
+    (c) => !NON_BUDGET_CATEGORIES.has(c),
+  );
 
   const defaultValues: BudgetFormValues = prefillBudget
     ? {
         categoryLimits: Object.fromEntries(
-          SPENDING_CATEGORIES.map((c) => [c, prefillBudget.categoryLimits[c] ?? 0]),
+          spendingCategories.map((c) => [c, prefillBudget.categoryLimits[c] ?? 0]),
         ),
         incomeEstimate: prefillBudget.monthlyIncomeEstimate,
         note: prefillBudget.note ?? "",
       }
     : {
-        categoryLimits: Object.fromEntries(SPENDING_CATEGORIES.map((c) => [c, 0])),
+        categoryLimits: Object.fromEntries(spendingCategories.map((c) => [c, 0])),
         incomeEstimate: 0,
         note: "",
       };
@@ -505,6 +510,7 @@ function CreateBudgetForm({ onSuccess, onCancel, prefillBudget }: CreateBudgetFo
   return (
     <BudgetForm
       defaultValues={defaultValues}
+      spendingCategories={spendingCategories}
       isPending={isPending}
       submitLabel="Create budget"
       pendingLabel="Saving…"
@@ -524,11 +530,15 @@ interface EditBudgetFormProps {
 
 function EditBudgetForm({ budget, onSuccess, onCancel }: EditBudgetFormProps) {
   const { mutate, isPending } = useUpdateBudget();
+  const { data: categoryData } = useCategoryMapping();
+  const spendingCategories = (categoryData?.primaryCategories ?? []).filter(
+    (c) => !NON_BUDGET_CATEGORIES.has(c),
+  );
 
   const limitSum = Object.values(budget.categoryLimits).reduce((s, v) => s + v, 0);
   const defaultValues: BudgetFormValues = {
     categoryLimits: Object.fromEntries(
-      SPENDING_CATEGORIES.map((c) => [c, budget.categoryLimits[c] ?? 0]),
+      spendingCategories.map((c) => [c, budget.categoryLimits[c] ?? 0]),
     ),
     incomeEstimate: budget.monthlyIncomeEstimate,
     note: budget.note ?? "",
@@ -559,6 +569,7 @@ function EditBudgetForm({ budget, onSuccess, onCancel }: EditBudgetFormProps) {
   return (
     <BudgetForm
       defaultValues={defaultValues}
+      spendingCategories={spendingCategories}
       isPending={isPending}
       submitLabel="Save changes"
       pendingLabel="Saving…"
@@ -817,6 +828,11 @@ function BudgetCard({
 
 type ChartView = "total" | "per-category";
 
+function formatBudgetTick(v: number): string {
+  if (v >= 1000) return `$${(v / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `$${Math.round(v)}`;
+}
+
 /** Compact axis label: "Jan '25" */
 function shortMonth(yyyyMm: string): string {
   const [y, m] = yyyyMm.split("-").map(Number);
@@ -841,12 +857,20 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
     );
   }
 
-  // Build month range from earliest assignment to current month
+  const endMonth = currentMonth();
+
+  // Build a 12-month window ending at the current month, clamped to the earliest assignment.
+  const [ey, em] = endMonth.split("-").map(Number);
+  let sm = em - 11;
+  let sy = ey;
+  if (sm <= 0) { sm += 12; sy -= 1; }
+  const twelveMonthsAgo = `${sy}-${String(sm).padStart(2, "0")}`;
   const sortedAssignments = [...assignments].sort((a, b) =>
     a.effectiveFrom.localeCompare(b.effectiveFrom),
   );
-  const startMonth = sortedAssignments[0].effectiveFrom;
-  const endMonth = currentMonth();
+  const startMonth = twelveMonthsAgo > sortedAssignments[0].effectiveFrom
+    ? twelveMonthsAgo
+    : sortedAssignments[0].effectiveFrom;
 
   const months: string[] = [];
   let cursor = startMonth;
@@ -913,11 +937,13 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
               interval="preserveStartEnd"
             />
             <YAxis
-              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+              tickFormatter={formatBudgetTick}
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickLine={false}
               axisLine={false}
-              width={48}
+              width={56}
+              domain={[0, "auto"]}
+              allowDecimals={false}
             />
             <RechartsTooltip
               formatter={(value: number, name: string) => [formatCurrency(value), name]}
@@ -942,23 +968,33 @@ function BudgetLimitsChart({ budgets, assignments }: BudgetLimitsChartProps) {
                 activeDot={{ r: 4 }}
               />
             ) : (
-              <>
-                {allCategories.map((cat, i) => (
-                  <Line
-                    key={cat}
-                    type="stepAfter"
-                    dataKey={cat}
-                    stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                    strokeWidth={1.5}
-                    dot={false}
-                    activeDot={{ r: 3 }}
-                  />
-                ))}
-                <Legend wrapperStyle={{ fontSize: "11px" }} />
-              </>
+              allCategories.map((cat, i) => (
+                <Line
+                  key={cat}
+                  type="stepAfter"
+                  dataKey={cat}
+                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                  strokeWidth={1.5}
+                  dot={false}
+                  activeDot={{ r: 3 }}
+                />
+              ))
             )}
           </LineChart>
         </ResponsiveContainer>
+        {view === "per-category" && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 pl-[48px]">
+            {allCategories.map((cat, i) => (
+              <div key={cat} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span
+                  className="inline-block w-3 h-3 rounded-sm shrink-0"
+                  style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                />
+                {cat}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

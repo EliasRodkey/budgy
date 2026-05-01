@@ -12,15 +12,16 @@ export interface ApiResponse<T> {
 
 export interface Transaction {
   id: string;
-  date: string; // ISO 8601
+  authorizedDate: string; // ISO 8601
+  postedDate: string; // ISO 8601
+  status: string
+  accountName: string;
   description: string;
-  merchant: string;
-  amount: number; // float, dollars (negative = expense)
   primaryCategory: string;
   detailedCategory: string;
-  isFlagged: boolean;
-  isExcluded: boolean;
-  isRepayment: boolean;
+  amount: number; // float, dollars (negative = expense)
+  repayment: boolean;
+  exclude: boolean;
   notes?: string;    // max 300 chars, edit modal only
   tags?: string[];   // max 10 tags, each max 30 chars, no spaces
 }
@@ -61,7 +62,7 @@ export interface AnalyticsSeries {
 }
 
 export interface Budget {
-  id: string;
+  id: number;
   dateCreated: string; // ISO 8601
   categoryLimits: Record<string, number>; // primaryCategory name → monthly limit
   monthlyIncomeEstimate: number; // user-entered expected monthly income
@@ -70,8 +71,8 @@ export interface Budget {
 }
 
 export interface BudgetAssignment {
-  id: string;
-  budgetId: string;
+  id: number;
+  budgetId: number;
   effectiveFrom: string; // YYYY-MM
   note: string | null;
 }

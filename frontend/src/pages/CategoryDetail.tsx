@@ -1,3 +1,4 @@
+import { DateRangeSelector } from "@/components/categories/DateRangeSelector";
 import { DetailCategoryDonut } from "@/components/categories/DetailCategoryDonut";
 import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDialog";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
@@ -7,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCategoryDetail } from "@/hooks/useCategories";
 import { useAvailableTags, useDeleteTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
 import { CATEGORY_COLORS } from "@/lib/categoryColors";
-import { currentMonth, formatCurrency, formatMonth } from "@/lib/formatters";
+import { formatCurrency, formatMonth } from "@/lib/formatters";
+import { useDateRangeStore } from "@/store/dateRange";
 import type { Transaction } from "@/types";
 import {
   AlertCircle,
@@ -36,6 +38,18 @@ import {
 } from "recharts";
 
 const PAGE_SIZE = 10;
+
+function niceCeil(v: number): number {
+  if (v <= 200) return Math.ceil(v / 50) * 50;
+  if (v <= 1000) return Math.ceil(v / 100) * 100;
+  if (v <= 5000) return Math.ceil(v / 500) * 500;
+  return Math.ceil(v / 1000) * 1000;
+}
+
+function formatYAxisTick(v: number): string {
+  if (v >= 1000) return `$${(v / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `$${v}`;
+}
 
 interface ChartTooltipProps {
   active?: boolean;
@@ -94,8 +108,9 @@ export default function CategoryDetail() {
   const { primaryCategory } = useParams<{ primaryCategory: string }>();
   const navigate = useNavigate();
   const decoded = primaryCategory ? decodeURIComponent(primaryCategory) : "";
+  const { month, year } = useDateRangeStore();
 
-  const { data, isLoading, isError, refetch } = useCategoryDetail(decoded);
+  const { data, isLoading, isError, refetch } = useCategoryDetail(decoded, month, year);
 
   // Transactions state
   const [page, setPage] = useState(0);
@@ -132,8 +147,17 @@ export default function CategoryDetail() {
           <ChevronLeft size={15} />
           Categories
         </button>
-        <h1 className="text-2xl font-semibold">{decoded}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{formatMonth(currentMonth())}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">{decoded}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {month !== null
+                ? formatMonth(`${year}-${String(month).padStart(2, "0")}`)
+                : String(year)}
+            </p>
+          </div>
+          <DateRangeSelector />
+        </div>
       </div>
 
       {isError && (
@@ -184,19 +208,20 @@ export default function CategoryDetail() {
                     axisLine={false}
                   />
                   <YAxis
-                    tickFormatter={(v) => `$${v}`}
+                    tickFormatter={formatYAxisTick}
                     tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
                     width={56}
+                    allowDecimals={false}
                     domain={[
                       0,
                       data.budget !== null
-                        ? Math.ceil(
+                        ? niceCeil(
                             Math.max(
                               ...data.spendOverTime.map((d) => d.amount),
                               data.budget,
-                            ) * 1.1,
+                            ),
                           )
                         : "auto",
                     ]}
@@ -241,7 +266,7 @@ export default function CategoryDetail() {
           <>
             <AnalyticCard
               icon={<TrendingDown size={14} />}
-              label="Avg spend (this year)"
+              label="Avg spend (selected year)"
               value={formatCurrency(data.yearAvgSpend)}
             />
             <AnalyticCard
@@ -360,7 +385,7 @@ export default function CategoryDetail() {
               {sortByAmount ? "Sort: by amount" : "Sort: newest first"}
             </button>
             <Link
-              to="/transactions"
+              to={`/transactions?category=${encodeURIComponent(decoded)}`}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               View all
@@ -411,15 +436,17 @@ export default function CategoryDetail() {
       </div>
 
       {/* Edit / Delete modals */}
-      <EditTransactionModal
-        transaction={editingTx}
-        isPending={updatePending}
-        availableTags={availableTags}
-        onClose={() => setEditingTx(null)}
-        onSave={(id, updates) => {
-          updateTx({ id, updates }, { onSuccess: () => setEditingTx(null) });
-        }}
-      />
+      {editingTx && (
+        <EditTransactionModal
+          transaction={editingTx}
+          isPending={updatePending}
+          availableTags={availableTags}
+          onClose={() => setEditingTx(null)}
+          onSave={(id, updates) => {
+            updateTx({ id, updates }, { onSuccess: () => setEditingTx(null) });
+          }}
+        />
+      )}
       <DeleteConfirmDialog
         transaction={deletingTx}
         isPending={deletePending}

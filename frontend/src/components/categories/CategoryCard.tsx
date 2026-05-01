@@ -5,14 +5,16 @@ import type { CategorySpend } from "@/types";
 interface CategoryCardProps {
   spend: CategorySpend;
   color?: string;
+  isNonSpending?: boolean;
   onClick?: () => void;
 }
 
-export function CategoryCard({ spend, color, onClick }: CategoryCardProps) {
+export function CategoryCard({ spend, color, isNonSpending = false, onClick }: CategoryCardProps) {
   const hasLimit = spend.monthlyLimit !== null && spend.percentOfLimit !== null;
   const pct = spend.percentOfLimit ?? 0;
   const overBudget = spend.isOverBudget;
   const barWidth = Math.min(pct, 100);
+  const overExpected = overBudget && isNonSpending;
 
   return (
     <button
@@ -29,11 +31,15 @@ export function CategoryCard({ spend, color, onClick }: CategoryCardProps) {
           )}
           <h3 className="text-sm font-medium truncate">{spend.categoryName}</h3>
         </div>
-        {overBudget && (
+        {overExpected ? (
+          <span className="shrink-0 inline-flex items-center rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">
+            {formatCurrency(spend.amount - spend.monthlyLimit!)} over expected
+          </span>
+        ) : overBudget ? (
           <span className="shrink-0 inline-flex items-center rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
             Over budget
           </span>
-        )}
+        ) : null}
       </div>
 
       <p className="text-2xl font-semibold tabular-nums">
@@ -55,7 +61,7 @@ export function CategoryCard({ spend, color, onClick }: CategoryCardProps) {
           {hasLimit && (
             <div
               className={`h-full rounded-full transition-all ${
-                overBudget ? "bg-destructive" : "bg-primary"
+                overBudget && !isNonSpending ? "bg-destructive" : "bg-primary"
               }`}
               style={{ width: `${barWidth}%` }}
             />

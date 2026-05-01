@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.utils.analysis_utils.py
+backend.utils.analysis_utils.py
 
 A utility module for transaction categorization in the budgy budgeting application.
 This module provides comprehensive category mappings for financial transactions,
@@ -31,8 +31,8 @@ Usage:
 from enum import Enum
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 
@@ -164,7 +164,7 @@ class DetailedCategories(CategoriesEnum):
     # Entertainment subcategories
     GAMBLING = "Gambling"
     BOOKS_AND_NEWS = "Books & news"
-    MOVIES_AND_TV = "Movies & tv"
+    MOVIES_AND_TV = "Movies & TV"
     MUSIC_AND_AUDIO = "Music & audio"
     GAMES = "Games"
     EVENTS_AND_RECREATION = "Events & recreation"
@@ -190,7 +190,7 @@ class DetailedCategories(CategoriesEnum):
     OTHER_SERVICES = "Other services"
 
     # Transportation subcategories
-    GAS_AND_EV_CHARGING = "Gas & ev charging"
+    GAS_AND_EV_CHARGING = "Gas & EV charging"
     CAR_SERVICES = "Car services"
     PUBLIC_TRANSIT = "Public transit"
     TAXI_AND_RIDE_SHARES = "Taxi & ride shares"

@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.models.budgets.py -
+backend.database_modules.models.budgets.py -
 Contains ORM table definitions, database managers, and CSV column mappings for budgy budgets db table.
 
 Classes:
@@ -20,8 +20,8 @@ from pleasant_database import BaseTable
 from .common import Field, parse_date
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 
@@ -61,6 +61,7 @@ class BudgetsTable(BaseTable):
     other = Column(Float)
     net_gain_or_loss = Column(Float)
     uq_hash = Column(String, unique=True)
+    note = Column(String, nullable=True)
 
 
 

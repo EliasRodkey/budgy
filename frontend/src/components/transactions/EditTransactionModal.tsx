@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { CATEGORY_MAPPING } from "@/constants/categories";
+import { useCategoryMapping } from "@/hooks/useCategories";
 import type { Transaction } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
@@ -7,6 +7,35 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { TagInput } from "./TagInput";
+
+function ClickToEdit({ value, onCommit, label }: { value: string; onCommit: (v: string) => void; label: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { onCommit(draft); setEditing(false); }}
+        onKeyDown={(e) => { if (e.key === "Enter") { onCommit(draft); setEditing(false); } if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+        className="w-full h-8 rounded-md border border-input px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+        aria-label={label}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="w-full h-8 text-left px-3 text-sm text-foreground rounded-md border border-transparent hover:border-input hover:bg-muted/40 transition-colors truncate"
+      title="Click to edit"
+    >
+      {draft || <span className="text-muted-foreground italic">—</span>}
+    </button>
+  );
+}
 
 function containsSuspiciousContent(val: string | undefined): boolean {
   if (!val) return false;
@@ -20,8 +49,8 @@ function containsSuspiciousContent(val: string | undefined): boolean {
 
 const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
-  description: z.string().min(1, "Required"),
-  merchant: z.string().min(1, "Required"),
+  description: z.string().optional(),
+  accountName: z.string().optional(),
   amount: z.number({ error: "Must be a number" }),
   primaryCategory: z.string().min(1, "Required"),
   detailedCategory: z.string().min(1, "Required"),
@@ -44,7 +73,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 interface EditTransactionModalProps {
-  transaction: Transaction | null;
+  transaction: Transaction;
   isPending: boolean;
   availableTags: string[];
   onSave: (id: string, updates: Partial<Transaction>) => void;
@@ -75,52 +104,37 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   const {
     register,
     handleSubmit,
-    reset,
     watch,
     setValue,
     control,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      date: transaction.authorizedDate,
+      description: transaction.description,
+      accountName: transaction.accountName,
+      amount: transaction.amount,
+      primaryCategory: transaction.primaryCategory,
+      detailedCategory: transaction.detailedCategory,
+      isFlagged: transaction.isFlagged,
+      isExcluded: transaction.exclude,
+      isRepayment: transaction.repayment,
+      notes: transaction.notes ?? "",
+      tags: transaction.tags ?? [],
+    },
   });
 
+  const { data: categoryData } = useCategoryMapping();
   const watchedPrimary = watch("primaryCategory");
   const watchedNotes = watch("notes") ?? "";
-  const detailedOptions = CATEGORY_MAPPING[watchedPrimary] ?? [];
-
-  // Reset detailed category when primary category changes
-  const [prevPrimary, setPrevPrimary] = useState<string | undefined>(undefined);
-  useEffect(() => {
-    if (prevPrimary !== undefined && watchedPrimary !== prevPrimary) {
-      setValue("detailedCategory", "");
-    }
-    setPrevPrimary(watchedPrimary);
-  }, [watchedPrimary, prevPrimary, setValue]);
-
-  useEffect(() => {
-    if (transaction) {
-      reset({
-        date: transaction.date,
-        description: transaction.description,
-        merchant: transaction.merchant,
-        amount: transaction.amount,
-        primaryCategory: transaction.primaryCategory,
-        detailedCategory: transaction.detailedCategory,
-        isFlagged: transaction.isFlagged,
-        isExcluded: transaction.isExcluded,
-        isRepayment: transaction.isRepayment,
-        notes: transaction.notes ?? "",
-        tags: transaction.tags ?? [],
-      });
-      setPrevPrimary(transaction.primaryCategory);
-    }
-  }, [transaction, reset]);
-
-  if (!transaction) return null;
+  const detailedOptions = (categoryData?.categoryMapping ?? {})[watchedPrimary] ?? [];
 
   function onSubmit(values: FormValues) {
     onSave(transaction!.id, {
       ...values,
+      accountName: values.accountName ?? transaction!.accountName,
+      description: values.description ?? transaction!.description,
       notes: values.notes || undefined,
       tags: values.tags?.length ? values.tags : undefined,
     });
@@ -160,33 +174,58 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
             </Field>
           </div>
 
-          <Field label="Description" error={errors.description?.message}>
-            <input
-              type="text"
-              {...register("description")}
-              className={InputClass(!!errors.description)}
+          <Field label="Description">
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <ClickToEdit
+                  value={field.value ?? ""}
+                  onCommit={field.onChange}
+                  label="Description"
+                />
+              )}
             />
           </Field>
 
-          <Field label="Merchant" error={errors.merchant?.message}>
-            <input
-              type="text"
-              {...register("merchant")}
-              className={InputClass(!!errors.merchant)}
+          <Field label="Account">
+            <Controller
+              name="accountName"
+              control={control}
+              render={({ field }) => (
+                <ClickToEdit
+                  value={field.value ?? ""}
+                  onCommit={field.onChange}
+                  label="Account"
+                />
+              )}
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Category" error={errors.primaryCategory?.message}>
-              <select
-                {...register("primaryCategory")}
-                className={InputClass(!!errors.primaryCategory)}
-              >
-                <option value="">Select…</option>
-                {Object.keys(CATEGORY_MAPPING).map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              <Controller
+                name="primaryCategory"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    value={field.value ?? ""}
+                    onBlur={field.onBlur}
+                    onChange={(e) => {
+                      if (e.target.value !== field.value) {
+                        setValue("detailedCategory", "");
+                      }
+                      field.onChange(e);
+                    }}
+                    className={InputClass(!!errors.primaryCategory)}
+                  >
+                    <option value="">Select…</option>
+                    {(categoryData?.primaryCategories ?? []).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
+              />
             </Field>
             <Field label="Detailed Category" error={errors.detailedCategory?.message}>
               <select

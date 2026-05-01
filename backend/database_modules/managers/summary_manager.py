@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.managers.summary_manager.py -
+backend.database_modules.managers.summary_manager.py -
 Module contianing functions for reading, writing, and updating values in the summary table.
 
 Classes:
@@ -18,15 +18,14 @@ from pleasant_database import DatabaseFile, DatabaseManager, DatabaseIntegrityEr
 
 # Local imports
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
-from backend.utils.file_utils import LoggingExtras
 from .common import convert_datetime_nums_to_range
 from ..models.summaries import SummariesTable
 
 
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 
@@ -73,6 +72,18 @@ class SummariesTableManager(DatabaseManager):
                 raise e
 
 
+    def upsert_summary(self, month: int, year: int, summary: pd.DataFrame, budget_id: int = None) -> None:
+        """
+        Creates or updates the monthly summary for the given month/year.
+
+        Callers should prefer this over calling upload_monthly_summary or update_summary
+        directly — it encapsulates the exists-check and routes to the correct operation.
+        """
+        if self._check_summary_exists(month, year):
+            self.update_summary(month, year, summary)
+        else:
+            self.upload_monthly_summary(month, year, summary, budget_id=budget_id)
+
     def update_summary(self, month: int, year: int, summary: pd.DataFrame,):
         """
         Updates a summary entry in the summaries table. 
@@ -108,9 +119,21 @@ class SummariesTableManager(DatabaseManager):
 
         try:
             self.update_item(summary_id, budget_id=budget_id)
-        
+
         except DatabaseIntegrityError as e:
                 logger.error(f"Summary {summary_id} budget id not updated for {month} / {year}: {e}")
+
+
+    def backfill_null_budget_ids(self, budget_id: int) -> int:
+        """Set budget_id on all summaries that currently have budget_id=None. Returns count updated."""
+        summaries = self.fetch_all_items()
+        updated = 0
+        for s in summaries:
+            if s.budget_id is None:
+                self.update_summary_budget_id(s.month, s.year, budget_id)
+                updated += 1
+        logger.info(f"Backfilled budget_id={budget_id} on {updated} summary rows")
+        return updated
 
 
     def fetch_summary_by_id(self, summary_id: int) -> SummariesTable:
@@ -145,10 +168,8 @@ class SummariesTableManager(DatabaseManager):
 
         logger.debug(
             f"Retrieving records from {start_date} to {end_date} using manager: {self}",
-            extra={
-                LoggingExtras.START_DATE.value: start_date.strftime(LoggingExtras.DATETIME_FORMAT),
-                LoggingExtras.END_DATE.value: end_date.strftime(LoggingExtras.DATETIME_FORMAT),
-            }
+            start_date=start_date.strftime("%d-%m-%Y %H:%M %Ss"),
+            end_date=end_date.strftime("%d-%m-%Y %H:%M %Ss"),
         )
 
         attributes = {}
@@ -162,7 +183,7 @@ class SummariesTableManager(DatabaseManager):
             return pd.DataFrame()
 
         if not records:
-            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.", extra={LoggingExtras.ATTRIBUTES: attributes})
+            logger.warning(f"No records found over period with specified attributes: {start_date} to {end_date}.")
         
         return self.convert_orm_list_to_dataframe(records)
 
@@ -203,7 +224,9 @@ class SummariesTableManager(DatabaseManager):
         flat[SummariesTable.date.name] = datetime(year, month, 1)
         flat[SummariesTable.month.name] = month
         flat[SummariesTable.year.name] = year
-        flat[SummariesTable.budget_id.name] = self._get_latest_budget_id() if budget_id is None else budget_id
+        resolved_budget_id = self._get_latest_budget_id() if budget_id is None else budget_id
+        if resolved_budget_id is not None:
+            flat[SummariesTable.budget_id.name] = resolved_budget_id
 
         return flat
         
@@ -229,14 +252,14 @@ class SummariesTableManager(DatabaseManager):
             raise ItemNotFoundError(float(f"{month}.{year}"), self.table_class)
     
 
-    def _get_latest_budget_id(self) -> int:
-        """Returns the budget_id from the most recently inserted summary record."""
+    def _get_latest_budget_id(self) -> int | None:
+        """Returns the budget_id from the most recently inserted summary record, or None."""
         logger.debug(f"Checking latest summary upload for budget_id...")
 
         summaries = self.fetch_all_items()
 
         if not summaries:
-            raise ItemNotFoundError("latest budget_id", self.table_class)
+            return None
 
         latest = max(summaries, key=lambda s: s.id)
         return latest.budget_id

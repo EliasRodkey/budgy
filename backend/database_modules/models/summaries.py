@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.models.summaries.py -
+backend.database_modules.models.summaries.py -
 Contains ORM table definitions, database managers, and CSV column mappings for budgy summaries db table.
 
 Classes:
@@ -21,8 +21,8 @@ from pleasant_database import BaseTable
 from .common import Field
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 
@@ -54,7 +54,7 @@ class SummariesTable(BaseTable):
     date = Column(DateTime)
     month = Column(Integer)
     year = Column(Integer)
-    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=False)
+    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=True)
 
     # Sum columns for each category - used for calculating total spending in each category for the month
     sum_income = Column(Float, default=0.0)

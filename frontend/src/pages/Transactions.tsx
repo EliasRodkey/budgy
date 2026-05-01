@@ -1,20 +1,121 @@
-import { importTransactions } from "@/api/transactions";
+import { getSimilarTransactions } from "@/api/transactions";
+import { BulkApplyDialog, type BulkApplyChange, type BulkApplyScope } from "@/components/transactions/BulkApplyDialog";
 import { CSVUploadModal } from "@/components/transactions/CSVUploadModal";
 import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDialog";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { Button } from "@/components/ui/button";
-import { ALL_DETAILED_CATEGORIES, CATEGORY_MAPPING } from "@/constants/categories";
+import { useCategoryMapping } from "@/hooks/useCategories";
 import {
   useAvailableTags,
+  useBulkUpdateTransactions,
   useDeleteTransaction,
   useTransactions,
   useUpdateTransaction,
 } from "@/hooks/useTransactions";
+import { tagPillStyle } from "@/lib/tagColors";
 import type { Transaction } from "@/types";
-import { AlertCircle, ArrowUpDown, RefreshCw, Upload } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, ArrowUpDown, ChevronDown, RefreshCw, Upload, X } from "lucide-react";
+import { useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+
+interface TagPickerProps {
+  selected: string[];
+  available: string[];
+  onChange: (tags: string[]) => void;
+}
+
+function TagPicker({ selected, available, onChange }: TagPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const unselected = available.filter(
+    (t) => !selected.includes(t) && t.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  function toggle(tag: string) {
+    if (selected.includes(tag)) {
+      onChange(selected.filter((t) => t !== tag));
+    } else {
+      onChange([...selected, tag]);
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="h-8 flex items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        {selected.length === 0 ? (
+          <span className="text-muted-foreground">Filter by tag…</span>
+        ) : (
+          <div className="flex items-center gap-1 flex-wrap max-w-56">
+            {selected.map((tag) => (
+              <span
+                key={tag}
+                style={tagPillStyle(tag)}
+                className="inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0 text-xs font-medium"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggle(tag); }}
+                  className="opacity-60 hover:opacity-100"
+                  aria-label={`Remove ${tag} filter`}
+                >
+                  <X size={9} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <ChevronDown size={13} className="text-muted-foreground ml-auto shrink-0" />
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 top-full mt-1 z-50 w-56 rounded-md border border-border bg-popover shadow-md"
+          onBlur={(e) => { if (!containerRef.current?.contains(e.relatedTarget as Node)) setOpen(false); }}
+        >
+          <div className="p-2 border-b border-border">
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search tags…"
+              className="w-full h-7 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <ul className="py-1 max-h-48 overflow-y-auto">
+            {unselected.length === 0 && (
+              <li className="px-3 py-2 text-xs text-muted-foreground">No tags found</li>
+            )}
+            {unselected.map((tag) => (
+              <li key={tag}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); toggle(tag); setOpen(false); setQuery(""); }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-accent transition-colors"
+                >
+                  <span
+                    style={tagPillStyle(tag)}
+                    className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium"
+                  >
+                    {tag}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const PAGE_SIZE = 20;
 
@@ -94,6 +195,17 @@ export default function Transactions() {
     });
   }
 
+  const hasActiveFilters = !!(search || category || detailedCategory || tagsParam || showExcluded || dateFrom || dateTo);
+
+  function clearFilters() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams();
+      if (prev.get("sortBy")) next.set("sortBy", prev.get("sortBy")!);
+      if (prev.get("sortOrder")) next.set("sortOrder", prev.get("sortOrder")!);
+      return next;
+    });
+  }
+
   function toggleSort(field: "date" | "amount") {
     if (sortBy === field) {
       setParam("sortOrder", sortOrder === "asc" ? "desc" : "asc");
@@ -108,14 +220,18 @@ export default function Transactions() {
     }
   }
 
+  const { data: categoryData } = useCategoryMapping();
+  const categoryMapping = categoryData?.categoryMapping ?? {};
+  const allDetailedCategories = Object.values(categoryMapping).flat().sort();
+
   // Detailed category options depend on selected primary category
   const detailedCategoryOptions = category
-    ? (CATEGORY_MAPPING[category] ?? [])
-    : ALL_DETAILED_CATEGORIES;
+    ? (categoryMapping[category] ?? [])
+    : allDetailedCategories;
 
   const { data, isLoading, isError, refetch } = useTransactions({
     search: search || undefined,
-    category: category || undefined,
+    primaryCategory: category || undefined,
     detailedCategory: detailedCategory || undefined,
     tags: filterTags.length > 0 ? filterTags : undefined,
     showExcluded,
@@ -130,13 +246,90 @@ export default function Transactions() {
   const { data: availableTags = [] } = useAvailableTags();
   const { mutate: updateTx, isPending: updatePending } = useUpdateTransaction();
   const { mutate: deleteTx, isPending: deletePending } = useDeleteTransaction();
+  const { mutate: bulkUpdate, isPending: bulkPending } = useBulkUpdateTransactions();
 
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [showImport, setShowImport] = useState(false);
 
-  function handleSave(id: string, updates: Partial<Transaction>) {
-    updateTx({ id, updates }, { onSuccess: () => setEditTarget(null) });
+  // Bulk-apply dialog state
+  const [bulkChange, setBulkChange] = useState<BulkApplyChange | null>(null);
+  const [similarTxs, setSimilarTxs] = useState<Transaction[]>([]);
+  const [savedTx, setSavedTx] = useState<Transaction | null>(null);
+
+  async function handleSave(id: string, updates: Partial<Transaction>) {
+    const original = editTarget!;
+    updateTx({ id, updates }, {
+      onSuccess: async () => {
+        setEditTarget(null);
+
+        // Detect what changed
+        const origTags: string[] = original.tags ?? [];
+        const newTags: string[] = (updates.tags as string[] | undefined) ?? origTags;
+        const addedTags = newTags.filter((t) => !origTags.includes(t));
+
+        const categoryChanged =
+          (updates.primaryCategory !== undefined && updates.primaryCategory !== original.primaryCategory) ||
+          (updates.detailedCategory !== undefined && updates.detailedCategory !== original.detailedCategory);
+
+        const excludedChanged =
+          updates.isExcluded !== undefined && updates.isExcluded !== original.exclude;
+
+        if (addedTags.length === 0 && !categoryChanged && !excludedChanged) return;
+
+        // Fetch similar transactions
+        const similar = await getSimilarTransactions(
+          original.description,
+          original.accountName,
+          Number(id),
+        );
+        if (similar.length === 0) return;
+
+        const change: BulkApplyChange = {
+          newTags: addedTags,
+          primaryCategory: categoryChanged ? (updates.primaryCategory ?? original.primaryCategory) : undefined,
+          detailedCategory: categoryChanged ? (updates.detailedCategory ?? original.detailedCategory) : undefined,
+          isExcluded: excludedChanged ? (updates.isExcluded as boolean) : undefined,
+        };
+
+        setSavedTx({ ...original, ...updates } as Transaction);
+        setSimilarTxs(similar);
+        setBulkChange(change);
+      },
+    });
+  }
+
+  function handleBulkConfirm(scope: BulkApplyScope, selectedIds: number[], saveAsRule: boolean) {
+    if (!bulkChange || !savedTx) return;
+    if (scope === "only_this") { setBulkChange(null); return; }
+
+    let ids = scope === "all"
+      ? similarTxs.map((t) => Number(t.id))
+      : scope === "no_existing"
+        ? similarTxs
+            .filter((t) =>
+              bulkChange.newTags.length > 0
+                ? !(t.tags && t.tags.length > 0)
+                : bulkChange.isExcluded !== undefined
+                  ? !t.exclude
+                  : !(t.primaryCategory),
+            )
+            .map((t) => Number(t.id))
+        : selectedIds;
+
+    bulkUpdate(
+      {
+        transactionIds: ids,
+        primaryCategory: bulkChange.primaryCategory,
+        detailedCategory: bulkChange.detailedCategory,
+        tags: bulkChange.newTags.length > 0 ? bulkChange.newTags : undefined,
+        exclude: bulkChange.isExcluded,
+        saveAsRule,
+        matchDescription: savedTx.description,
+        matchAccountName: savedTx.accountName,
+      },
+      { onSuccess: () => setBulkChange(null) },
+    );
   }
 
   function handleDelete(id: string) {
@@ -189,7 +382,7 @@ export default function Transactions() {
             className="h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">All categories</option>
-            {Object.keys(CATEGORY_MAPPING).map((c) => (
+            {(categoryData?.primaryCategories ?? []).map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -226,12 +419,10 @@ export default function Transactions() {
             />
           </div>
 
-          <input
-            type="search"
-            placeholder="Filter by tag…"
-            value={tagsParam}
-            onChange={(e) => setParam("tags", e.target.value)}
-            className="h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring w-36"
+          <TagPicker
+            selected={filterTags}
+            available={availableTags}
+            onChange={(tags) => setParam("tags", tags.join(","))}
           />
 
           <label className="flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap">
@@ -269,6 +460,14 @@ export default function Transactions() {
             </button>
           </div>
         </div>
+
+        {hasActiveFilters && (
+          <div className="flex justify-end pt-1">
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground h-7">
+              Clear filters
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Error state */}
@@ -304,13 +503,16 @@ export default function Transactions() {
       )}
 
       {/* Modals */}
-      <EditTransactionModal
-        transaction={editTarget}
-        isPending={updatePending}
-        availableTags={availableTags}
-        onSave={handleSave}
-        onClose={() => setEditTarget(null)}
-      />
+      {editTarget && (
+        <EditTransactionModal
+          key={editTarget.id}
+          transaction={editTarget}
+          isPending={updatePending}
+          availableTags={availableTags}
+          onSave={handleSave}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
       <DeleteConfirmDialog
         transaction={deleteTarget}
         isPending={deletePending}
@@ -319,8 +521,17 @@ export default function Transactions() {
       />
       {showImport && (
         <CSVUploadModal
-          onImport={importTransactions}
           onClose={() => setShowImport(false)}
+        />
+      )}
+      {bulkChange && savedTx && (
+        <BulkApplyDialog
+          transaction={savedTx}
+          similarTransactions={similarTxs}
+          change={bulkChange}
+          isPending={bulkPending}
+          onConfirm={handleBulkConfirm}
+          onClose={() => setBulkChange(null)}
         />
       )}
     </div>

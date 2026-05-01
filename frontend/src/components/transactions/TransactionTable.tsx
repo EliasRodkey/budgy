@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { tagPillStyle } from "@/lib/tagColors";
 import type { Transaction } from "@/types";
 import { Flag, Pencil, Trash2 } from "lucide-react";
 
@@ -20,6 +21,7 @@ function RowSkeleton() {
       <td className="py-3 px-4 text-right"><Skeleton className="h-4 w-20 ml-auto" /></td>
       <td className="py-3 px-4"><Skeleton className="h-5 w-28 rounded-full" /></td>
       <td className="py-3 px-4"><Skeleton className="h-5 w-24 rounded-full" /></td>
+      <td className="py-3 px-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
       <td className="py-3 px-4"><Skeleton className="h-4 w-6" /></td>
       <td className="py-3 px-4"><Skeleton className="h-7 w-16" /></td>
     </tr>
@@ -37,11 +39,11 @@ function TransactionRow({ tx, onEdit, onDelete }: RowProps) {
   return (
     <tr className="border-b border-border hover:bg-muted/30 transition-colors group">
       <td className="py-3 px-4 text-sm text-muted-foreground whitespace-nowrap">
-        {formatDate(tx.date)}
+        {formatDate(tx.authorizedDate)}
       </td>
       <td className="py-3 px-4 max-w-xs">
         <p className="text-sm font-medium truncate">{tx.description}</p>
-        <p className="text-xs text-muted-foreground truncate">{tx.merchant}</p>
+        <p className="text-xs text-muted-foreground truncate">{tx.accountName}</p>
       </td>
       <td className={`py-3 px-4 text-sm font-medium tabular-nums text-right whitespace-nowrap ${isExpense ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
         {formatCurrency(tx.amount)}
@@ -57,7 +59,20 @@ function TransactionRow({ tx, onEdit, onDelete }: RowProps) {
         </span>
       </td>
       <td className="py-3 px-4">
-        {tx.isFlagged && (
+        <div className="flex flex-wrap gap-1">
+          {tx.tags?.map((tag) => (
+            <span
+              key={tag}
+              style={tagPillStyle(tag)}
+              className="inline-block rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      </td>
+      <td className="py-3 px-4">
+        {tx.status === "Unchecked" && (
           <Flag size={14} className="text-amber-500" aria-label="Flagged" />
         )}
       </td>
@@ -87,6 +102,7 @@ export function TransactionTable({ transactions, isLoading, onEdit, onDelete }: 
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground text-right">Amount</th>
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Category</th>
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Detailed Category</th>
+              <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Tags</th>
               <th className="py-3 px-4 text-xs font-medium text-muted-foreground">Flag</th>
               <th className="py-3 px-4" />
             </tr>
@@ -95,7 +111,7 @@ export function TransactionTable({ transactions, isLoading, onEdit, onDelete }: 
             {isLoading && Array.from({ length: 8 }).map((_, i) => <RowSkeleton key={i} />)}
             {!isLoading && transactions.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-16 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="py-16 text-center text-sm text-muted-foreground">
                   No transactions match your filters.
                 </td>
               </tr>

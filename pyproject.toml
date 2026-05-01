@@ -7,5 +7,13 @@ name = "budgy"
 version = "2.0.0"
 description = "budget managing application"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
-license = {text = "MIT"}
-dependencies = ["requests", "numpy", "sqlalchemy"]  # List your package dependencies here
+license = {text = "All Rights Reserved"}
+dependencies = [
+    "requests", 
+    "numpy", 
+    "sqlalchemy", 
+    "fastapi", 
+    "uvicorn", 
+    "pleasant_logger", 
+    "pleasant_database"
+]

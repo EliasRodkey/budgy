@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  bulkUpdateTransactions,
   deleteTransaction,
   getAvailableTags,
+  getSimilarTransactions,
   getTransactions,
   importTransactions,
   updateTransaction,
+  type BulkUpdatePayload,
   type TransactionFilters,
 } from "../api/transactions";
 
@@ -22,6 +25,7 @@ export function useUpdateTransaction() {
       updateTransaction(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["availableTags"] });
     },
   });
 }
@@ -48,7 +52,32 @@ export function useImportTransactions() {
 
 export function useAvailableTags() {
   return useQuery({
-    queryKey: ["transactions", "tags"],
+    queryKey: ["availableTags"],
     queryFn: getAvailableTags,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSimilarTransactions(
+  description: string,
+  accountName: string,
+  excludeId?: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["transactions", "similar", description, accountName, excludeId],
+    queryFn: () => getSimilarTransactions(description, accountName, excludeId),
+    enabled: enabled && !!description && !!accountName,
+  });
+}
+
+export function useBulkUpdateTransactions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: BulkUpdatePayload) => bulkUpdateTransactions(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["availableTags"] });
+    },
   });
 }

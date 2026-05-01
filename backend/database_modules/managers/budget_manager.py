@@ -1,6 +1,6 @@
 #!python3
 """
-budgy.database_modules.managers.budget_manager.py -
+backend.database_modules.managers.budget_manager.py -
 Module containing the class-based manager for the budgets table.
 
 Classes:
@@ -17,11 +17,10 @@ from pleasant_database import DatabaseIntegrityError, DatabaseFile, DatabaseMana
 from backend.database_modules.managers.common import DB_FILE, DuplicateError
 from backend.database_modules.models.budgets import BudgetsTable, budget_columns
 from backend.utils.analysis_utils import PrimaryCategories
-from backend.utils.file_utils import LoggingExtras
 
 # initialize module logger
-import logging
-logger = logging.getLogger(__name__)
+from pleasant_loggers import get_logger
+logger = get_logger(__name__)
 
 
 class BudgetsTableManager(DatabaseManager):
@@ -144,9 +143,15 @@ class BudgetsTableManager(DatabaseManager):
             return False
 
 
+    def get_all(self) -> list:
+        return self.fetch_all_items()
+
+    def delete_by_id(self, budget_id: int) -> None:
+        self.delete_item(budget_id)
+
     def _uq_hash_exists(self, uq_hash: str) -> bool:
         """Checks to see if the given hash already exists in the budgets table."""
-        logger.debug(f"Checking if budget hash {uq_hash} already exists", extra={LoggingExtras.UQ_HASH: uq_hash})
+        logger.debug(f"Checking if budget hash {uq_hash} already exists", uq_hash=uq_hash)
 
         return_item = self.fetch_items_by_attribute(uq_hash=uq_hash)
         return bool(return_item)
