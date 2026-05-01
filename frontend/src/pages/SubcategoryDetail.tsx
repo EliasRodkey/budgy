@@ -1,9 +1,20 @@
+import { DateRangeSelector } from "@/components/categories/DateRangeSelector";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSubcategoryDetail } from "@/hooks/useCategories";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatMonth } from "@/lib/formatters";
+import { useDateRangeStore } from "@/store/dateRange";
 import { AlertCircle, ChevronLeft, RefreshCw } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
@@ -23,12 +34,23 @@ function MetricCardSkeleton() {
   );
 }
 
+function SpendTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-sm">
+      <p className="font-medium">{label ? formatMonth(label) : ""}</p>
+      <p className="text-muted-foreground">{formatCurrency(payload[0].value)}</p>
+    </div>
+  );
+}
+
 export default function SubcategoryDetail() {
   const { primaryCategory, detailedCategory } = useParams<{
     primaryCategory: string;
     detailedCategory: string;
   }>();
   const navigate = useNavigate();
+  const { month, year } = useDateRangeStore();
 
   const decodedPrimary = primaryCategory ? decodeURIComponent(primaryCategory) : "";
   const decodedDetailed = detailedCategory ? decodeURIComponent(detailedCategory) : "";
@@ -36,6 +58,8 @@ export default function SubcategoryDetail() {
   const { data, isLoading, isError, refetch } = useSubcategoryDetail(
     decodedPrimary,
     decodedDetailed,
+    month,
+    year,
   );
 
   return (
@@ -49,8 +73,13 @@ export default function SubcategoryDetail() {
           <ChevronLeft size={15} />
           {decodedPrimary}
         </button>
-        <h1 className="text-2xl font-semibold">{decodedDetailed}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{decodedPrimary}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">{decodedDetailed}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{decodedPrimary}</p>
+          </div>
+          <DateRangeSelector />
+        </div>
       </div>
 
       {isError && (
@@ -84,6 +113,51 @@ export default function SubcategoryDetail() {
           </>
         ) : null}
       </div>
+
+      {/* Spend over time */}
+      {(isLoading || (data && data.spendOverTime.length > 0)) && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-medium text-muted-foreground mb-4">Spend Over Time</h2>
+          {isLoading ? (
+            <Skeleton className="h-44 w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart
+                data={data?.spendOverTime}
+                margin={{ top: 4, right: 8, bottom: 0, left: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis
+                  dataKey="month"
+                  tickFormatter={formatMonth}
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tickFormatter={(v: number) =>
+                    v >= 1000 ? `$${(v / 1000).toFixed(1).replace(/\.0$/, "")}k` : `$${v}`
+                  }
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={56}
+                  allowDecimals={false}
+                />
+                <Tooltip content={<SpendTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="amount"
+                  stroke="var(--primary)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "var(--primary)" }}
+                  activeDot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
 
       {/* Top vendors */}
       {(isLoading || (data && data.topVendors.length > 0)) && (

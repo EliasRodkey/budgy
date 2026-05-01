@@ -136,6 +136,56 @@ def _build_monthly_summary(row, month_str: str, session: DatabaseSession) -> Mon
     )
 
 
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _build_yearly_summary(rows: list, year_str: str, session: DatabaseSession) -> MonthlySummaryResponse:
+    """Aggregate multiple monthly summary rows into a yearly MonthlySummaryResponse."""
+    most_recent_row = max(rows, key=lambda r: (r.year, r.month))
+
+    budget_limits: dict[str, float] = {}
+    if most_recent_row.budget_id is not None:
+        budget_row = session.budgets.fetch_item_by_id(most_recent_row.budget_id)
+        if budget_row:
+            for snake_key, display_name in zip(_SNAKE_KEYS, _DISPLAY_NAMES):
+                monthly_val = getattr(budget_row, snake_key, 0.0) or 0.0
+                budget_limits[display_name] = monthly_val * 12  # annualize
+
+    by_category: list[CategorySpendResponse] = []
+    for cat in PrimaryCategories:
+        snake = cat.as_snake_case()
+        amount = sum(abs(getattr(r, f"sum_{snake}", 0.0) or 0.0) for r in rows)
+        count = sum(getattr(r, f"count_{snake}", 0) or 0 for r in rows)
+        mean = amount / count if count > 0 else 0.0
+        limit = budget_limits.get(cat.value)
+        pct = (amount / limit * 100) if limit else None
+        by_category.append(CategorySpendResponse(
+            category_id=cat.value,
+            category_name=cat.value,
+            amount=amount,
+            transaction_count=count,
+            avg_per_transaction=mean,
+            monthly_limit=limit,
+            percent_of_limit=pct,
+            is_over_budget=pct is not None and pct > 100,
+        ))
+
+    _NON_SPENDING = {"Income", "Transfers", "Investments"}
+    total_income = sum(getattr(r, "sum_income", 0.0) or 0.0 for r in rows)
+    total_expenses = sum(
+        sum(abs(getattr(r, f"sum_{cat.as_snake_case()}", 0.0) or 0.0) for r in rows)
+        for cat in PrimaryCategories
+        if cat.value not in _NON_SPENDING
+    )
+
+    return MonthlySummaryResponse(
+        month=year_str,
+        total_income=total_income,
+        total_expenses=total_expenses,
+        net=total_income - total_expenses,
+        by_category=by_category,
+    )
+
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/dirty", response_model=DirtyStatusResponse)
@@ -168,6 +218,33 @@ async def recompute_summaries(background_tasks: BackgroundTasks) -> RecomputeRes
     return RecomputeResponse(
         recomputed=[DirtyMonth(month=m, year=y) for m, y in dirty_months]
     )
+
+
+@router.get("/years")
+async def get_available_years() -> dict:
+    """Returns list of years that have at least one monthly summary."""
+    db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
+    with DatabaseSession(db_file) as session:
+        rows = session.summaries.fetch_all_items()
+    years = sorted(set(r.year for r in rows))
+    return {"years": years}
+
+
+@router.get("/year/{year}")
+async def get_yearly_summary(year: int) -> dict:
+    """Returns aggregated summary for an entire calendar year."""
+    now = datetime.now()
+    if year < 2000 or year > now.year:
+        raise HTTPException(status_code=422, detail=f"year must be between 2000 and {now.year}")
+
+    db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
+    with DatabaseSession(db_file) as session:
+        rows = [r for r in session.summaries.fetch_all_items() if r.year == year]
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"No data found for year {year}")
+        summary = _build_yearly_summary(rows, str(year), session)
+
+    return {"data": summary.model_dump(by_alias=True)}
 
 
 @router.get("/{month_str}")

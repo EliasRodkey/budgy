@@ -22,25 +22,25 @@ export function useCategories() {
   });
 }
 
-export function useCategoryOverview(month: string) {
+export function useCategoryOverview(month: number | null, year: number) {
   return useQuery({
-    queryKey: ["categories", "overview", month],
-    queryFn: () => getCategoryOverview(month),
+    queryKey: ["categories", "overview", month, year],
+    queryFn: () => getCategoryOverview(month, year),
   });
 }
 
-export function useCategoryDetail(primaryCategory: string) {
+export function useCategoryDetail(primaryCategory: string, month: number | null, year: number) {
   return useQuery({
-    queryKey: ["categories", "detail", primaryCategory],
-    queryFn: () => getCategoryDetail(primaryCategory),
+    queryKey: ["categories", "detail", primaryCategory, month, year],
+    queryFn: () => getCategoryDetail(primaryCategory, month, year),
     enabled: !!primaryCategory,
   });
 }
 
-export function useSubcategoryDetail(primaryCategory: string, detailedCategory: string) {
+export function useSubcategoryDetail(primaryCategory: string, detailedCategory: string, month: number | null, year: number) {
   return useQuery({
-    queryKey: ["categories", "subcategory", primaryCategory, detailedCategory],
-    queryFn: () => getSubcategoryDetail(primaryCategory, detailedCategory),
+    queryKey: ["categories", "subcategory", primaryCategory, detailedCategory, month, year],
+    queryFn: () => getSubcategoryDetail(primaryCategory, detailedCategory, month, year),
     enabled: !!primaryCategory && !!detailedCategory,
   });
 }

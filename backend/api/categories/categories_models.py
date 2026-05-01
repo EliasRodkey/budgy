@@ -78,5 +78,6 @@ class SubcategoryDetailResponse(BaseModel):
     detailed_category: str
     transaction_count: int
     avg_transaction_size: float
+    spend_over_time: list[SpendOverTimePoint] = []
     top_vendors: list[VendorItem]
     transactions: list[TransactionItem]

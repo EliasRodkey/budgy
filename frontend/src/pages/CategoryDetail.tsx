@@ -1,3 +1,4 @@
+import { DateRangeSelector } from "@/components/categories/DateRangeSelector";
 import { DetailCategoryDonut } from "@/components/categories/DetailCategoryDonut";
 import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDialog";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
@@ -7,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCategoryDetail } from "@/hooks/useCategories";
 import { useAvailableTags, useDeleteTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
 import { CATEGORY_COLORS } from "@/lib/categoryColors";
-import { currentMonth, formatCurrency, formatMonth } from "@/lib/formatters";
+import { formatCurrency, formatMonth } from "@/lib/formatters";
+import { useDateRangeStore } from "@/store/dateRange";
 import type { Transaction } from "@/types";
 import {
   AlertCircle,
@@ -106,8 +108,9 @@ export default function CategoryDetail() {
   const { primaryCategory } = useParams<{ primaryCategory: string }>();
   const navigate = useNavigate();
   const decoded = primaryCategory ? decodeURIComponent(primaryCategory) : "";
+  const { month, year } = useDateRangeStore();
 
-  const { data, isLoading, isError, refetch } = useCategoryDetail(decoded);
+  const { data, isLoading, isError, refetch } = useCategoryDetail(decoded, month, year);
 
   // Transactions state
   const [page, setPage] = useState(0);
@@ -144,8 +147,17 @@ export default function CategoryDetail() {
           <ChevronLeft size={15} />
           Categories
         </button>
-        <h1 className="text-2xl font-semibold">{decoded}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{formatMonth(currentMonth())}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">{decoded}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {month !== null
+                ? formatMonth(`${year}-${String(month).padStart(2, "0")}`)
+                : String(year)}
+            </p>
+          </div>
+          <DateRangeSelector />
+        </div>
       </div>
 
       {isError && (
@@ -254,7 +266,7 @@ export default function CategoryDetail() {
           <>
             <AnalyticCard
               icon={<TrendingDown size={14} />}
-              label="Avg spend (this year)"
+              label="Avg spend (selected year)"
               value={formatCurrency(data.yearAvgSpend)}
             />
             <AnalyticCard

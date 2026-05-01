@@ -33,3 +33,10 @@ export async function recomputeSummaries(): Promise<void> {
   const res = await fetch("/api/summaries/recompute", { method: "POST" });
   if (!res.ok) throw new Error("Failed to trigger summary recompute");
 }
+
+export async function getAvailableYears(): Promise<number[]> {
+  const res = await fetch("/api/summaries/years");
+  if (!res.ok) throw new Error("Failed to fetch available years");
+  const json = await res.json();
+  return json.years as number[];
+}

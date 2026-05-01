@@ -43,6 +43,7 @@ export interface SubcategoryDetailData {
   detailedCategory: string;
   transactionCount: number;
   avgTransactionSize: number;
+  spendOverTime: { month: string; amount: number }[];
   topVendors: { name: string; amount: number; count: number }[];
   transactions: Transaction[];
 }
@@ -97,8 +98,13 @@ export async function getCategories(): Promise<Category[]> {
   return json.data as Category[];
 }
 
-export async function getCategoryOverview(_month: string): Promise<CategorySpend[]> {
+export async function getCategoryOverview(month: number | null, year: number): Promise<CategorySpend[]> {
+  const monthStr = month !== null
+    ? `${year}-${String(month).padStart(2, "0")}`
+    : null;
+
   if (USE_MOCK) {
+    const _month = monthStr ?? `${year}`;
     // Resolve the active budget: assignment with most recent effectiveFrom <= _month
     const validAssignments = mockBudgetAssignments
       .filter((a) => a.effectiveFrom <= _month)
@@ -172,13 +178,16 @@ export async function getCategoryOverview(_month: string): Promise<CategorySpend
       .sort((a, b) => b.amount - a.amount);
   }
 
-  const res = await fetch(`/api/summaries/${_month}`);
+  const url = monthStr
+    ? `/api/summaries/${monthStr}`
+    : `/api/summaries/year/${year}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch category overview");
   const json = await res.json();
   return (json.data as MonthlySummary).byCategory.filter((c) => c.transactionCount > 0);
 }
 
-export async function getCategoryDetail(primaryCategory: string): Promise<CategoryDetailData> {
+export async function getCategoryDetail(primaryCategory: string, month: number | null, year: number): Promise<CategoryDetailData> {
   if (USE_MOCK) {
     const dataset = mockAnalyticsSeries.datasets.find(
       (d) => d.categoryName === primaryCategory,
@@ -253,7 +262,10 @@ export async function getCategoryDetail(primaryCategory: string): Promise<Catego
     };
   }
 
-  const res = await fetch(`/api/categories/${encodeURIComponent(primaryCategory)}`);
+  const query = month !== null
+    ? `?month=${year}-${String(month).padStart(2, "0")}`
+    : `?year=${year}`;
+  const res = await fetch(`/api/categories/${encodeURIComponent(primaryCategory)}${query}`);
   if (!res.ok) throw new Error("Failed to fetch category detail");
   const json = await res.json();
   return json.data as CategoryDetailData;
@@ -262,6 +274,8 @@ export async function getCategoryDetail(primaryCategory: string): Promise<Catego
 export async function getSubcategoryDetail(
   primaryCategory: string,
   detailedCategory: string,
+  month: number | null,
+  year: number,
 ): Promise<SubcategoryDetailData> {
   if (USE_MOCK) {
     const transactions = mockTransactions.filter(
@@ -303,8 +317,11 @@ export async function getSubcategoryDetail(
     };
   }
 
+  const query = month !== null
+    ? `?month=${year}-${String(month).padStart(2, "0")}`
+    : `?year=${year}`;
   const res = await fetch(
-    `/api/categories/${encodeURIComponent(primaryCategory)}/${encodeURIComponent(detailedCategory)}`
+    `/api/categories/${encodeURIComponent(primaryCategory)}/${encodeURIComponent(detailedCategory)}${query}`
   );
   if (!res.ok) throw new Error("Failed to fetch subcategory detail");
   const json = await res.json();

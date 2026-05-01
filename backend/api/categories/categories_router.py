@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pleasant_database import DatabaseFile
 
 from backend.api.categories.categories_models import (
@@ -25,6 +25,7 @@ from backend.api.categories.categories_models import (
     VendorItem,
 )
 from backend.database_modules.db_session import DatabaseSession
+from backend.database_modules.managers.common import convert_datetime_nums_to_range
 from backend.database_modules.models.transactions import TransactionsTable
 from backend.utils.analysis_utils import CATEGORY_MAPPING, DetailedCategories, PrimaryCategories
 from backend.utils.api_utils import RouterPrefixes
@@ -161,6 +162,8 @@ def get_categories() -> dict:
 async def get_subcategory_detail(
     primary_category: str,
     detailed_category: str,
+    month: Optional[str] = Query(None),
+    year: Optional[int] = Query(None),
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
     """Returns aggregate and transaction data for a specific subcategory."""
@@ -169,11 +172,31 @@ async def get_subcategory_detail(
     if detailed_category not in _VALID_DETAILED:
         raise HTTPException(status_code=404, detail=f"Unknown detailed category: {detailed_category!r}")
 
-    db_filters = {
+    # Parse selected period
+    now = datetime.now()
+    if month is not None:
+        try:
+            dt = datetime.strptime(month, "%Y-%m")
+            sel_month: Optional[int] = dt.month
+            sel_year: int = dt.year
+        except ValueError:
+            raise HTTPException(status_code=422, detail="month must be in YYYY-MM format")
+    elif year is not None:
+        sel_month = None
+        sel_year = year
+    else:
+        sel_month = None
+        sel_year = now.year
+
+    db_filters: dict = {
         "primary_category": ("==", primary_category),
         "detailed_category": ("==", detailed_category),
         "exclude": ("==", False),
     }
+    if month is not None or year is not None:
+        period_start, period_end = convert_datetime_nums_to_range(sel_month, sel_year)
+        db_filters["authorized_date"] = ("between", (period_start, period_end))
+
     result = db.transactions.query(
         columns=db.transactions.return_columns,
         filters=db_filters,
@@ -199,11 +222,23 @@ async def get_subcategory_detail(
 
     transactions = [_orm_row_to_transaction_item(r) for r in rows]
 
+    # Spend over time — always all-time regardless of selected period
+    dc_snake = DetailedCategories(detailed_category).as_snake_case()
+    all_summary_rows = sorted(db.summaries.fetch_all_items(), key=lambda r: (r.year, r.month))
+    spend_over_time = [
+        SpendOverTimePoint(
+            month=f"{r.year}-{r.month:02d}",
+            amount=abs(getattr(r, f"sum_{dc_snake}", 0.0) or 0.0),
+        )
+        for r in all_summary_rows
+    ]
+
     response = SubcategoryDetailResponse(
         primary_category=primary_category,
         detailed_category=detailed_category,
         transaction_count=transaction_count,
         avg_transaction_size=avg_transaction_size,
+        spend_over_time=spend_over_time,
         top_vendors=top_vendors,
         transactions=transactions,
     )
@@ -213,9 +248,11 @@ async def get_subcategory_detail(
 @router.get("/{primary_category}")
 async def get_category_detail(
     primary_category: str,
+    month: Optional[str] = Query(None),
+    year: Optional[int] = Query(None),
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
-    """Returns aggregate detail for a primary category including spend over time and current-month data."""
+    """Returns aggregate detail for a primary category including spend over time and selected-period data."""
     if primary_category not in _VALID_PRIMARY:
         raise HTTPException(status_code=404, detail=f"Unknown primary category: {primary_category!r}")
 
@@ -243,49 +280,67 @@ async def get_category_detail(
     # All-time subcategory breakdown
     subcategories = _build_subcategory_spend(all_rows, primary_cat_enum, None)
 
-    # Current month
+    # Parse selected period (default: current month)
     now = datetime.now()
-    current_year, current_month = now.year, now.month
-    current_rows = [r for r in all_rows if r.year == current_year and r.month == current_month]
-    current_row = current_rows[0] if current_rows else None
+    if month is not None:
+        try:
+            dt = datetime.strptime(month, "%Y-%m")
+            sel_month: Optional[int] = dt.month
+            sel_year: int = dt.year
+        except ValueError:
+            raise HTTPException(status_code=422, detail="month must be in YYYY-MM format")
+    elif year is not None:
+        sel_month = None
+        sel_year = year
+    else:
+        sel_month = now.month
+        sel_year = now.year
 
-    current_month_total = abs(getattr(current_row, f"sum_{snake}", 0.0) or 0.0) if current_row else 0.0
-    current_month_tx_count = getattr(current_row, f"count_{snake}", 0) or 0 if current_row else 0
-    current_month_subcategories = (
-        _build_subcategory_spend_single_row(current_row, primary_cat_enum, None)
-        if current_row else []
-    )
+    period_start, period_end = convert_datetime_nums_to_range(sel_month, sel_year)
 
-    # Budget for current month
+    # Selected period rows
+    period_rows = [
+        r for r in all_rows
+        if r.year == sel_year and (sel_month is None or r.month == sel_month)
+    ]
+
+    if sel_month is None:
+        # Year view: aggregate across all months in the year
+        current_month_total = sum(abs(getattr(r, f"sum_{snake}", 0.0) or 0.0) for r in period_rows)
+        current_month_tx_count = sum(getattr(r, f"count_{snake}", 0) or 0 for r in period_rows)
+        current_month_subcategories = _build_subcategory_spend(period_rows, primary_cat_enum, None)
+    else:
+        period_row = period_rows[0] if period_rows else None
+        current_month_total = abs(getattr(period_row, f"sum_{snake}", 0.0) or 0.0) if period_row else 0.0
+        current_month_tx_count = getattr(period_row, f"count_{snake}", 0) or 0 if period_row else 0
+        current_month_subcategories = (
+            _build_subcategory_spend_single_row(period_row, primary_cat_enum, None)
+            if period_row else []
+        )
+
+    # Budget for selected period (annualize if year view)
+    budget_source_row = max(period_rows, key=lambda r: (r.year, r.month)) if period_rows else None
     budget: Optional[float] = None
-    if current_row and current_row.budget_id is not None:
-        budget_row = db.budgets.fetch_item_by_id(current_row.budget_id)
+    if budget_source_row and budget_source_row.budget_id is not None:
+        budget_row = db.budgets.fetch_item_by_id(budget_source_row.budget_id)
         if budget_row:
-            budget = getattr(budget_row, snake, None)
+            monthly_budget = getattr(budget_row, snake, None)
+            if monthly_budget:
+                budget = monthly_budget * 12 if sel_month is None else monthly_budget
 
-    # Year average: monthly totals for rows in the current year
-    year_rows = [r for r in all_rows if r.year == current_year]
+    # Year average: monthly totals for the selected year
+    year_rows = [r for r in all_rows if r.year == sel_year]
     if year_rows:
         year_monthly_totals = [abs(getattr(r, f"sum_{snake}", 0.0) or 0.0) for r in year_rows]
         year_avg_spend = sum(year_monthly_totals) / len(year_monthly_totals)
     else:
         year_avg_spend = 0.0
 
-    # Current month transactions
-    month_start = datetime(current_year, current_month, 1)
-    if current_month == 12:
-        month_end = datetime(current_year + 1, 1, 1).replace(
-            hour=23, minute=59, second=59
-        )
-    else:
-        month_end = datetime(current_year, current_month + 1, 1).replace(
-            hour=23, minute=59, second=59
-        )
-
+    # Transactions for selected period
     tx_filters = {
         "primary_category": ("==", primary_category),
         "exclude": ("==", False),
-        "authorized_date": ("between", (month_start, month_end)),
+        "authorized_date": ("between", (period_start, period_end)),
     }
     tx_result = db.transactions.query(
         columns=db.transactions.return_columns,

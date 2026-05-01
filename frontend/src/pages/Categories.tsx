@@ -1,17 +1,18 @@
 import { CategoryCard, CategoryCardSkeleton } from "@/components/categories/CategoryCard";
 import { CategoryDonut } from "@/components/categories/CategoryDonut";
+import { DateRangeSelector } from "@/components/categories/DateRangeSelector";
 import { Button } from "@/components/ui/button";
 import { useCategoryOverview } from "@/hooks/useCategories";
 import { CATEGORY_COLORS, NON_SPENDING_CATEGORIES } from "@/lib/categoryColors";
-import { currentMonth, formatMonth } from "@/lib/formatters";
+import { formatMonth } from "@/lib/formatters";
+import { useDateRangeStore } from "@/store/dateRange";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const MONTH = currentMonth();
-
 export default function Categories() {
   const navigate = useNavigate();
-  const { data: categories, isLoading, isError, refetch } = useCategoryOverview(MONTH);
+  const { month, year } = useDateRangeStore();
+  const { data: categories, isLoading, isError, refetch } = useCategoryOverview(month, year);
 
   const spending = (categories ?? [])
     .filter((c) => !NON_SPENDING_CATEGORIES.has(c.categoryName))
@@ -27,9 +28,16 @@ export default function Categories() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold">Categories</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{formatMonth(MONTH)}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Categories</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {month !== null
+              ? formatMonth(`${year}-${String(month).padStart(2, "0")}`)
+              : String(year)}
+          </p>
+        </div>
+        <DateRangeSelector />
       </div>
 
       {isError && (
