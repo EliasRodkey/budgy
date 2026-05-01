@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { importTransactions, pollJobUntilDone, type ImportResult, type UploadJobResponse } from "@/api/transactions";
-import { CheckCircle, Upload, X, XCircle } from "lucide-react";
+import { CheckCircle, ChevronDown, Upload, X, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import { useRef, useState } from "react";
 
@@ -22,6 +22,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [formatOpen, setFormatOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -84,7 +85,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
           {stage === "pick" && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Select a CSV file to import transactions. You'll get a preview before confirming.
+                Select a CSV file to import transactions. The AI will analyze your columns and categories before import.
               </p>
               {parseError && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
@@ -106,6 +107,94 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
                 className="hidden"
                 onChange={handleFileChange}
               />
+
+              {/* Expected Format collapsible */}
+              <div className="rounded-lg border border-border overflow-hidden">
+                <button
+                  onClick={() => setFormatOpen((o) => !o)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/30 transition-colors"
+                >
+                  Expected Format
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${formatOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {formatOpen && (
+                  <div className="px-4 pb-4 space-y-4 border-t border-border">
+                    <div className="space-y-2 pt-3">
+                      <p className="text-xs font-medium text-foreground">Required columns</p>
+                      <div className="rounded-md border border-border overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-muted/30 border-b border-border">
+                              <th className="py-2 px-3 text-left font-medium text-muted-foreground">Column</th>
+                              <th className="py-2 px-3 text-left font-medium text-muted-foreground">Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-b border-border">
+                              <td className="py-2 px-3 font-medium">Primary Category</td>
+                              <td className="py-2 px-3 text-muted-foreground">text</td>
+                            </tr>
+                            <tr className="border-b border-border">
+                              <td className="py-2 px-3 font-medium">Description</td>
+                              <td className="py-2 px-3 text-muted-foreground">text</td>
+                            </tr>
+                            <tr className="border-b border-border">
+                              <td className="py-2 px-3 font-medium">Date</td>
+                              <td className="py-2 px-3 text-muted-foreground">YYYY-MM-DD or MM/DD/YYYY</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-3 font-medium">Amount</td>
+                              <td className="py-2 px-3 text-muted-foreground">number (negative = expense, e.g. -24.99)</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-foreground">Optional columns</p>
+                      <p className="text-xs text-muted-foreground">
+                        Detailed Category, Account Name, Authorized Date, Status, Notes, Tags
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-foreground">Amount convention</p>
+                      <p className="text-xs text-muted-foreground">
+                        Negative values are expenses (e.g. <span className="font-mono">-87.43</span>).
+                        Positive values are income (e.g. <span className="font-mono">3800.00</span>).
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-foreground">Example row</p>
+                      <div className="rounded-md border border-border overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-muted/30 border-b border-border">
+                              <th className="py-2 px-3 text-left font-medium text-muted-foreground whitespace-nowrap">Primary Category</th>
+                              <th className="py-2 px-3 text-left font-medium text-muted-foreground whitespace-nowrap">Description</th>
+                              <th className="py-2 px-3 text-left font-medium text-muted-foreground whitespace-nowrap">Date</th>
+                              <th className="py-2 px-3 text-left font-medium text-muted-foreground whitespace-nowrap">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="py-2 px-3 whitespace-nowrap">Food &amp; drink</td>
+                              <td className="py-2 px-3 whitespace-nowrap">Costco Wholesale</td>
+                              <td className="py-2 px-3 whitespace-nowrap font-mono">2024-10-15</td>
+                              <td className="py-2 px-3 whitespace-nowrap font-mono">-143.27</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
