@@ -7,8 +7,11 @@ import {
   Wallet,
   ChevronLeft,
   ChevronRight,
+  FlaskConical,
 } from 'lucide-react'
 import { useSidebarStore } from '@/store/sidebar'
+import { useMockMode } from '@/store/mockMode'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -21,6 +24,13 @@ const navItems = [
 
 export default function Sidebar() {
   const { collapsed, toggleCollapsed } = useSidebarStore()
+  const { isMockMode, toggleMockMode } = useMockMode()
+  const queryClient = useQueryClient()
+
+  function handleMockToggle() {
+    toggleMockMode()
+    queryClient.invalidateQueries()
+  }
 
   return (
     <aside
@@ -66,6 +76,39 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Demo Mode toggle */}
+      <div className={cn('px-2 py-3 border-t border-sidebar-border', collapsed && 'flex justify-center')}>
+        <button
+          type="button"
+          onClick={handleMockToggle}
+          title={collapsed ? (isMockMode ? 'Demo Mode ON' : 'Demo Mode OFF') : undefined}
+          className={cn(
+            'flex items-center gap-2.5 w-full px-2 py-2 rounded-md text-sm transition-colors',
+            isMockMode
+              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+              : 'text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            collapsed && 'justify-center w-auto',
+          )}
+        >
+          <FlaskConical size={16} className="shrink-0" />
+          {!collapsed && (
+            <span className="flex-1 text-left text-xs font-medium">Demo Mode</span>
+          )}
+          {!collapsed && (
+            <span
+              className={cn(
+                'text-xs rounded-full px-1.5 py-0.5 font-medium',
+                isMockMode
+                  ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {isMockMode ? 'ON' : 'OFF'}
+            </span>
+          )}
+        </button>
+      </div>
     </aside>
   )
 }

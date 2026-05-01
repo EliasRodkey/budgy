@@ -1,11 +1,13 @@
 import type { Budget, BudgetAssignment } from "../types";
+import { mockBudgets, mockBudgetAssignments } from "../__tests__/fixtures";
+import { useMockMode } from "../store/mockMode";
 
-const USE_MOCK = false;
+const isMock = () => useMockMode.getState().isMockMode;
 
 // ─── Budgets ──────────────────────────────────────────────────────────────────
 
 export async function getBudgets(): Promise<Budget[]> {
-  if (USE_MOCK) throw new Error("Mock disabled");
+  if (isMock()) return [...mockBudgets];
   const res = await fetch("/api/budgets");
   if (!res.ok) throw new Error("Failed to fetch budgets");
   const json = await res.json();
@@ -15,7 +17,7 @@ export async function getBudgets(): Promise<Budget[]> {
 export async function createBudget(
   payload: Omit<Budget, "id" | "dateCreated">,
 ): Promise<Budget> {
-  if (USE_MOCK) throw new Error("Mock disabled");
+  if (isMock()) throw new Error("Mock disabled");
   const res = await fetch("/api/budgets", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -30,7 +32,7 @@ export async function updateBudget(
   id: number,
   payload: Partial<Omit<Budget, "id" | "dateCreated">>,
 ): Promise<Budget> {
-  if (USE_MOCK) throw new Error("Mock disabled");
+  if (isMock()) throw new Error("Mock disabled");
   const res = await fetch(`/api/budgets/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -42,7 +44,7 @@ export async function updateBudget(
 }
 
 export async function deleteBudget(id: number): Promise<void> {
-  if (USE_MOCK) throw new Error("Mock disabled");
+  if (isMock()) throw new Error("Mock disabled");
   const res = await fetch(`/api/budgets/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete budget");
 }
@@ -50,7 +52,7 @@ export async function deleteBudget(id: number): Promise<void> {
 // ─── Budget Assignments ───────────────────────────────────────────────────────
 
 export async function getBudgetAssignments(): Promise<BudgetAssignment[]> {
-  if (USE_MOCK) throw new Error("Mock disabled");
+  if (isMock()) return [...mockBudgetAssignments];
   const res = await fetch("/api/budgets/assignments");
   if (!res.ok) throw new Error("Failed to fetch budget assignments");
   const json = await res.json();
@@ -60,7 +62,7 @@ export async function getBudgetAssignments(): Promise<BudgetAssignment[]> {
 export async function createBudgetAssignment(
   payload: Omit<BudgetAssignment, "id">,
 ): Promise<BudgetAssignment> {
-  if (USE_MOCK) throw new Error("Mock disabled");
+  if (isMock()) throw new Error("Mock disabled");
   const res = await fetch("/api/budgets/assignments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -72,7 +74,7 @@ export async function createBudgetAssignment(
 }
 
 export async function deleteBudgetAssignment(id: number): Promise<void> {
-  if (USE_MOCK) throw new Error("Mock disabled");
+  if (isMock()) throw new Error("Mock disabled");
   const res = await fetch(`/api/budgets/assignments/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete budget assignment");
 }

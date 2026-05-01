@@ -13,11 +13,13 @@ import {
   useTransactions,
   useUpdateTransaction,
 } from "@/hooks/useTransactions";
+import { useMockMode } from "@/store/mockMode";
 import { tagPillStyle } from "@/lib/tagColors";
 import type { Transaction } from "@/types";
-import { AlertCircle, ArrowUpDown, ChevronDown, RefreshCw, Upload, X } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ChevronDown, FlaskConical, RefreshCw, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface TagPickerProps {
   selected: string[];
@@ -247,6 +249,9 @@ export default function Transactions() {
   const { mutate: updateTx, isPending: updatePending } = useUpdateTransaction();
   const { mutate: deleteTx, isPending: deletePending } = useDeleteTransaction();
   const { mutate: bulkUpdate, isPending: bulkPending } = useBulkUpdateTransactions();
+
+  const { isMockMode, toggleMockMode } = useMockMode();
+  const queryClient = useQueryClient();
 
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
@@ -479,6 +484,35 @@ export default function Transactions() {
             <RefreshCw size={13} className="mr-1" />
             Retry
           </Button>
+        </div>
+      )}
+
+      {/* Empty state — no transactions, no active filters, not in demo mode */}
+      {!isLoading && !isError && !isMockMode && !hasActiveFilters && data?.total === 0 && (
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center space-y-4">
+          <div className="flex justify-center">
+            <Upload size={32} className="text-muted-foreground/50" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">No transactions yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Upload a CSV export from your bank to see your transactions here, or explore the app with sample data.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3">
+            <Button size="sm" onClick={() => setShowImport(true)}>
+              <Upload size={13} className="mr-1.5" />
+              Upload CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { toggleMockMode(); queryClient.invalidateQueries(); }}
+            >
+              <FlaskConical size={13} className="mr-1.5" />
+              Try Demo Mode
+            </Button>
+          </div>
         </div>
       )}
 

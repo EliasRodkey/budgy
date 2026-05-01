@@ -8,7 +8,8 @@ import {
   mockBudgetAssignments,
 } from "../__tests__/fixtures";
 
-const USE_MOCK = false;
+import { useMockMode } from "../store/mockMode";
+const isMock = () => useMockMode.getState().isMockMode;
 
 // ─── Category mapping (hierarchy for dropdowns/filters) ──────────────────────
 
@@ -88,7 +89,7 @@ function buildSubcategorySpend(
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export async function getCategories(): Promise<Category[]> {
-  if (USE_MOCK) {
+  if (isMock()) {
     return mockCategories;
   }
 
@@ -103,7 +104,7 @@ export async function getCategoryOverview(month: number | null, year: number): P
     ? `${year}-${String(month).padStart(2, "0")}`
     : null;
 
-  if (USE_MOCK) {
+  if (isMock()) {
     const _month = monthStr ?? `${year}`;
     // Resolve the active budget: assignment with most recent effectiveFrom <= _month
     const validAssignments = mockBudgetAssignments
@@ -188,7 +189,7 @@ export async function getCategoryOverview(month: number | null, year: number): P
 }
 
 export async function getCategoryDetail(primaryCategory: string, month: number | null, year: number): Promise<CategoryDetailData> {
-  if (USE_MOCK) {
+  if (isMock()) {
     const dataset = mockAnalyticsSeries.datasets.find(
       (d) => d.categoryName === primaryCategory,
     );
@@ -277,7 +278,7 @@ export async function getSubcategoryDetail(
   month: number | null,
   year: number,
 ): Promise<SubcategoryDetailData> {
-  if (USE_MOCK) {
+  if (isMock()) {
     const transactions = mockTransactions.filter(
       (t) =>
         t.primaryCategory === primaryCategory &&

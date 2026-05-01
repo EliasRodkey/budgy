@@ -9,8 +9,9 @@ import { useAssignCategory, useFlaggedTransactions } from "@/hooks/useFlaggedTra
 import { useSummary, useDirtyMonths } from "@/hooks/useSummary";
 import { currentMonth, formatMonth } from "@/lib/formatters";
 import { recomputeSummaries } from "@/api/summary";
+import { useMockMode } from "@/store/mockMode";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, FlaskConical, RefreshCw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -19,6 +20,7 @@ const MONTH = currentMonth();
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { isMockMode, toggleMockMode } = useMockMode();
   const [recomputing, setRecomputing] = useState(false);
   const recomputeStarted = useRef(false);
 
@@ -71,6 +73,35 @@ export default function Dashboard() {
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{formatMonth(MONTH)}</p>
       </div>
+
+      {/* Empty state — no data and not in demo mode */}
+      {!summaryLoading && !summaryError && !isMockMode && !summary && (
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center space-y-4">
+          <div className="flex justify-center">
+            <Upload size={32} className="text-muted-foreground/50" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">No transactions yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Upload a CSV export from your bank to get started, or try Demo Mode to explore with sample data.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3">
+            <Button size="sm" onClick={() => navigate("/transactions")}>
+              <Upload size={13} className="mr-1.5" />
+              Upload CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { toggleMockMode(); queryClient.invalidateQueries(); }}
+            >
+              <FlaskConical size={13} className="mr-1.5" />
+              Try Demo Mode
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Summary error state */}
       {summaryError && (

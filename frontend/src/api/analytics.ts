@@ -8,7 +8,8 @@ import {
 } from "../__tests__/fixtures";
 import { getEffectiveBudget } from "../lib/budget";
 
-const USE_MOCK = false;
+import { useMockMode } from "../store/mockMode";
+const isMock = () => useMockMode.getState().isMockMode;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ export const MOCK_DEFAULT_DATE_TO =
 export async function getAnalytics(
   filters: AnalyticsFilters,
 ): Promise<AnalyticsData> {
-  if (USE_MOCK) {
+  if (isMock()) {
     const { dateFrom, dateTo } = filters;
 
     // Filter to labels within the requested range
@@ -86,7 +87,7 @@ export async function getAnalytics(
         values: labelIndices.map((i) => dataset.values[i] ?? 0),
       }))
       .filter((dataset) => dataset.values.some((v) => v > 0));
-    // (mock path continues below — not reachable when USE_MOCK=false)
+    // (mock path continues below — not reachable when isMock()=false)
 
     const series: AnalyticsSeries = {
       labels: filteredLabels,

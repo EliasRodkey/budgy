@@ -1,6 +1,7 @@
 import type { Transaction } from "../types";
+import { useMockMode } from "../store/mockMode";
 
-const USE_MOCK = false;
+const isMock = () => useMockMode.getState().isMockMode;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ let mutableTransactions = [...mockTransactions];
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export async function getTransactions(filters: TransactionFilters = {}): Promise<TransactionsPage> {
-  if (USE_MOCK) {
+  if (isMock()) {
     const filtered = applyFilters(mutableTransactions, filters);
     const page = filters.page ?? 1;
     const pageSize = filters.pageSize ?? 20;
@@ -159,7 +160,7 @@ export async function getTransactions(filters: TransactionFilters = {}): Promise
 }
 
 export async function getFlaggedTransactions(): Promise<Transaction[]> {
-  if (USE_MOCK) {
+  if (isMock()) {
     return mutableTransactions.filter((t) => t.status === "Unchecked");
   }
 
@@ -170,7 +171,7 @@ export async function getFlaggedTransactions(): Promise<Transaction[]> {
 }
 
 export async function getAvailableTags(): Promise<string[]> {
-  if (USE_MOCK) {
+  if (isMock()) {
     const tagSet = new Set<string>();
     for (const t of mutableTransactions) {
       if (t.tags) {
@@ -190,7 +191,7 @@ export async function updateTransaction(
   id: string,
   updates: Partial<Pick<Transaction, "authorizedDate" | "postedDate" | "status" | "accountName" | "description" | "primaryCategory" | "detailedCategory" | "amount" | "repayment" | "exclude" | "notes" | "tags">>,
 ): Promise<Transaction> {
-  if (USE_MOCK) {
+  if (isMock()) {
     const idx = mutableTransactions.findIndex((t) => t.id === id);
     if (idx === -1) throw new Error(`Transaction ${id} not found`);
     const updated = { ...mutableTransactions[idx], ...updates };
@@ -208,7 +209,7 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  if (USE_MOCK) {
+  if (isMock()) {
     const idx = mutableTransactions.findIndex((t) => t.id === id);
     if (idx === -1) throw new Error(`Transaction ${id} not found`);
     mutableTransactions.splice(idx, 1);
@@ -224,7 +225,7 @@ export async function assignCategory(
   primaryCategory: string,
   detailedCategory: string,
 ): Promise<Transaction> {
-  if (USE_MOCK) {
+  if (isMock()) {
     return updateTransaction(transactionId, { primaryCategory, detailedCategory, status });
   }
 
@@ -254,7 +255,7 @@ export async function getSimilarTransactions(
   accountName: string,
   excludeId?: number,
 ): Promise<Transaction[]> {
-  if (USE_MOCK) return [];
+  if (isMock()) return [];
   const params = new URLSearchParams({ description, account_name: accountName });
   if (excludeId !== undefined) params.set("exclude_id", String(excludeId));
   const res = await fetch(`/api/transactions/similar?${params}`);
@@ -264,7 +265,7 @@ export async function getSimilarTransactions(
 }
 
 export async function bulkUpdateTransactions(payload: BulkUpdatePayload): Promise<{ updated: number }> {
-  if (USE_MOCK) return { updated: payload.transactionIds.length };
+  if (isMock()) return { updated: payload.transactionIds.length };
   const res = await fetch("/api/transactions/bulk-update", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -312,7 +313,7 @@ export async function pollJobUntilDone(
 // ─── CSV Import (Async Job Pipeline) ─────────────────────────────────────────
 
 export async function importTransactions(file: File): Promise<UploadJobResponse> {
-  if (USE_MOCK) {
+  if (isMock()) {
     await new Promise((r) => setTimeout(r, 600));
     return { jobId: "mock-job-id", status: "pending" };
   }
@@ -326,7 +327,7 @@ export async function importTransactions(file: File): Promise<UploadJobResponse>
 }
 
 export async function getImportJobStatus(jobId: string): Promise<ImportJobStatus> {
-  if (USE_MOCK) {
+  if (isMock()) {
     return { jobId, status: "complete", rowsImported: 5, rowsUpdated: 0 };
   }
 
@@ -343,7 +344,7 @@ export async function getImportJobStatus(jobId: string): Promise<ImportJobStatus
 }
 
 export async function confirmImport(jobId: string): Promise<ImportJobStatus> {
-  if (USE_MOCK) {
+  if (isMock()) {
     return { jobId, status: "complete", rowsImported: 5, rowsUpdated: 0 };
   }
 
