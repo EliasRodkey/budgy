@@ -31,6 +31,7 @@ export interface ImportResult {
   imported: number;
   failed: { row: number; reason: string }[];
   jobFailed: boolean;
+  errorMessage?: string;
 }
 
 export interface UploadJobResponse {
@@ -297,7 +298,7 @@ export async function pollJobUntilDone(
     if (status.status === "complete" || status.status === "failed") {
       await confirmImport(jobId);
       if (status.status === "failed") {
-        return { imported: 0, failed: [], jobFailed: true };
+        return { imported: 0, failed: [], jobFailed: true, errorMessage: status.errors ?? undefined };
       }
       return {
         imported: status.rowsImported ?? 0,

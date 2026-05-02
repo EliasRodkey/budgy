@@ -16,6 +16,20 @@ interface CSVUploadModalProps {
 // Budgy field keys that are required for import
 const REQUIRED_FIELDS = ["primary_category", "description", "authorized_date", "amount"];
 
+function friendlyErrorMessage(raw: string | undefined): string {
+  if (!raw) return "Check that your file is a valid CSV and try again.";
+  const lower = raw.toLowerCase();
+  if (lower.includes("unmapped_required") || lower.includes("required column") || lower.includes("required field"))
+    return "One or more required columns (Date, Description, Amount, Category) couldn't be matched. Go back to review and assign them manually.";
+  if (lower.includes("transformvalidationerror") || lower.includes("transform") || lower.includes("amount column"))
+    return "The amount column couldn't be processed. Check that it contains valid numbers and the sign convention is correct.";
+  if (lower.includes("anthropic") || lower.includes("api key") || lower.includes("credit"))
+    return "The AI analysis service is unavailable. Check your API key configuration and try again.";
+  if (lower.includes("unicode") || lower.includes("decode") || lower.includes("encoding"))
+    return "The file encoding couldn't be read. Try saving your CSV as UTF-8 and importing again.";
+  return "Something went wrong processing your file. Try again or contact support.";
+}
+
 function buildFieldMappings(columnMap: NormalizationPlan["column_map"]): Record<string, string | null> {
   // Invert column_map: rawHeader → budgyField  becomes  budgyField → rawHeader
   const mappings: Record<string, string | null> = {
@@ -147,9 +161,13 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
     }
   }
 
-  const canApprove = REQUIRED_FIELDS.every(
-    (f) => fieldMappings[f] !== null && fieldMappings[f] !== undefined && fieldMappings[f] !== ""
-  );
+  const mappedValues = Object.values(fieldMappings).filter(Boolean) as string[];
+  const hasDuplicateMappings = mappedValues.length !== new Set(mappedValues).size;
+  const canApprove =
+    !hasDuplicateMappings &&
+    REQUIRED_FIELDS.every(
+      (f) => fieldMappings[f] !== null && fieldMappings[f] !== undefined && fieldMappings[f] !== ""
+    );
 
   return (
     <div
@@ -334,7 +352,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
                   <div>
                     <p className="text-sm font-medium text-destructive">Import failed</p>
                     <p className="text-xs text-muted-foreground">
-                      Something went wrong while processing your file. Check that the file is a valid CSV and try again.
+                      {friendlyErrorMessage(result.errorMessage)}
                     </p>
                   </div>
                 </div>
@@ -360,6 +378,9 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
           )}
           {stage === "review" && (
             <>
+              {hasDuplicateMappings && (
+                <p className="text-xs text-destructive self-center mr-auto">Each CSV column can only be used once.</p>
+              )}
               <Button variant="outline" onClick={resetToPickKeepError.bind(null, "")}>Cancel</Button>
               <Button onClick={handleApproveAndImport} disabled={!canApprove}>
                 Approve &amp; Import
