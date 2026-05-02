@@ -31,6 +31,8 @@ export interface ImportResult {
   imported: number;
   failed: { row: number; reason: string }[];
   jobFailed: boolean;
+  rulesAppliedFromCache: number;
+  newRulesSaved: number;
 }
 
 export interface UploadJobResponse {
@@ -44,6 +46,8 @@ export interface ImportJobStatus {
   rowsImported?: number;
   rowsUpdated?: number;
   errors?: string;
+  rulesAppliedFromCache?: number;
+  newRulesSaved?: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -297,12 +301,14 @@ export async function pollJobUntilDone(
     if (status.status === "complete" || status.status === "failed") {
       await confirmImport(jobId);
       if (status.status === "failed") {
-        return { imported: 0, failed: [], jobFailed: true };
+        return { imported: 0, failed: [], jobFailed: true, rulesAppliedFromCache: 0, newRulesSaved: 0 };
       }
       return {
         imported: status.rowsImported ?? 0,
         failed: [],
         jobFailed: false,
+        rulesAppliedFromCache: status.rulesAppliedFromCache ?? 0,
+        newRulesSaved: status.newRulesSaved ?? 0,
       };
     }
     await new Promise((r) => setTimeout(r, intervalMs));
@@ -343,6 +349,8 @@ export async function getImportJobStatus(jobId: string): Promise<ImportJobStatus
     rowsImported: json.rowsImported,
     rowsUpdated: json.rowsUpdated,
     errors: json.errors,
+    rulesAppliedFromCache: json.rulesAppliedFromCache,
+    newRulesSaved: json.newRulesSaved,
   };
 }
 

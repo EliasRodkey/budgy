@@ -58,6 +58,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [formatOpen, setFormatOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function resetTopick() {
@@ -137,6 +138,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
         ...plan,
         column_map: reconstructColumnMap(fieldMappings),
       };
+      setPlan(approvedPlan);
       const job: UploadJobResponse = await importTransactions(file, approvedPlan);
       const importResult = await pollJobUntilDone(job.jobId);
       setResult(importResult);
@@ -347,6 +349,77 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
                       {result.imported} transaction{result.imported !== 1 ? "s" : ""} imported successfully
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* Rules Applied collapsible — hidden when no mappings were applied */}
+              {plan && (Object.keys(plan.column_map).length > 0 || Object.keys(plan.category_map).length > 0) && (
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <button
+                    onClick={() => setRulesOpen((o) => !o)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/30 transition-colors"
+                  >
+                    Rules Applied
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-normal">
+                        {result.rulesAppliedFromCache} from cache, {result.newRulesSaved} new saved
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 ${rulesOpen ? "rotate-180" : ""}`}
+                      />
+                    </div>
+                  </button>
+                  {rulesOpen && (
+                    <div className="px-4 pb-4 space-y-4 border-t border-border">
+                      {Object.keys(plan.column_map).length > 0 && (
+                        <div className="space-y-2 pt-3">
+                          <p className="text-xs font-medium text-foreground">Column mappings</p>
+                          <div className="rounded-md border border-border overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-muted/30 border-b border-border">
+                                  <th className="py-2 px-3 text-left font-medium text-muted-foreground">Your column</th>
+                                  <th className="py-2 px-3 text-left font-medium text-muted-foreground">Mapped to</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Object.entries(plan.column_map).map(([raw, mapped]) => (
+                                  <tr key={raw} className="border-b border-border last:border-0">
+                                    <td className="py-2 px-3 font-mono">{raw}</td>
+                                    <td className="py-2 px-3 text-muted-foreground">{mapped ?? "—"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                      {Object.keys(plan.category_map).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-foreground">Category mappings</p>
+                          <div className="rounded-md border border-border overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-muted/30 border-b border-border">
+                                  <th className="py-2 px-3 text-left font-medium text-muted-foreground">Your category</th>
+                                  <th className="py-2 px-3 text-left font-medium text-muted-foreground">Mapped to</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Object.entries(plan.category_map).map(([raw, mapped]) => (
+                                  <tr key={raw} className="border-b border-border last:border-0">
+                                    <td className="py-2 px-3 font-mono">{raw}</td>
+                                    <td className="py-2 px-3 text-muted-foreground">{mapped.primary} / {mapped.detailed}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
