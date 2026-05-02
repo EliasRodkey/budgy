@@ -42,7 +42,7 @@ def set_status_unchecked(record: dict) -> dict:
     """
     amount = record.get(TransactionsTable.amount.name)
     if amount is not None and amount > 0:
-        record[TransactionsTable.status.name] = TableStatus.UNCHECKED
+        record[TransactionsTable.status.name] = TableStatus.UNCHECKED.value
     return record
 
 

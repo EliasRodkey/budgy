@@ -182,7 +182,7 @@ class TransactionsTableManager(DatabaseManager):
 
             else:
                 try:
-                    self.add_item(**record)
+                    self.add_item(**{k: v for k, v in record.items() if v is not None})
 
                 except DatabaseIntegrityError:
                     pass

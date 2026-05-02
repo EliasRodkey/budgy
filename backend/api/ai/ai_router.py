@@ -49,11 +49,18 @@ def _extract_sample_amounts(rows: list[dict], headers: list[str], sample_size: i
     sample_rows = rows[:max(sample_size * 2, 20)]
     _strip = re.compile(r"[^\d.\-+]")
     for header in headers:
-        raw_vals = [_strip.sub("", str(r[header]).strip()) for r in sample_rows if r.get(header)]
+        raw_vals: list[str] = []
         floats: list[float] = []
-        for v in raw_vals:
+        for r in sample_rows:
+            if not r.get(header):
+                continue
+            original = str(r[header]).strip()
+            if _DATE_PATTERN.match(original):
+                continue  # exclude date-like values so date columns don't appear as numeric
+            stripped = _strip.sub("", original)
+            raw_vals.append(stripped)
             try:
-                floats.append(float(v))
+                floats.append(float(stripped))
             except ValueError:
                 pass
         if len(raw_vals) > 0 and len(floats) / len(raw_vals) >= 0.5:
