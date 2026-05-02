@@ -30,6 +30,21 @@ function friendlyErrorMessage(raw: string | undefined): string {
   return "Something went wrong processing your file. Try again or contact support.";
 }
 
+function detectDelimiter(text: string): string {
+  const firstLine = text.split("\n")[0] ?? "";
+  const candidates = [",", ";", "\t", "|"];
+  let best = ",";
+  let bestCount = 0;
+  for (const d of candidates) {
+    const count = firstLine.split(d).length - 1;
+    if (count > bestCount) {
+      bestCount = count;
+      best = d;
+    }
+  }
+  return best;
+}
+
 function buildFieldMappings(columnMap: NormalizationPlan["column_map"]): Record<string, string | null> {
   // Invert column_map: rawHeader → budgyField  becomes  budgyField → rawHeader
   const mappings: Record<string, string | null> = {
@@ -90,10 +105,13 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
     setAnalysisError(null);
     setFile(selected);
 
+    const rawText = await selected.text();
+    const delimiter = detectDelimiter(rawText);
     Papa.parse<Record<string, string>>(selected, {
       header: true,
       skipEmptyLines: true,
       preview: 1,
+      delimiter,
       complete: async (res) => {
         if (res.errors.length > 0) {
           setAnalysisError(res.errors[0].message);
