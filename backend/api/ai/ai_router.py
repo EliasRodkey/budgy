@@ -46,8 +46,9 @@ def _extract_sample_amounts(rows: list[dict], headers: list[str], sample_size: i
     """
     result: dict[str, list[float]] = {}
     sample_rows = rows[:max(sample_size * 2, 20)]
+    _strip = re.compile(r"[^\d.\-+]")
     for header in headers:
-        raw_vals = [str(r[header]).replace(",", "") for r in sample_rows if r.get(header)]
+        raw_vals = [_strip.sub("", str(r[header]).strip()) for r in sample_rows if r.get(header)]
         floats: list[float] = []
         for v in raw_vals:
             try:

@@ -150,6 +150,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
       const approvedPlan: NormalizationPlan = {
         ...plan,
         column_map: reconstructColumnMap(fieldMappings),
+        unmapped_required_columns: [],
       };
       const job: UploadJobResponse = await importTransactions(file, approvedPlan);
       const importResult = await pollJobUntilDone(job.jobId);

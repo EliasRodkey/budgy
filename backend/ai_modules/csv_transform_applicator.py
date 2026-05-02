@@ -18,6 +18,15 @@ class TransformValidationError(Exception):
         )
 
 
+import re as _re
+_CURRENCY_STRIP = _re.compile(r"[^\d.\-+]")
+
+
+def _parse_amount(value: str) -> float:
+    """Parse an amount string, stripping currency symbols, spaces, and commas."""
+    return float(_CURRENCY_STRIP.sub("", str(value).strip()))
+
+
 def apply_normalization_plan(
     rows: list[dict[str, str]],
     plan: NormalizationPlan,
@@ -57,15 +66,15 @@ def apply_normalization_plan(
         # 3. Amount normalization
         if plan.amount_transform == AmountTransform.SIGNED:
             if "amount" in new_row:
-                new_row["amount"] = float(new_row["amount"])
+                new_row["amount"] = _parse_amount(new_row["amount"])
 
         elif plan.amount_transform == AmountTransform.INVERT:
             if "amount" in new_row:
-                new_row["amount"] = -float(new_row["amount"])
+                new_row["amount"] = -_parse_amount(new_row["amount"])
 
         elif plan.amount_transform == AmountTransform.DEBIT_CREDIT:
-            debit = float(raw_row.get(plan.debit_column) or 0)
-            credit = float(raw_row.get(plan.credit_column) or 0)
+            debit = _parse_amount(raw_row.get(plan.debit_column) or "0")
+            credit = _parse_amount(raw_row.get(plan.credit_column) or "0")
             new_row["amount"] = credit - debit
 
         transformed.append(new_row)
