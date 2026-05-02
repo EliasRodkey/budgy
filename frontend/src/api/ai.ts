@@ -1,6 +1,15 @@
 import type { AISummary, NormalizationPlan } from "../types";
 import { mockAISummary } from "../__tests__/fixtures";
 import { useMockMode } from "../store/mockMode";
+import { fetchWithRetry } from "./utils";
+
+const PLAN_REQUIRED_FIELDS = [
+  "column_map",
+  "category_map",
+  "amount_transform",
+  "issues",
+  "unmapped_required_columns",
+] as const;
 
 const isMock = () => useMockMode.getState().isMockMode;
 
@@ -41,7 +50,7 @@ export async function planCSV(file: File): Promise<NormalizationPlan> {
 
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch("/api/ai/plan-csv", { method: "POST", body: formData });
+  const res = await fetchWithRetry("/api/ai/plan-csv", { method: "POST", body: formData });
   if (!res.ok) {
     let detail = `Analysis failed (${res.status})`;
     try {
@@ -50,5 +59,10 @@ export async function planCSV(file: File): Promise<NormalizationPlan> {
     } catch { /* ignore parse errors */ }
     throw new Error(detail);
   }
-  return res.json() as Promise<NormalizationPlan>;
+  const plan = await res.json();
+  const missing = PLAN_REQUIRED_FIELDS.filter((f) => !(f in plan));
+  if (missing.length > 0) {
+    throw new Error(`Analysis returned an unexpected response (missing: ${missing.join(", ")}). Please try again.`);
+  }
+  return plan as NormalizationPlan;
 }
