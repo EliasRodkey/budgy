@@ -40,7 +40,8 @@ def set_status_unchecked(record: dict) -> dict:
     Args:
         record (dict): the record to check
     """
-    if record[TransactionsTable.amount.name] > 0:
+    amount = record.get(TransactionsTable.amount.name)
+    if amount is not None and amount > 0:
         record[TransactionsTable.status.name] = TableStatus.UNCHECKED
     return record
 

@@ -170,6 +170,8 @@ class ImportJobStatus(BaseModel):
     status: str
     rows_imported: Optional[int] = None
     rows_updated: Optional[int] = None
+    rows_skipped: Optional[int] = None
+    skipped_rows: Optional[list[dict]] = None
     errors: Optional[str] = None
     rules_applied_from_cache: Optional[int] = None
     new_rules_saved: Optional[int] = None  # See note in UploadJobsTable.new_rules_saved

@@ -29,7 +29,8 @@ export interface TransactionsPage {
 
 export interface ImportResult {
   imported: number;
-  failed: { row: number; reason: string }[];
+  skipped: number;
+  skippedRows: { row: number; reason: string }[];
   jobFailed: boolean;
   errorMessage?: string;
 }
@@ -44,6 +45,8 @@ export interface ImportJobStatus {
   status: "pending" | "processing" | "complete" | "failed";
   rowsImported?: number;
   rowsUpdated?: number;
+  rowsSkipped?: number;
+  skippedRows?: { row: number; reason: string }[];
   errors?: string;
 }
 
@@ -298,11 +301,12 @@ export async function pollJobUntilDone(
     if (status.status === "complete" || status.status === "failed") {
       await confirmImport(jobId);
       if (status.status === "failed") {
-        return { imported: 0, failed: [], jobFailed: true, errorMessage: status.errors ?? undefined };
+        return { imported: 0, skipped: 0, skippedRows: [], jobFailed: true, errorMessage: status.errors ?? undefined };
       }
       return {
         imported: status.rowsImported ?? 0,
-        failed: [],
+        skipped: status.rowsSkipped ?? 0,
+        skippedRows: status.skippedRows ?? [],
         jobFailed: false,
       };
     }
@@ -343,6 +347,8 @@ export async function getImportJobStatus(jobId: string): Promise<ImportJobStatus
     status: json.status,
     rowsImported: json.rowsImported,
     rowsUpdated: json.rowsUpdated,
+    rowsSkipped: json.rowsSkipped,
+    skippedRows: json.skippedRows,
     errors: json.errors,
   };
 }
@@ -360,6 +366,8 @@ export async function confirmImport(jobId: string): Promise<ImportJobStatus> {
     status: json.status,
     rowsImported: json.rowsImported,
     rowsUpdated: json.rowsUpdated,
+    rowsSkipped: json.rowsSkipped,
+    skippedRows: json.skippedRows,
     errors: json.errors,
   };
 }

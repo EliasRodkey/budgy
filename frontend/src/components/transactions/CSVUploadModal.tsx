@@ -364,7 +364,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
 
           {/* Result stage */}
           {stage === "result" && result && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {result.jobFailed ? (
                 <div className="flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
                   <XCircle size={20} className="text-destructive shrink-0" />
@@ -381,10 +381,25 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
                   <div>
                     <p className="text-sm font-medium">Import complete</p>
                     <p className="text-xs text-muted-foreground">
-                      {result.imported} transaction{result.imported !== 1 ? "s" : ""} imported successfully
+                      {result.imported} transaction{result.imported !== 1 ? "s" : ""} imported
+                      {result.skipped > 0 ? ` · ${result.skipped} skipped` : ""}
                     </p>
                   </div>
                 </div>
+              )}
+              {result.skipped > 0 && result.skippedRows.length > 0 && (
+                <details className="rounded-lg border border-border text-sm">
+                  <summary className="cursor-pointer px-4 py-3 font-medium select-none hover:bg-muted/30 transition-colors">
+                    Show skipped rows ({result.skipped})
+                  </summary>
+                  <ul className="px-4 pb-3 pt-1 space-y-1 border-t border-border">
+                    {result.skippedRows.map((s) => (
+                      <li key={s.row} className="text-xs text-muted-foreground">
+                        Row {s.row}: {s.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           )}

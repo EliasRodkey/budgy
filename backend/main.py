@@ -15,9 +15,11 @@ def _migrate_db() -> None:
     conn = sqlite3.connect(db_path)
     try:
         existing = {row[1] for row in conn.execute("PRAGMA table_info(upload_jobs)")}
-        for col in ("rules_applied_from_cache", "new_rules_saved"):
+        for col in ("rules_applied_from_cache", "new_rules_saved", "rows_skipped"):
             if col not in existing:
                 conn.execute(f"ALTER TABLE upload_jobs ADD COLUMN {col} INTEGER")
+        if "skipped_rows" not in existing:
+            conn.execute("ALTER TABLE upload_jobs ADD COLUMN skipped_rows TEXT")
         conn.commit()
     finally:
         conn.close()

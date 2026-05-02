@@ -118,6 +118,8 @@ class UploadJobsTable(BaseTable):
     file_path = Column(String)
     rows_imported = Column(Integer, nullable=True)
     rows_updated = Column(Integer, nullable=True)
+    rows_skipped = Column(Integer, nullable=True)
+    skipped_rows = Column(String, nullable=True)  # JSON-encoded list of {row, reason}
     errors = Column(String, nullable=True)
     rules_applied_from_cache = Column(Integer, nullable=True)
     new_rules_saved = Column(Integer, nullable=True)

@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 from pleasant_database import DatabaseFile
 
 # Local imports
-from backend.ai_modules.csv_transform_applicator import TransformValidationError, apply_normalization_plan
+from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
 from backend.ai_modules.normalization_plan import NormalizationPlan
 from backend.api.transactions.transactions_models import (
     BulkUpdateRequest,
@@ -257,6 +257,8 @@ def _process_csv_upload(
         new_rules_saved = 0
         plan: Optional[NormalizationPlan] = None
 
+        skipped_rows: list[dict] = []
+
         if normalization_plan_json:
             plan = NormalizationPlan.model_validate_json(normalization_plan_json)
 
@@ -271,11 +273,7 @@ def _process_csv_upload(
                 reader = csv_lib.DictReader(f)
                 raw_rows = list(reader)
 
-            try:
-                transformed_rows = apply_normalization_plan(raw_rows, plan)
-            except TransformValidationError as e:
-                session.jobs.set_status(job_id, "failed", errors=str(e))
-                return
+            transformed_rows, skipped_rows = apply_normalization_plan(raw_rows, plan)
 
             # Write transformed rows to a new temp CSV for upload_csv()
             all_fields = list(dict.fromkeys(k for row in transformed_rows for k in row))
@@ -346,6 +344,8 @@ def _process_csv_upload(
             job_id, "complete",
             rows_imported=rows_imported,
             rows_updated=rows_updated,
+            rows_skipped=len(skipped_rows),
+            skipped_rows=json_lib.dumps(skipped_rows) if skipped_rows else None,
             rules_applied_from_cache=rules_applied_from_cache,
             new_rules_saved=new_rules_saved,
         )
@@ -411,6 +411,8 @@ async def get_import_job_status(job_id: str) -> ImportJobStatus:
         "status": job.status,
         "rows_imported": job.rows_imported,
         "rows_updated": job.rows_updated,
+        "rows_skipped": job.rows_skipped,
+        "skipped_rows": json_lib.loads(job.skipped_rows) if job.skipped_rows else None,
         "errors": job.errors,
         "rules_applied_from_cache": job.rules_applied_from_cache,
         "new_rules_saved": job.new_rules_saved,
@@ -525,6 +527,8 @@ async def confirm_import_job(job_id: str) -> ImportJobStatus:
         "status": job.status,
         "rows_imported": job.rows_imported,
         "rows_updated": job.rows_updated,
+        "rows_skipped": job.rows_skipped,
+        "skipped_rows": json_lib.loads(job.skipped_rows) if job.skipped_rows else None,
         "errors": job.errors,
         "rules_applied_from_cache": job.rules_applied_from_cache,
         "new_rules_saved": job.new_rules_saved,

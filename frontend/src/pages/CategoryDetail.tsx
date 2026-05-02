@@ -445,6 +445,7 @@ export default function CategoryDetail() {
           onSave={(id, updates) => {
             updateTx({ id, updates }, { onSuccess: () => setEditingTx(null) });
           }}
+          onDelete={() => { setDeletingTx(editingTx); setEditingTx(null); }}
         />
       )}
       <DeleteConfirmDialog

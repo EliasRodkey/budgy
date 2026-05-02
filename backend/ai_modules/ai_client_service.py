@@ -141,7 +141,7 @@ def _build_system_prompt() -> list[dict]:
                 "- If there are separate debit and credit columns → 'debit_credit'.\n"
                 "OTHER:\n"
                 "- List any unmappable required fields in unmapped_required_columns.\n"
-                "- Be conservative: when in doubt, prefer null over a wrong mapping."
+                "- Make a best-effort mapping. If unsure, make your best guess and add the uncertainty to the issues field rather than returning null."
             ),
         },
         {

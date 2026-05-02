@@ -19,7 +19,6 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.ai_modules.csv_transform_applicator import TransformValidationError
 from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.api.transactions.transactions_router import _process_csv_upload
 from backend.main import app
@@ -138,7 +137,7 @@ class TestProcessCSVUploadWithPlan:
 
         with patch("backend.api.transactions.transactions_router.DatabaseSession") as MockSession, \
              patch("backend.api.transactions.transactions_router.DatabaseFile"), \
-             patch("backend.api.transactions.transactions_router.apply_normalization_plan", return_value=transformed_rows) as mock_apply:
+             patch("backend.api.transactions.transactions_router.apply_normalization_plan", return_value=(transformed_rows, [])) as mock_apply:
             MockSession.return_value = session
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
@@ -165,18 +164,16 @@ class TestProcessCSVUploadWithPlan:
         assert "primary_category" in error_msg
         session.transactions.upload_csv.assert_not_called()
 
-    def test_job_fails_on_transform_validation_error(self, tmp_path):
+    def test_job_fails_on_unexpected_transform_exception(self, tmp_path):
         csv_file = tmp_path / "test.csv"
         csv_file.write_text(MESSY_CSV)
         plan = _make_plan()
         session = _make_session_mock()
 
-        failed_rows = [{"row_index": 0, "missing_fields": ["amount"]}]
-
         with patch("backend.api.transactions.transactions_router.DatabaseSession") as MockSession, \
              patch("backend.api.transactions.transactions_router.DatabaseFile"), \
              patch("backend.api.transactions.transactions_router.apply_normalization_plan",
-                   side_effect=TransformValidationError(failed_rows)):
+                   side_effect=RuntimeError("unexpected")):
             MockSession.return_value = session
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
@@ -198,7 +195,7 @@ class TestProcessCSVUploadWithPlan:
         with patch("backend.api.transactions.transactions_router.DatabaseSession") as MockSession, \
              patch("backend.api.transactions.transactions_router.DatabaseFile"), \
              patch("backend.api.transactions.transactions_router.apply_normalization_plan",
-                   return_value=transformed_rows):
+                   return_value=(transformed_rows, [])):
             MockSession.return_value = session
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
@@ -220,7 +217,7 @@ class TestProcessCSVUploadWithPlan:
         with patch("backend.api.transactions.transactions_router.DatabaseSession") as MockSession, \
              patch("backend.api.transactions.transactions_router.DatabaseFile"), \
              patch("backend.api.transactions.transactions_router.apply_normalization_plan",
-                   return_value=transformed_rows):
+                   return_value=(transformed_rows, [])):
             MockSession.return_value = session
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
@@ -240,7 +237,7 @@ class TestProcessCSVUploadWithPlan:
         with patch("backend.api.transactions.transactions_router.DatabaseSession") as MockSession, \
              patch("backend.api.transactions.transactions_router.DatabaseFile"), \
              patch("backend.api.transactions.transactions_router.apply_normalization_plan",
-                   return_value=transformed_rows):
+                   return_value=(transformed_rows, [])):
             MockSession.return_value = session
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
@@ -264,7 +261,7 @@ class TestProcessCSVUploadWithPlan:
         with patch("backend.api.transactions.transactions_router.DatabaseSession") as MockSession, \
              patch("backend.api.transactions.transactions_router.DatabaseFile"), \
              patch("backend.api.transactions.transactions_router.apply_normalization_plan",
-                   return_value=transformed_rows):
+                   return_value=(transformed_rows, [])):
             MockSession.return_value = session
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
@@ -287,7 +284,7 @@ class TestProcessCSVUploadWithPlan:
         with patch("backend.api.transactions.transactions_router.DatabaseSession") as MockSession, \
              patch("backend.api.transactions.transactions_router.DatabaseFile"), \
              patch("backend.api.transactions.transactions_router.apply_normalization_plan",
-                   return_value=transformed_rows):
+                   return_value=(transformed_rows, [])):
             MockSession.return_value = session
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
@@ -355,6 +352,8 @@ class TestImportJobStatusFields:
         mock_job.status = "complete"
         mock_job.rows_imported = 10
         mock_job.rows_updated = 2
+        mock_job.rows_skipped = 0
+        mock_job.skipped_rows = None
         mock_job.errors = None
         mock_job.rules_applied_from_cache = 5
         mock_job.new_rules_saved = 3
