@@ -30,6 +30,19 @@ function friendlyErrorMessage(raw: string | undefined): string {
   return "Something went wrong processing your file. Try again or contact support.";
 }
 
+function unwrapRowQuotes(text: string): string {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return text;
+  const first = lines[0];
+  if (!first.startsWith('"') || !first.endsWith('"')) return text;
+  const inner = first.slice(1, -1);
+  const delimiter = [",", ";", "\t"].find((d) => inner.includes(d));
+  if (!delimiter) return text;
+  return lines
+    .map((l) => (l.startsWith('"') && l.endsWith('"') ? l.slice(1, -1) : l))
+    .join("\n");
+}
+
 function detectDelimiter(text: string): string {
   const firstLine = text.split("\n")[0] ?? "";
   const candidates = [",", ";", "\t", "|"];
@@ -105,9 +118,10 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
     setAnalysisError(null);
     setFile(selected);
 
-    const rawText = await selected.text();
+    const rawText = unwrapRowQuotes(await selected.text());
     const delimiter = detectDelimiter(rawText);
-    Papa.parse<Record<string, string>>(selected, {
+    const normalizedFile = new File([rawText], selected.name, { type: selected.type });
+    Papa.parse<Record<string, string>>(normalizedFile, {
       header: true,
       skipEmptyLines: true,
       preview: 1,

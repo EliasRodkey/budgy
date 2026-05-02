@@ -16,6 +16,7 @@ from pleasant_database import DatabaseFile
 from backend.ai_modules.ai_client_service import AIClientService
 from backend.ai_modules.csv_normalization_planner import CSVNormalizationPlanner
 from backend.api.ai.ai_models import PlanCSVResponse
+from backend.csv_modules.csv_parser import unwrap_row_quotes
 from backend.database_modules.db_session import DatabaseSession
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
@@ -100,6 +101,7 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
         text = contents.decode("latin-1")
 
     try:
+        text = unwrap_row_quotes(text)
         reader = csv.DictReader(io.StringIO(text))
         rows = list(reader)
         headers = list(reader.fieldnames or [])
