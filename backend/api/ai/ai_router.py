@@ -38,6 +38,27 @@ def _is_numeric_or_date(val: str) -> bool:
     return bool(_DATE_PATTERN.match(val))
 
 
+def _extract_sample_amounts(rows: list[dict], headers: list[str], sample_size: int = 10) -> dict[str, list[float]]:
+    """
+    Returns up to sample_size parsed float values for each column that looks numeric
+    (≥50% of sampled values are parseable as floats). Used to give the AI concrete
+    data for sign convention detection rather than relying on header names alone.
+    """
+    result: dict[str, list[float]] = {}
+    sample_rows = rows[:max(sample_size * 2, 20)]
+    for header in headers:
+        raw_vals = [str(r[header]).replace(",", "") for r in sample_rows if r.get(header)]
+        floats: list[float] = []
+        for v in raw_vals:
+            try:
+                floats.append(float(v))
+            except ValueError:
+                pass
+        if len(raw_vals) > 0 and len(floats) / len(raw_vals) >= 0.5:
+            result[header] = floats[:sample_size]
+    return result
+
+
 def _extract_candidate_categories(rows: list[dict], headers: list[str]) -> list[str]:
     """
     Returns unique string values from columns whose cardinality falls in the
@@ -90,17 +111,19 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
         raise HTTPException(status_code=400, detail="CSV is empty.")
 
     unique_categories = _extract_candidate_categories(rows, headers)
+    sample_amounts = _extract_sample_amounts(rows, headers)
     logger.info(
-        "plan-csv: %d headers, %d candidate category values",
+        "plan-csv: %d headers, %d candidate category values, %d numeric columns sampled",
         len(headers),
         len(unique_categories),
+        len(sample_amounts),
     )
 
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
     session = DatabaseSession(db_file)
     try:
         planner = CSVNormalizationPlanner(session.category_mapping_rules, AIClientService())
-        plan, used_cache = planner.plan(headers, unique_categories)
+        plan, used_cache = planner.plan(headers, unique_categories, sample_amount_values=sample_amounts)
     except anthropic.AuthenticationError as exc:
         logger.error(f"Anthropic API key missing or invalid: {exc}")
         raise HTTPException(

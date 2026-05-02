@@ -33,6 +33,10 @@ export function MappingReviewPanel({ plan, csvHeaders, fieldMappings, onMappings
     onMappingsChange({ ...fieldMappings, [fieldKey]: value === "" ? null : value });
   }
 
+  const usedHeaders = new Set(
+    Object.values(fieldMappings).filter((v): v is string => !!v)
+  );
+
   const hasCategoryMappings = Object.keys(plan.category_map).length > 0;
 
   return (
@@ -69,6 +73,10 @@ export function MappingReviewPanel({ plan, csvHeaders, fieldMappings, onMappings
                   const mapped = fieldMappings[field.key];
                   const isUnassigned = mapped === null || mapped === "";
                   const isInvalid = field.required && isUnassigned;
+                  const availableHeaders = csvHeaders.filter(
+                    h => !usedHeaders.has(h) || h === mapped
+                  );
+                  const noColumnsLeft = !field.required && availableHeaders.length === 0 && isUnassigned;
                   return (
                     <tr
                       key={field.key}
@@ -98,14 +106,15 @@ export function MappingReviewPanel({ plan, csvHeaders, fieldMappings, onMappings
                         <select
                           value={mapped ?? ""}
                           onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                          className={`w-full h-7 rounded-md border px-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-ring ${
+                          disabled={noColumnsLeft}
+                          className={`w-full h-7 rounded-md border px-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed ${
                             isInvalid ? "border-destructive/60" : "border-border"
                           }`}
                         >
                           <option value="">
-                            {field.required ? "— select a column —" : "(none)"}
+                            {noColumnsLeft ? "(no columns remaining)" : field.required ? "— select a column —" : "(none)"}
                           </option>
-                          {csvHeaders.map((h) => (
+                          {availableHeaders.map((h) => (
                             <option key={h} value={h}>{h}</option>
                           ))}
                         </select>
