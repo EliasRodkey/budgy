@@ -16,6 +16,7 @@ from pleasant_database import DatabaseFile
 from backend.ai_modules.ai_client_service import AIClientService
 from backend.ai_modules.csv_normalization_planner import CSVNormalizationPlanner
 from backend.api.ai.ai_models import PlanCSVResponse
+from backend.csv_modules.csv_parser import unwrap_row_quotes
 from backend.database_modules.db_session import DatabaseSession
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
@@ -36,6 +37,35 @@ def _is_numeric_or_date(val: str) -> bool:
     except ValueError:
         pass
     return bool(_DATE_PATTERN.match(val))
+
+
+def _extract_sample_amounts(rows: list[dict], headers: list[str], sample_size: int = 10) -> dict[str, list[float]]:
+    """
+    Returns up to sample_size parsed float values for each column that looks numeric
+    (≥50% of sampled values are parseable as floats). Used to give the AI concrete
+    data for sign convention detection rather than relying on header names alone.
+    """
+    result: dict[str, list[float]] = {}
+    sample_rows = rows[:max(sample_size * 2, 20)]
+    _strip = re.compile(r"[^\d.\-+]")
+    for header in headers:
+        raw_vals: list[str] = []
+        floats: list[float] = []
+        for r in sample_rows:
+            if not r.get(header):
+                continue
+            original = str(r[header]).strip()
+            if _DATE_PATTERN.match(original):
+                continue  # exclude date-like values so date columns don't appear as numeric
+            stripped = _strip.sub("", original)
+            raw_vals.append(stripped)
+            try:
+                floats.append(float(stripped))
+            except ValueError:
+                pass
+        if len(raw_vals) > 0 and len(floats) / len(raw_vals) >= 0.5:
+            result[header] = floats[:sample_size]
+    return result
 
 
 def _extract_candidate_categories(rows: list[dict], headers: list[str]) -> list[str]:
@@ -78,6 +108,7 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
         text = contents.decode("latin-1")
 
     try:
+        text = unwrap_row_quotes(text)
         reader = csv.DictReader(io.StringIO(text))
         rows = list(reader)
         headers = list(reader.fieldnames or [])
@@ -90,17 +121,19 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
         raise HTTPException(status_code=400, detail="CSV is empty.")
 
     unique_categories = _extract_candidate_categories(rows, headers)
+    sample_amounts = _extract_sample_amounts(rows, headers)
     logger.info(
-        "plan-csv: %d headers, %d candidate category values",
+        "plan-csv: %d headers, %d candidate category values, %d numeric columns sampled",
         len(headers),
         len(unique_categories),
+        len(sample_amounts),
     )
 
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
     session = DatabaseSession(db_file)
     try:
         planner = CSVNormalizationPlanner(session.category_mapping_rules, AIClientService())
-        plan, used_cache = planner.plan(headers, unique_categories)
+        plan, used_cache = planner.plan(headers, unique_categories, sample_amount_values=sample_amounts)
     except anthropic.AuthenticationError as exc:
         logger.error(f"Anthropic API key missing or invalid: {exc}")
         raise HTTPException(

@@ -34,13 +34,13 @@ outgoing_config = ConfigDict(
 class Transaction(BaseModel):
     id: int
     authorized_date: date
-    posted_date: date
+    posted_date: Optional[date] = None
     status: str
-    account_name: str
+    account_name: Optional[str] = None
     description: str
     primary_category: str
-    detailed_category: str
-    amount: float # dollars (negative = expense)
+    detailed_category: Optional[str] = None
+    amount: Optional[float] = None # dollars (negative = expense)
     repayment: bool
     exclude: bool
     notes: Optional[str] = None # max 300 chars, edit modal only
@@ -170,6 +170,8 @@ class ImportJobStatus(BaseModel):
     status: str
     rows_imported: Optional[int] = None
     rows_updated: Optional[int] = None
+    rows_skipped: Optional[int] = None
+    skipped_rows: Optional[list[dict]] = None
     errors: Optional[str] = None
     rules_applied_from_cache: Optional[int] = None
     new_rules_saved: Optional[int] = None  # See note in UploadJobsTable.new_rules_saved

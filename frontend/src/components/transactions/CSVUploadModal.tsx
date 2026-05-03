@@ -6,6 +6,7 @@ import { MappingReviewPanel } from "./MappingReviewPanel";
 import { CheckCircle, ChevronDown, Upload, X, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Stage = "pick" | "analyzing" | "review" | "importing" | "result";
 
@@ -15,6 +16,48 @@ interface CSVUploadModalProps {
 
 // Budgy field keys that are required for import
 const REQUIRED_FIELDS = ["primary_category", "description", "authorized_date", "amount"];
+
+function friendlyErrorMessage(raw: string | undefined): string {
+  if (!raw) return "Check that your file is a valid CSV and try again.";
+  const lower = raw.toLowerCase();
+  if (lower.includes("unmapped_required") || lower.includes("required column") || lower.includes("required field"))
+    return "One or more required columns (Date, Description, Amount, Category) couldn't be matched. Go back to review and assign them manually.";
+  if (lower.includes("transformvalidationerror") || lower.includes("transform") || lower.includes("amount column"))
+    return "The amount column couldn't be processed. Check that it contains valid numbers and the sign convention is correct.";
+  if (lower.includes("anthropic") || lower.includes("api key") || lower.includes("credit"))
+    return "The AI analysis service is unavailable. Check your API key configuration and try again.";
+  if (lower.includes("unicode") || lower.includes("decode") || lower.includes("encoding"))
+    return "The file encoding couldn't be read. Try saving your CSV as UTF-8 and importing again.";
+  return "Something went wrong processing your file. Try again or contact support.";
+}
+
+function unwrapRowQuotes(text: string): string {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return text;
+  const first = lines[0];
+  if (!first.startsWith('"') || !first.endsWith('"')) return text;
+  const inner = first.slice(1, -1);
+  const delimiter = [",", ";", "\t"].find((d) => inner.includes(d));
+  if (!delimiter) return text;
+  return lines
+    .map((l) => (l.startsWith('"') && l.endsWith('"') ? l.slice(1, -1) : l))
+    .join("\n");
+}
+
+function detectDelimiter(text: string): string {
+  const firstLine = text.split("\n")[0] ?? "";
+  const candidates = [",", ";", "\t", "|"];
+  let best = ",";
+  let bestCount = 0;
+  for (const d of candidates) {
+    const count = firstLine.split(d).length - 1;
+    if (count > bestCount) {
+      bestCount = count;
+      best = d;
+    }
+  }
+  return best;
+}
 
 function buildFieldMappings(columnMap: NormalizationPlan["column_map"]): Record<string, string | null> {
   // Invert column_map: rawHeader → budgyField  becomes  budgyField → rawHeader
@@ -50,6 +93,7 @@ function reconstructColumnMap(fieldMappings: Record<string, string | null>): Rec
 }
 
 export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
+  const queryClient = useQueryClient();
   const [stage, setStage] = useState<Stage>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -76,10 +120,14 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
     setAnalysisError(null);
     setFile(selected);
 
-    Papa.parse<Record<string, string>>(selected, {
+    const rawText = unwrapRowQuotes(await selected.text());
+    const delimiter = detectDelimiter(rawText);
+    const normalizedFile = new File([rawText], selected.name, { type: selected.type });
+    Papa.parse<Record<string, string>>(normalizedFile, {
       header: true,
       skipEmptyLines: true,
       preview: 1,
+      delimiter,
       complete: async (res) => {
         if (res.errors.length > 0) {
           setAnalysisError(res.errors[0].message);
@@ -136,6 +184,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
       const approvedPlan: NormalizationPlan = {
         ...plan,
         column_map: reconstructColumnMap(fieldMappings),
+        unmapped_required_columns: [],
       };
       const job: UploadJobResponse = await importTransactions(file, approvedPlan);
       const importResult = await pollJobUntilDone(job.jobId);
@@ -147,9 +196,13 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
     }
   }
 
-  const canApprove = REQUIRED_FIELDS.every(
-    (f) => fieldMappings[f] !== null && fieldMappings[f] !== undefined && fieldMappings[f] !== ""
-  );
+  const mappedValues = Object.values(fieldMappings).filter(Boolean) as string[];
+  const hasDuplicateMappings = mappedValues.length !== new Set(mappedValues).size;
+  const canApprove =
+    !hasDuplicateMappings &&
+    REQUIRED_FIELDS.every(
+      (f) => fieldMappings[f] !== null && fieldMappings[f] !== undefined && fieldMappings[f] !== ""
+    );
 
   return (
     <div
@@ -327,14 +380,14 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
 
           {/* Result stage */}
           {stage === "result" && result && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {result.jobFailed ? (
                 <div className="flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
                   <XCircle size={20} className="text-destructive shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-destructive">Import failed</p>
                     <p className="text-xs text-muted-foreground">
-                      Something went wrong while processing your file. Check that the file is a valid CSV and try again.
+                      {friendlyErrorMessage(result.errorMessage)}
                     </p>
                   </div>
                 </div>
@@ -344,10 +397,25 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
                   <div>
                     <p className="text-sm font-medium">Import complete</p>
                     <p className="text-xs text-muted-foreground">
-                      {result.imported} transaction{result.imported !== 1 ? "s" : ""} imported successfully
+                      {result.imported} transaction{result.imported !== 1 ? "s" : ""} imported
+                      {result.skipped > 0 ? ` · ${result.skipped} skipped` : ""}
                     </p>
                   </div>
                 </div>
+              )}
+              {result.skipped > 0 && result.skippedRows.length > 0 && (
+                <details className="rounded-lg border border-border text-sm">
+                  <summary className="cursor-pointer px-4 py-3 font-medium select-none hover:bg-muted/30 transition-colors">
+                    Show skipped rows ({result.skipped})
+                  </summary>
+                  <ul className="px-4 pb-3 pt-1 space-y-1 border-t border-border">
+                    {result.skippedRows.map((s) => (
+                      <li key={s.row} className="text-xs text-muted-foreground">
+                        Row {s.row}: {s.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           )}
@@ -356,10 +424,13 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
         {/* Footer */}
         <div className="flex justify-end gap-2 p-5 border-t border-border shrink-0">
           {stage === "result" && (
-            <Button onClick={onClose}>Done</Button>
+            <Button onClick={() => { queryClient.invalidateQueries({ queryKey: ["transactions"] }); onClose(); }}>Done</Button>
           )}
           {stage === "review" && (
             <>
+              {hasDuplicateMappings && (
+                <p className="text-xs text-destructive self-center mr-auto">Each CSV column can only be used once.</p>
+              )}
               <Button variant="outline" onClick={resetToPickKeepError.bind(null, "")}>Cancel</Button>
               <Button onClick={handleApproveAndImport} disabled={!canApprove}>
                 Approve &amp; Import

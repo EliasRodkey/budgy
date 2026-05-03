@@ -40,8 +40,9 @@ def set_status_unchecked(record: dict) -> dict:
     Args:
         record (dict): the record to check
     """
-    if record[TransactionsTable.amount.name] > 0:
-        record[TransactionsTable.status.name] = TableStatus.UNCHECKED
+    amount = record.get(TransactionsTable.amount.name)
+    if amount is not None and amount > 0:
+        record[TransactionsTable.status.name] = TableStatus.UNCHECKED.value
     return record
 
 
@@ -57,6 +58,8 @@ def validate_transaction(csv_record: Dict, columns: List[Field]):
             db_record[col.dest] = None
             continue
         value = (raw or "").strip()
+        if value.lower() == "none":
+            value = ""
         db_record[col.dest] = col.convert(value) if value else None
 
     # Initialize repayment and exclude status to false for all transactions, we can update these later if needed
