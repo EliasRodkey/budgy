@@ -229,7 +229,16 @@ async def update_transaction(
     if result.data.empty:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
 
-    return result.data.to_dict(orient="records")[0]
+    row = result.data.to_dict(orient="records")[0]
+
+    # Auto-promote: if the transaction was Unchecked and all required fields are now populated,
+    # set status to "Verified" so it drops off the flagged list automatically.
+    _REQUIRED_FOR_VERIFY = ("description", "amount", "authorized_date", "primary_category", "detailed_category")
+    if row.get("status") == "Unchecked" and all(row.get(f) not in (None, "") for f in _REQUIRED_FOR_VERIFY):
+        db.transactions.update_item(transaction_id, status="Verified")
+        row["status"] = "Verified"
+
+    return row
 
 
 # ─── CSV Import Endpoints ─────────────────────────────────────────────────────

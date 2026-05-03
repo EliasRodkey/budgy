@@ -54,7 +54,6 @@ const schema = z.object({
   amount: z.number({ error: "Must be a number" }),
   primaryCategory: z.string().min(1, "Required"),
   detailedCategory: z.string().min(1, "Required"),
-  isFlagged: z.boolean(),
   isExcluded: z.boolean(),
   isRepayment: z.boolean(),
   notes: z
@@ -100,7 +99,41 @@ function InputClass(invalid: boolean) {
   return `w-full h-8 rounded-md border px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring ${invalid ? "border-destructive" : "border-input"}`;
 }
 
+const MISSING_FIELD_LABELS: Record<string, string> = {
+  description: "Description",
+  amount: "Amount",
+  authorizedDate: "Date",
+  primaryCategory: "Category",
+  detailedCategory: "Detailed category",
+};
+
+function computeMissingFields(tx: Transaction): string[] {
+  const checks: Array<[string, boolean]> = [
+    ["description", !tx.description],
+    ["amount", tx.amount == null],
+    ["authorizedDate", !tx.authorizedDate],
+    ["primaryCategory", !tx.primaryCategory],
+    ["detailedCategory", !tx.detailedCategory],
+  ];
+  return checks.filter(([, missing]) => missing).map(([key]) => MISSING_FIELD_LABELS[key]);
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const isUnchecked = status === "Unchecked";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+      isUnchecked
+        ? "bg-yellow-400/10 text-yellow-700 dark:text-yellow-400"
+        : "bg-green-400/10 text-green-700 dark:text-green-400"
+    }`}>
+      {status}
+    </span>
+  );
+}
+
 export function EditTransactionModal({ transaction, isPending, availableTags, onSave, onClose }: EditTransactionModalProps) {
+  const missingFields = computeMissingFields(transaction);
+
   const {
     register,
     handleSubmit,
@@ -117,7 +150,6 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
       amount: transaction.amount,
       primaryCategory: transaction.primaryCategory,
       detailedCategory: transaction.detailedCategory,
-      isFlagged: transaction.isFlagged,
       isExcluded: transaction.exclude,
       isRepayment: transaction.repayment,
       notes: transaction.notes ?? "",
@@ -148,11 +180,26 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
       <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-sm font-semibold">Edit Transaction</h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-sm font-semibold">Edit Transaction</h2>
+            <StatusBadge status={transaction.status} />
+          </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
             <X size={16} />
           </button>
         </div>
+
+        {/* Missing fields banner */}
+        {missingFields.length > 0 && (
+          <div className="mx-5 mt-4 rounded-lg border border-yellow-400/40 bg-yellow-400/5 px-3 py-2.5">
+            <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
+              Missing required fields: {missingFields.join(", ")}
+            </p>
+            <p className="text-xs text-yellow-600/80 dark:text-yellow-400/70 mt-0.5">
+              Fill in the fields above to clear this flag.
+            </p>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
@@ -242,10 +289,10 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
           </div>
 
           <div className="flex items-center gap-6">
-            {(["isFlagged", "isExcluded", "isRepayment"] as const).map((field) => (
+            {(["isExcluded", "isRepayment"] as const).map((field) => (
               <label key={field} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" {...register(field)} className="rounded border-input" />
-                {field === "isFlagged" ? "Flagged" : field === "isExcluded" ? "Excluded" : "Repayment"}
+                {field === "isExcluded" ? "Excluded" : "Repayment"}
               </label>
             ))}
           </div>
