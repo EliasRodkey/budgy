@@ -25,6 +25,6 @@ def unwrap_row_quotes(text: str) -> str:
         return text
     lines = [line.rstrip("\r\n") for line in text.splitlines() if line.strip()]
     return "\n".join(
-        line[1:-1] if line.startswith('"') and line.endswith('"') else line
+        line[1:-1].replace('""', '"') if line.startswith('"') and line.endswith('"') else line
         for line in lines
     )

@@ -355,6 +355,14 @@ class TransactionsTableManager(DatabaseManager):
             category_summary = pd.concat([primary_category_summary, detailed_category_summary], axis=0).reset_index()
 
             category_summary.category = format_column_names(category_summary.category)
+
+            # Drop rows whose category isn't in the known schema — raw/unmapped category
+            # values from CSV imports (e.g. "Eli") would otherwise crash upsert_summary.
+            known_categories = set(
+                PrimaryCategories.as_snake_case_headers() + DetailedCategories.as_snake_case_headers()
+            )
+            category_summary = category_summary[category_summary.category.isin(known_categories)]
+
             category_summary.set_index("category", inplace=True)
             category_summary.drop(columns=["index"], inplace=True)
 

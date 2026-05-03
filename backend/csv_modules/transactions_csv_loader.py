@@ -58,6 +58,8 @@ def validate_transaction(csv_record: Dict, columns: List[Field]):
             db_record[col.dest] = None
             continue
         value = (raw or "").strip()
+        if value.lower() == "none":
+            value = ""
         db_record[col.dest] = col.convert(value) if value else None
 
     # Initialize repayment and exclude status to false for all transactions, we can update these later if needed
