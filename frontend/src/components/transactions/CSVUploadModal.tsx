@@ -6,6 +6,7 @@ import { MappingReviewPanel } from "./MappingReviewPanel";
 import { CheckCircle, ChevronDown, Upload, X, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Stage = "pick" | "analyzing" | "review" | "importing" | "result";
 
@@ -92,6 +93,7 @@ function reconstructColumnMap(fieldMappings: Record<string, string | null>): Rec
 }
 
 export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
+  const queryClient = useQueryClient();
   const [stage, setStage] = useState<Stage>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -422,7 +424,7 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
         {/* Footer */}
         <div className="flex justify-end gap-2 p-5 border-t border-border shrink-0">
           {stage === "result" && (
-            <Button onClick={onClose}>Done</Button>
+            <Button onClick={() => { queryClient.invalidateQueries({ queryKey: ["transactions"] }); onClose(); }}>Done</Button>
           )}
           {stage === "review" && (
             <>
