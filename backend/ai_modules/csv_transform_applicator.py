@@ -55,11 +55,11 @@ def apply_normalization_plan(
                 new_row["detailed_category"] = mapping.detailed
 
         # 3. Amount normalization
-        if plan.amount_transform == AmountTransform.SIGNED:
+        if plan.amount_transform == AmountTransform.EXPENSE_NEGATIVE:
             if "amount" in new_row:
                 new_row["amount"] = float(new_row["amount"])
 
-        elif plan.amount_transform == AmountTransform.INVERT:
+        elif plan.amount_transform == AmountTransform.EXPENSE_POSITIVE:
             if "amount" in new_row:
                 new_row["amount"] = -float(new_row["amount"])
 

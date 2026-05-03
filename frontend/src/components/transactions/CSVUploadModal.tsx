@@ -315,6 +315,9 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
                 csvHeaders={csvHeaders}
                 fieldMappings={fieldMappings}
                 onMappingsChange={setFieldMappings}
+                onAmountTransformChange={(transform) => setPlan({ ...plan, amount_transform: transform })}
+                onDebitColumnChange={(col) => setPlan({ ...plan, debit_column: col })}
+                onCreditColumnChange={(col) => setPlan({ ...plan, credit_column: col })}
               />
             </div>
           )}

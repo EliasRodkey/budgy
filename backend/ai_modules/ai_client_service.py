@@ -39,6 +39,13 @@ _NORMALIZATION_TOOL = {
                 ),
                 "additionalProperties": {"type": ["string", "null"]},
             },
+            "column_map_reasoning": {
+                "type": "string",
+                "description": (
+                    "Brief explanation of how you mapped the CSV columns to Budgy schema fields. "
+                    "Mention any ambiguous or unusual mappings."
+                ),
+            },
             "category_map": {
                 "type": "object",
                 "description": "Maps each raw category string to primary and detailed Budgy categories.",
@@ -51,13 +58,31 @@ _NORMALIZATION_TOOL = {
                     "required": ["primary", "detailed"],
                 },
             },
+            "category_map_reasoning": {
+                "type": "string",
+                "description": (
+                    "Brief explanation of how you mapped raw category values to Budgy categories. "
+                    "Mention any categories that were ambiguous or mapped broadly."
+                ),
+            },
             "amount_transform": {
                 "type": "string",
-                "enum": ["signed", "invert", "debit_credit"],
+                "enum": ["expense_negative", "expense_positive", "debit_credit"],
                 "description": (
-                    "'signed': single amount column, negative = expense (no change needed). "
-                    "'invert': single amount column, positive = expense (must negate). "
-                    "'debit_credit': separate debit and credit columns."
+                    "How to interpret amount values in this CSV. "
+                    "'expense_negative': expenses are negative numbers, income is positive — standard convention, no change needed. "
+                    "'expense_positive': expenses are positive numbers, income is negative — all values will be negated on import. "
+                    "'debit_credit': amounts are split across separate debit and credit columns. "
+                    "Check BOTH expense and income rows to confirm the sign convention. "
+                    "If only one transaction type is present, infer from those values and note the ambiguity in amount_transform_reasoning."
+                ),
+            },
+            "amount_transform_reasoning": {
+                "type": "string",
+                "description": (
+                    "Explain why you chose this sign convention. "
+                    "Describe what you observed in the sample values (e.g. expense sign, income sign, column names). "
+                    "Note any ambiguity if only one transaction type was present."
                 ),
             },
             "debit_column": {
@@ -71,7 +96,11 @@ _NORMALIZATION_TOOL = {
             "issues": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Any problems or ambiguities found in the CSV structure.",
+                "description": (
+                    "File-level structural errors and unresolvable ambiguities only. "
+                    "Do NOT use this for informational notes about mappings — use the reasoning fields instead. "
+                    "Examples: missing required columns entirely, file appears malformed, duplicate headers."
+                ),
             },
             "unmapped_required_columns": {
                 "type": "array",
@@ -84,8 +113,11 @@ _NORMALIZATION_TOOL = {
         },
         "required": [
             "column_map",
+            "column_map_reasoning",
             "category_map",
+            "category_map_reasoning",
             "amount_transform",
+            "amount_transform_reasoning",
             "debit_column",
             "credit_column",
             "issues",
@@ -123,9 +155,15 @@ def _build_system_prompt() -> list[dict]:
                 "(e.g. 'Groceries', 'Gas Station', 'Salary'). Do NOT map account names, bank names, "
                 "card names, institution identifiers, or any string that is not a transaction category — "
                 "simply omit those values from category_map entirely.\n"
-                "- Detect whether amounts are signed (negative=expense), need inversion, or use debit/credit columns.\n"
+                "- For amount sign convention: check BOTH expense and income transactions. "
+                "If expenses are negative numbers and income is positive → use 'expense_negative'. "
+                "If expenses are positive numbers and income is negative → use 'expense_positive'. "
+                "If only one type of transaction is present, infer from the sign of those values "
+                "and note the ambiguity in amount_transform_reasoning.\n"
                 "- List any unmappable required fields in unmapped_required_columns.\n"
-                "- Be conservative: when in doubt, prefer null over a wrong mapping."
+                "- Use issues ONLY for file-level structural errors, not informational notes.\n"
+                "- Be conservative: when in doubt, prefer null over a wrong mapping.\n"
+                "- Always provide reasoning for column mappings, category mappings, and the amount transform."
             ),
         },
         {
@@ -170,7 +208,7 @@ class AIClientService:
             unique_categories: Unique values found in any category-like column.
 
         Returns:
-            NormalizationPlan with column_map, category_map, amount_transform, and issues.
+            NormalizationPlan with column_map, category_map, amount_transform, and reasoning.
         """
         user_text = (
             f"CSV headers: {json.dumps(headers)}\n"
@@ -210,9 +248,12 @@ class AIClientService:
         return NormalizationPlan(
             column_map=column_map,
             category_map=category_map,
-            amount_transform=AmountTransform(raw.get("amount_transform", "signed")),
+            amount_transform=AmountTransform(raw.get("amount_transform", "expense_negative")),
             debit_column=raw.get("debit_column"),
             credit_column=raw.get("credit_column"),
             issues=raw.get("issues", []),
             unmapped_required_columns=raw.get("unmapped_required_columns", []),
+            column_map_reasoning=raw.get("column_map_reasoning"),
+            category_map_reasoning=raw.get("category_map_reasoning"),
+            amount_transform_reasoning=raw.get("amount_transform_reasoning"),
         )
