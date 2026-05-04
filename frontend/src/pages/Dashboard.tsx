@@ -3,9 +3,11 @@ import { BudgetGauge } from "@/components/dashboard/BudgetGauge";
 import { FlaggedTransactionsList } from "@/components/dashboard/FlaggedTransactionsList";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { CategoryDonut } from "@/components/categories/CategoryDonut";
+import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
 import { Button } from "@/components/ui/button";
 import { useAISummary } from "@/hooks/useAISummary";
-import { useAssignCategory, useFlaggedTransactions } from "@/hooks/useFlaggedTransactions";
+import { useFlaggedTransactions } from "@/hooks/useFlaggedTransactions";
+import { useUpdateTransaction, useAvailableTags } from "@/hooks/useTransactions";
 import { useSummary, useDirtyMonths } from "@/hooks/useSummary";
 import { currentMonth, formatMonth } from "@/lib/formatters";
 import { recomputeSummaries } from "@/api/summary";
@@ -14,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, FlaskConical, RefreshCw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { Transaction } from "@/types";
 
 const MONTH = currentMonth();
 
@@ -23,6 +26,7 @@ export default function Dashboard() {
   const { isMockMode, toggleMockMode } = useMockMode();
   const [recomputing, setRecomputing] = useState(false);
   const recomputeStarted = useRef(false);
+  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
 
   const { data: dirtyData } = useDirtyMonths();
 
@@ -59,11 +63,21 @@ export default function Dashboard() {
     isError: flaggedError,
   } = useFlaggedTransactions();
 
-  const { mutate: assign, isPending: assignPending } = useAssignCategory();
+  const { mutate: updateTx, isPending: updatePending } = useUpdateTransaction();
+  const { data: availableTags = [] } = useAvailableTags();
 
   function handleRegenerate() {
     queryClient.removeQueries({ queryKey: ["aiSummary", MONTH] });
     refetchAI();
+  }
+
+  function handleSave(id: string, updates: Partial<Transaction>) {
+    updateTx({ id, updates }, {
+      onSuccess: () => {
+        setEditTarget(null);
+        queryClient.invalidateQueries({ queryKey: ["flaggedTransactions"] });
+      },
+    });
   }
 
   return (
@@ -151,11 +165,19 @@ export default function Dashboard() {
         transactions={flagged}
         isLoading={flaggedLoading}
         isError={flaggedError}
-        onAssign={(transactionId, primaryCategory, detailedCategory) =>
-          assign({ transactionId, primaryCategory, detailedCategory })
-        }
-        isPending={assignPending}
+        onEdit={setEditTarget}
       />
+
+      {/* Edit modal — opened from flagged list */}
+      {editTarget && (
+        <EditTransactionModal
+          transaction={editTarget}
+          isPending={updatePending}
+          availableTags={availableTags}
+          onSave={handleSave}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Transaction } from "../types";
+import type { NormalizationPlan, Transaction } from "../types";
 import { useMockMode } from "../store/mockMode";
 
 const isMock = () => useMockMode.getState().isMockMode;
@@ -29,8 +29,11 @@ export interface TransactionsPage {
 
 export interface ImportResult {
   imported: number;
-  failed: { row: number; reason: string }[];
+  skipped: number;
+  skippedRows: { row: number; reason: string }[];
   jobFailed: boolean;
+  rulesAppliedFromCache: number;
+  newRulesSaved: number;
 }
 
 export interface UploadJobResponse {
@@ -43,7 +46,11 @@ export interface ImportJobStatus {
   status: "pending" | "processing" | "complete" | "failed";
   rowsImported?: number;
   rowsUpdated?: number;
+  rowsSkipped?: number;
+  skippedRows?: { row: number; reason: string }[];
   errors?: string;
+  rulesAppliedFromCache?: number;
+  newRulesSaved?: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -297,12 +304,15 @@ export async function pollJobUntilDone(
     if (status.status === "complete" || status.status === "failed") {
       await confirmImport(jobId);
       if (status.status === "failed") {
-        return { imported: 0, failed: [], jobFailed: true };
+        return { imported: 0, failed: [], jobFailed: true, rulesAppliedFromCache: 0, newRulesSaved: 0 };
       }
       return {
         imported: status.rowsImported ?? 0,
-        failed: [],
+        skipped: status.rowsSkipped ?? 0,
+        skippedRows: status.skippedRows ?? [],
         jobFailed: false,
+        rulesAppliedFromCache: status.rulesAppliedFromCache ?? 0,
+        newRulesSaved: status.newRulesSaved ?? 0,
       };
     }
     await new Promise((r) => setTimeout(r, intervalMs));
@@ -312,7 +322,7 @@ export async function pollJobUntilDone(
 
 // ─── CSV Import (Async Job Pipeline) ─────────────────────────────────────────
 
-export async function importTransactions(file: File): Promise<UploadJobResponse> {
+export async function importTransactions(file: File, normalizationPlan?: NormalizationPlan): Promise<UploadJobResponse> {
   if (isMock()) {
     await new Promise((r) => setTimeout(r, 600));
     return { jobId: "mock-job-id", status: "pending" };
@@ -320,6 +330,9 @@ export async function importTransactions(file: File): Promise<UploadJobResponse>
 
   const formData = new FormData();
   formData.append("file", file);
+  if (normalizationPlan) {
+    formData.append("normalization_plan", JSON.stringify(normalizationPlan));
+  }
   const res = await fetch("/api/transactions/import", { method: "POST", body: formData });
   if (!res.ok) throw new Error("Failed to start import");
   const json = await res.json();
@@ -339,7 +352,11 @@ export async function getImportJobStatus(jobId: string): Promise<ImportJobStatus
     status: json.status,
     rowsImported: json.rowsImported,
     rowsUpdated: json.rowsUpdated,
+    rowsSkipped: json.rowsSkipped,
+    skippedRows: json.skippedRows,
     errors: json.errors,
+    rulesAppliedFromCache: json.rulesAppliedFromCache,
+    newRulesSaved: json.newRulesSaved,
   };
 }
 
@@ -356,6 +373,8 @@ export async function confirmImport(jobId: string): Promise<ImportJobStatus> {
     status: json.status,
     rowsImported: json.rowsImported,
     rowsUpdated: json.rowsUpdated,
+    rowsSkipped: json.rowsSkipped,
+    skippedRows: json.skippedRows,
     errors: json.errors,
   };
 }

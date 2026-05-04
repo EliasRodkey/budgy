@@ -8,6 +8,8 @@ with optional filters/pagination and CSV import with async job tracking.
 Functions:
 """
 # Standard library imports
+import csv as csv_lib
+import io
 import json as json_lib
 from pleasant_loggers import get_logger
 import os
@@ -16,7 +18,7 @@ from typing import Optional
 
 # Third party imports
 import pandas as pd
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from uuid import uuid4
 
 logger = get_logger(__name__)
@@ -25,6 +27,9 @@ logger = get_logger(__name__)
 from pleasant_database import DatabaseFile
 
 # Local imports
+from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
+from backend.csv_modules.csv_parser import unwrap_row_quotes
+from backend.ai_modules.normalization_plan import NormalizationPlan
 from backend.api.transactions.transactions_models import (
     BulkUpdateRequest,
     Transaction,
@@ -225,30 +230,105 @@ async def update_transaction(
     if result.data.empty:
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
 
-    return result.data.to_dict(orient="records")[0]
+    row = result.data.to_dict(orient="records")[0]
+
+    # Auto-promote: if the transaction was Unchecked and all required fields are now populated,
+    # set status to "Verified" so it drops off the flagged list automatically.
+    _REQUIRED_FOR_VERIFY = ("description", "amount", "authorized_date", "primary_category", "detailed_category")
+    if row.get("status") == "Unchecked" and all(row.get(f) not in (None, "") for f in _REQUIRED_FOR_VERIFY):
+        db.transactions.update_item(transaction_id, status="Verified")
+        row["status"] = "Verified"
+
+    return row
 
 
 # ─── CSV Import Endpoints ─────────────────────────────────────────────────────
 
-def _process_csv_upload(job_id: str, tmp_path: str) -> None:
+def _process_csv_upload(
+    job_id: str,
+    tmp_path: str,
+    normalization_plan_json: Optional[str] = None,
+) -> None:
     """
     Background task: uploads a CSV file to the transactions table using the existing
-    upload_csv() pipeline. Updates job status throughout and cleans up the temp file.
+    upload_csv() pipeline. When normalization_plan_json is provided, applies
+    CSVTransformApplicator before validation and saves approved rules afterward.
 
     Creates its own DB session — background tasks must not reuse the request session.
     """
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
     session = DatabaseSession(db_file)
+    transformed_tmp: Optional[str] = None
 
     try:
         session.jobs.set_status(job_id, "processing")
 
+        rules_applied_from_cache = 0
+        new_rules_saved = 0
+        plan: Optional[NormalizationPlan] = None
+
+        skipped_rows: list[dict] = []
+
+        if normalization_plan_json:
+            plan = NormalizationPlan.model_validate_json(normalization_plan_json)
+
+            if plan.unmapped_required_columns:
+                session.jobs.set_status(
+                    job_id, "failed",
+                    errors=f"Required columns not mapped: {plan.unmapped_required_columns}",
+                )
+                return
+
+            with open(tmp_path, newline="", encoding="utf-8") as f:
+                text = f.read()
+            text = unwrap_row_quotes(text)
+            reader = csv_lib.DictReader(io.StringIO(text))
+            raw_rows = list(reader)
+
+            transformed_rows, skipped_rows = apply_normalization_plan(raw_rows, plan)
+
+            # Write transformed rows to a new temp CSV for upload_csv()
+            all_fields = list(dict.fromkeys(k for row in transformed_rows for k in row))
+            transformed_tmp = f"{tmp_path}_transformed.csv"
+            with open(transformed_tmp, "w", newline="", encoding="utf-8") as f:
+                writer = csv_lib.DictWriter(f, fieldnames=all_fields)
+                writer.writeheader()
+                writer.writerows(transformed_rows)
+
+            upload_path = transformed_tmp
+
+            # Count rules before saving (exact per-mapping check)
+            for raw_val, mapped_col in plan.column_map.items():
+                if mapped_col:
+                    if session.category_mapping_rules.get_column_rule(raw_val):
+                        rules_applied_from_cache += 1
+                    else:
+                        new_rules_saved += 1
+            for raw_cat in plan.category_map:
+                if session.category_mapping_rules.get_category_rule(raw_cat):
+                    rules_applied_from_cache += 1
+                else:
+                    new_rules_saved += 1
+        else:
+            upload_path = tmp_path
+
         count_before = session.transactions.count_items()
-        updated_records = session.transactions.upload_csv(tmp_path)
+        updated_records = session.transactions.upload_csv(upload_path)
         count_after = session.transactions.count_items()
 
         rows_imported = count_after - count_before
         rows_updated = len(updated_records)
+
+        if plan:
+            # Save new rules after successful import
+            for raw_val, mapped_col in plan.column_map.items():
+                if mapped_col and not session.category_mapping_rules.get_column_rule(raw_val):
+                    session.category_mapping_rules.upsert_column_rule(raw_val, mapped_col)
+            for raw_cat, mapping in plan.category_map.items():
+                if not session.category_mapping_rules.get_category_rule(raw_cat):
+                    session.category_mapping_rules.upsert_category_rule(
+                        raw_cat, mapping.primary, mapping.detailed
+                    )
 
         session.rules.apply_rules_to_all(session.transactions)
 
@@ -276,6 +356,10 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
             job_id, "complete",
             rows_imported=rows_imported,
             rows_updated=rows_updated,
+            rows_skipped=len(skipped_rows),
+            skipped_rows=json_lib.dumps(skipped_rows) if skipped_rows else None,
+            rules_applied_from_cache=rules_applied_from_cache,
+            new_rules_saved=new_rules_saved,
         )
 
     except Exception as e:
@@ -284,6 +368,8 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+        if transformed_tmp and os.path.exists(transformed_tmp):
+            os.remove(transformed_tmp)
         session.close()
 
 
@@ -291,10 +377,15 @@ def _process_csv_upload(job_id: str, tmp_path: str) -> None:
 async def import_transactions_csv(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    normalization_plan: Optional[str] = Form(None),
 ) -> UploadJobResponse:
     """
     Accepts a CSV file upload, saves it to a temp path, creates a job record,
     and queues a background task to process it. Returns a job_id immediately.
+
+    normalization_plan: optional JSON-encoded NormalizationPlan from POST /ai/plan-csv.
+    When provided, CSVTransformApplicator runs before existing validation and approved
+    rules are saved to CategoryMappingRulesManager after successful import.
     """
     tmp_path = f"/tmp/{uuid4()}_{file.filename}"
     contents = await file.read()
@@ -311,7 +402,7 @@ async def import_transactions_csv(
     job_id = jobs_session.jobs.create_job(tmp_path)
     jobs_session.close()
 
-    background_tasks.add_task(_process_csv_upload, job_id, tmp_path)
+    background_tasks.add_task(_process_csv_upload, job_id, tmp_path, normalization_plan)
 
     return {"job_id": job_id, "status": "pending"}
 
@@ -332,7 +423,11 @@ async def get_import_job_status(job_id: str) -> ImportJobStatus:
         "status": job.status,
         "rows_imported": job.rows_imported,
         "rows_updated": job.rows_updated,
+        "rows_skipped": job.rows_skipped,
+        "skipped_rows": json_lib.loads(job.skipped_rows) if job.skipped_rows else None,
         "errors": job.errors,
+        "rules_applied_from_cache": job.rules_applied_from_cache,
+        "new_rules_saved": job.new_rules_saved,
     }
 
 
@@ -444,5 +539,9 @@ async def confirm_import_job(job_id: str) -> ImportJobStatus:
         "status": job.status,
         "rows_imported": job.rows_imported,
         "rows_updated": job.rows_updated,
+        "rows_skipped": job.rows_skipped,
+        "skipped_rows": json_lib.loads(job.skipped_rows) if job.skipped_rows else None,
         "errors": job.errors,
+        "rules_applied_from_cache": job.rules_applied_from_cache,
+        "new_rules_saved": job.new_rules_saved,
     }

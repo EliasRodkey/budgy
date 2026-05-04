@@ -545,6 +545,7 @@ export default function Transactions() {
           availableTags={availableTags}
           onSave={handleSave}
           onClose={() => setEditTarget(null)}
+          onDelete={() => { setDeleteTarget(editTarget); setEditTarget(null); }}
         />
       )}
       <DeleteConfirmDialog
