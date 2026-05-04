@@ -8,16 +8,14 @@ Covers:
     - signed: amount passed through as float, unchanged
     - invert: amount values negated
     - debit_credit: credit - debit merged into single signed amount
-    - Rows missing required fields raise TransformValidationError with correct metadata
+    - Rows missing required fields are imported as UNCHECKED with "Other" fallback
+    - Structurally corrupt rows (wrong column count, empty) are skipped
     - Valid rows returned cleanly without modification
 """
 import pytest
 
 from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
-from backend.ai_modules.csv_transform_applicator import (
-    TransformValidationError,
-    apply_normalization_plan,
-)
+from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
 
 
 def _make_plan(**kwargs) -> NormalizationPlan:
@@ -47,7 +45,7 @@ class TestColumnRenames:
             },
             amount_transform=AmountTransform.SIGNED,
         )
-        result = apply_normalization_plan(rows, plan)
+        result, _ = apply_normalization_plan(rows, plan)
 
         assert result[0]["authorized_date"] == "2024-01-15"
         assert result[0]["description"] == "Chipotle"
@@ -64,7 +62,7 @@ class TestColumnRenames:
                 "Amount": "amount",
             },
         )
-        result = apply_normalization_plan(rows, plan)
+        result, _ = apply_normalization_plan(rows, plan)
         assert "Txn Date" not in result[0]
         assert "Merchant" not in result[0]
 
@@ -79,7 +77,7 @@ class TestColumnRenames:
             }
         ]
         plan = _make_plan(column_map={"Unknown": None})
-        result = apply_normalization_plan(rows, plan)
+        result, _ = apply_normalization_plan(rows, plan)
         assert "Unknown" not in result[0]
 
     def test_existing_schema_field_headers_passed_through(self):
@@ -92,7 +90,7 @@ class TestColumnRenames:
             }
         ]
         plan = _make_plan()
-        result = apply_normalization_plan(rows, plan)
+        result, _ = apply_normalization_plan(rows, plan)
         assert result[0]["authorized_date"] == "2024-01-15"
         assert result[0]["description"] == "Test"
 
@@ -117,14 +115,14 @@ class TestCategorySubstitution:
                 )
             }
         )
-        result = apply_normalization_plan(rows, plan)
+        result, _ = apply_normalization_plan(rows, plan)
         assert result[0]["primary_category"] == "Food & drink"
         assert result[0]["detailed_category"] == "Restaurants & bars"
 
     def test_unmapped_category_passes_through(self):
         rows = [self._base_row("Unknown Category")]
         plan = _make_plan(category_map={})
-        result = apply_normalization_plan(rows, plan)
+        result, _ = apply_normalization_plan(rows, plan)
         assert result[0]["primary_category"] == "Unknown Category"
         assert "detailed_category" not in result[0]
 
@@ -137,7 +135,7 @@ class TestCategorySubstitution:
                 )
             }
         )
-        result = apply_normalization_plan(rows, plan)
+        result, _ = apply_normalization_plan(rows, plan)
         assert result[0]["primary_category"] == "Transportation"
         assert result[1]["primary_category"] == "Transportation"
 
@@ -154,15 +152,15 @@ class TestAmountSigned:
         }
 
     def test_signed_passthrough_negative(self):
-        result = apply_normalization_plan([self._row("-15.50")], _make_plan())
+        result, _ = apply_normalization_plan([self._row("-15.50")], _make_plan())
         assert result[0]["amount"] == -15.50
 
     def test_signed_passthrough_positive(self):
-        result = apply_normalization_plan([self._row("100.00")], _make_plan())
+        result, _ = apply_normalization_plan([self._row("100.00")], _make_plan())
         assert result[0]["amount"] == 100.00
 
     def test_signed_amount_is_float(self):
-        result = apply_normalization_plan([self._row("-15.50")], _make_plan())
+        result, _ = apply_normalization_plan([self._row("-15.50")], _make_plan())
         assert isinstance(result[0]["amount"], float)
 
 
@@ -177,12 +175,12 @@ class TestAmountInvert:
 
     def test_invert_negates_positive_amount(self):
         plan = _make_plan(amount_transform=AmountTransform.INVERT)
-        result = apply_normalization_plan([self._row("15.50")], plan)
+        result, _ = apply_normalization_plan([self._row("15.50")], plan)
         assert result[0]["amount"] == -15.50
 
     def test_invert_negates_negative_amount(self):
         plan = _make_plan(amount_transform=AmountTransform.INVERT)
-        result = apply_normalization_plan([self._row("-15.50")], plan)
+        result, _ = apply_normalization_plan([self._row("-15.50")], plan)
         assert result[0]["amount"] == 15.50
 
 
@@ -204,25 +202,25 @@ class TestAmountDebitCredit:
         )
 
     def test_debit_only_produces_negative_amount(self):
-        result = apply_normalization_plan([self._row("15.50", "")], self._plan())
+        result, _ = apply_normalization_plan([self._row("15.50", "")], self._plan())
         assert result[0]["amount"] == pytest.approx(-15.50)
 
     def test_credit_only_produces_positive_amount(self):
-        result = apply_normalization_plan([self._row("", "2000.00")], self._plan())
+        result, _ = apply_normalization_plan([self._row("", "2000.00")], self._plan())
         assert result[0]["amount"] == pytest.approx(2000.00)
 
     def test_debit_and_credit_computes_net(self):
-        result = apply_normalization_plan([self._row("10.00", "5.00")], self._plan())
+        result, _ = apply_normalization_plan([self._row("10.00", "5.00")], self._plan())
         assert result[0]["amount"] == pytest.approx(-5.00)
 
     def test_both_empty_produces_zero(self):
-        result = apply_normalization_plan([self._row("", "")], self._plan())
+        result, _ = apply_normalization_plan([self._row("", "")], self._plan())
         assert result[0]["amount"] == pytest.approx(0.0)
 
 
-# ── Validation errors ──────────────────────────────────────────────────────────
+# ── Soft failures (missing required fields) ────────────────────────────────────
 
-class TestTransformValidationError:
+class TestSoftFailures:
     def _valid_row(self) -> dict:
         return {
             "authorized_date": "2024-01-15",
@@ -231,35 +229,67 @@ class TestTransformValidationError:
             "amount": "-5.00",
         }
 
-    def test_raises_when_row_missing_required_field(self):
+    def test_missing_category_imports_as_unchecked_with_other(self):
         rows = [{"authorized_date": "2024-01-15", "description": "Test", "amount": "-5.00"}]
-        plan = _make_plan()
-        with pytest.raises(TransformValidationError) as exc:
-            apply_normalization_plan(rows, plan)
-        assert exc.value.failed_rows[0]["row_index"] == 0
-        assert "primary_category" in exc.value.failed_rows[0]["missing_fields"]
+        result, skipped = apply_normalization_plan(rows, _make_plan())
+        assert len(result) == 1
+        assert len(skipped) == 0
+        assert result[0]["status"] == "Unchecked"
+        assert result[0]["primary_category"] == "Other"
 
-    def test_raises_lists_all_failed_rows(self):
-        good = self._valid_row()
-        bad1 = {"authorized_date": "2024-01-15", "description": "A", "amount": "-1.00"}
-        bad2 = {"authorized_date": "2024-01-16", "primary_category": "Food", "amount": "-2.00"}
-        plan = _make_plan()
-        with pytest.raises(TransformValidationError) as exc:
-            apply_normalization_plan([good, bad1, bad2], plan)
-        indices = [r["row_index"] for r in exc.value.failed_rows]
-        assert 1 in indices
-        assert 2 in indices
-        assert 0 not in indices
+    def test_missing_amount_imports_as_unchecked(self):
+        rows = [{"authorized_date": "2024-01-15", "description": "Test", "primary_category": "Food"}]
+        result, skipped = apply_normalization_plan(rows, _make_plan())
+        assert len(result) == 1
+        assert result[0]["status"] == "Unchecked"
 
-    def test_error_message_includes_count(self):
-        bad = {"authorized_date": "2024-01-15"}
-        plan = _make_plan()
-        with pytest.raises(TransformValidationError) as exc:
-            apply_normalization_plan([bad], plan)
-        assert "1" in str(exc.value)
+    def test_valid_rows_not_marked_unchecked(self):
+        rows = [self._valid_row()]
+        result, _ = apply_normalization_plan(rows, _make_plan())
+        assert result[0].get("status") != "Unchecked"
 
     def test_valid_rows_returned_cleanly(self):
         rows = [self._valid_row(), self._valid_row()]
-        plan = _make_plan()
-        result = apply_normalization_plan(rows, plan)
+        result, skipped = apply_normalization_plan(rows, _make_plan())
         assert len(result) == 2
+        assert len(skipped) == 0
+
+
+# ── Skipped rows (structurally corrupt) ───────────────────────────────────────
+
+class TestSkippedRows:
+    def _valid_row(self) -> dict:
+        return {
+            "authorized_date": "2024-01-15",
+            "description": "Test",
+            "primary_category": "Food",
+            "amount": "-5.00",
+        }
+
+    def test_empty_row_is_skipped(self):
+        rows = [
+            self._valid_row(),
+            {"authorized_date": "", "description": "", "primary_category": "", "amount": ""},
+        ]
+        result, skipped = apply_normalization_plan(rows, _make_plan())
+        assert len(result) == 1
+        assert len(skipped) == 1
+        assert skipped[0]["row"] == 2
+        assert skipped[0]["reason"] == "empty row"
+
+    def test_wrong_column_count_row_is_skipped(self):
+        rows = [
+            self._valid_row(),
+            {"authorized_date": "2024-01-15", "description": "Test"},  # missing cols
+        ]
+        result, skipped = apply_normalization_plan(rows, _make_plan())
+        assert len(result) == 1
+        assert len(skipped) == 1
+        assert skipped[0]["reason"] == "wrong column count"
+
+    def test_skipped_row_numbers_are_1_indexed(self):
+        rows = [
+            {"authorized_date": "", "description": "", "primary_category": "", "amount": ""},
+        ]
+        _, skipped = apply_normalization_plan(rows, _make_plan())
+        assert skipped[0]["row"] == 1

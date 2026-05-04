@@ -77,6 +77,7 @@ interface EditTransactionModalProps {
   availableTags: string[];
   onSave: (id: string, updates: Partial<Transaction>) => void;
   onClose: () => void;
+  onDelete?: () => void;
 }
 
 interface FieldProps {
@@ -326,13 +327,20 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
             />
           </Field>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Saving…" : "Save"}
-            </Button>
+          <div className="flex justify-between pt-2">
+            {onDelete && (
+              <Button variant="destructive" type="button" onClick={onDelete}>
+                Delete
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" type="button" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
           </div>
         </form>
       </div>

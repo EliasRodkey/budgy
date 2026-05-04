@@ -42,6 +42,7 @@ class CSVNormalizationPlanner:
         self,
         headers: list[str],
         unique_categories: list[str],
+        sample_amount_values: dict[str, list[float]] | None = None,
     ) -> tuple[NormalizationPlan, bool]:
         """
         Produce a NormalizationPlan for the given CSV headers and category values.
@@ -82,7 +83,7 @@ class CSVNormalizationPlanner:
                 f"Cache miss: sending {len(uncached_headers)} headers and "
                 f"{len(uncached_categories)} categories to AI"
             )
-            ai_plan = self._ai.plan_csv(uncached_headers, uncached_categories)
+            ai_plan = self._ai.plan_csv(uncached_headers, uncached_categories, sample_amount_values=sample_amount_values)
             merged_column_map = {**cached_col_rules, **ai_plan.column_map}
             merged_category_map = {
                 **{k: CategoryMapping(primary=v["primary"], detailed=v["detailed"])
@@ -98,7 +99,6 @@ class CSVNormalizationPlanner:
             amount_transform_reasoning = ai_plan.amount_transform_reasoning
             used_cache = False
         else:
-            logger.info("Full cache hit: returning plan without AI call")
             merged_column_map = dict(cached_col_rules)
             merged_category_map = {
                 k: CategoryMapping(primary=v["primary"], detailed=v["detailed"])
@@ -112,6 +112,15 @@ class CSVNormalizationPlanner:
             category_map_reasoning = None
             amount_transform_reasoning = None
             used_cache = True
+            if sample_amount_values:
+                logger.info("Full cache hit but running sign detection with sample values")
+                sign_plan = self._ai.plan_csv([], [], sample_amount_values=sample_amount_values)
+                amount_transform = sign_plan.amount_transform
+                debit_column = sign_plan.debit_column
+                credit_column = sign_plan.credit_column
+            else:
+                logger.info("Full cache hit: returning plan without AI call")
+                amount_transform = AmountTransform.SIGNED
 
         # 4. Strip identity mappings — headers already named as schema fields
         #    need no entry in column_map (the transform applicator passes them through)

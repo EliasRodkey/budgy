@@ -29,7 +29,8 @@ export interface TransactionsPage {
 
 export interface ImportResult {
   imported: number;
-  failed: { row: number; reason: string }[];
+  skipped: number;
+  skippedRows: { row: number; reason: string }[];
   jobFailed: boolean;
   rulesAppliedFromCache: number;
   newRulesSaved: number;
@@ -45,6 +46,8 @@ export interface ImportJobStatus {
   status: "pending" | "processing" | "complete" | "failed";
   rowsImported?: number;
   rowsUpdated?: number;
+  rowsSkipped?: number;
+  skippedRows?: { row: number; reason: string }[];
   errors?: string;
   rulesAppliedFromCache?: number;
   newRulesSaved?: number;
@@ -305,7 +308,8 @@ export async function pollJobUntilDone(
       }
       return {
         imported: status.rowsImported ?? 0,
-        failed: [],
+        skipped: status.rowsSkipped ?? 0,
+        skippedRows: status.skippedRows ?? [],
         jobFailed: false,
         rulesAppliedFromCache: status.rulesAppliedFromCache ?? 0,
         newRulesSaved: status.newRulesSaved ?? 0,
@@ -348,6 +352,8 @@ export async function getImportJobStatus(jobId: string): Promise<ImportJobStatus
     status: json.status,
     rowsImported: json.rowsImported,
     rowsUpdated: json.rowsUpdated,
+    rowsSkipped: json.rowsSkipped,
+    skippedRows: json.skippedRows,
     errors: json.errors,
     rulesAppliedFromCache: json.rulesAppliedFromCache,
     newRulesSaved: json.newRulesSaved,
@@ -367,6 +373,8 @@ export async function confirmImport(jobId: string): Promise<ImportJobStatus> {
     status: json.status,
     rowsImported: json.rowsImported,
     rowsUpdated: json.rowsUpdated,
+    rowsSkipped: json.rowsSkipped,
+    skippedRows: json.skippedRows,
     errors: json.errors,
   };
 }
