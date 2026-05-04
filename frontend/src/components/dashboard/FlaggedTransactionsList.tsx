@@ -1,36 +1,33 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { Transaction } from "@/types";
 import { Flag } from "lucide-react";
-import { useState } from "react";
 
-// Primary category options — mirrors the backend enum
-const PRIMARY_CATEGORIES = [
-  "Food & drink",
-  "Transportation",
-  "Housing & utilities",
-  "Health & wellness",
-  "Entertainment",
-  "Shopping",
-  "Services",
-  "Insurance",
-  "Investments",
-  "Debt payments",
-  "Transfers",
-  "Travel",
-  "Government & charity",
-  "Bank fees",
-  "Other",
-];
+const MISSING_FIELD_LABELS: Record<string, string> = {
+  description: "description",
+  amount: "amount",
+  authorizedDate: "date",
+  primaryCategory: "category",
+  detailedCategory: "detailed category",
+};
+
+function getMissingFields(tx: Transaction): string[] {
+  const checks: Array<[string, boolean]> = [
+    ["description", !tx.description],
+    ["amount", tx.amount == null],
+    ["authorizedDate", !tx.authorizedDate],
+    ["primaryCategory", !tx.primaryCategory],
+    ["detailedCategory", !tx.detailedCategory],
+  ];
+  return checks.filter(([, missing]) => missing).map(([key]) => MISSING_FIELD_LABELS[key]);
+}
 
 interface FlaggedTransactionsListProps {
   transactions: Transaction[] | undefined;
   isLoading: boolean;
   isError: boolean;
-  onAssign: (transactionId: string, primaryCategory: string, detailedCategory: string) => void;
-  isPending: boolean;
+  onEdit: (tx: Transaction) => void;
 }
 
 function RowSkeleton() {
@@ -39,53 +36,31 @@ function RowSkeleton() {
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-4 flex-1" />
       <Skeleton className="h-4 w-16" />
-      <Skeleton className="h-7 w-32 rounded-lg" />
+      <Skeleton className="h-4 w-32" />
     </div>
   );
 }
 
-interface AssignRowProps {
-  tx: Transaction;
-  onAssign: (transactionId: string, primaryCategory: string, detailedCategory: string) => void;
-  isPending: boolean;
-}
-
-function AssignRow({ tx, onAssign, isPending }: AssignRowProps) {
-  const [selected, setSelected] = useState("");
-
+function FlaggedRow({ tx, onEdit }: { tx: Transaction; onEdit: (tx: Transaction) => void }) {
+  const missing = getMissingFields(tx);
   return (
-    <div className="flex flex-wrap items-center gap-3 py-3 border-b border-border last:border-0">
+    <button
+      type="button"
+      onClick={() => onEdit(tx)}
+      className="w-full flex flex-wrap items-center gap-3 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors text-left px-1 rounded"
+    >
       <span className="text-xs text-muted-foreground w-24 shrink-0">{formatDate(tx.authorizedDate)}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{tx.description}</p>
-        <p className="text-xs text-muted-foreground">{tx.accountName}</p>
+        <p className="text-sm font-medium truncate">{tx.description || <span className="italic text-muted-foreground">No description</span>}</p>
+        {missing.length > 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">Missing: {missing.join(", ")}</p>
+        )}
       </div>
       <span className="text-sm font-medium tabular-nums text-red-600 dark:text-red-400 shrink-0">
-        {formatCurrency(tx.amount)}
+        {tx.amount != null ? formatCurrency(tx.amount) : "—"}
       </span>
-      <div className="flex items-center gap-2 shrink-0">
-        <select
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className="h-7 rounded-md border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-          aria-label={`Category for ${tx.description}`}
-        >
-          <option value="">Pick category…</option>
-          {PRIMARY_CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-        <Button
-          size="xs"
-          disabled={!selected || isPending}
-          onClick={() => onAssign(tx.id, selected, selected)}
-        >
-          Assign
-        </Button>
-      </div>
-    </div>
+      <span className="text-xs text-muted-foreground shrink-0">Edit →</span>
+    </button>
   );
 }
 
@@ -93,8 +68,7 @@ export function FlaggedTransactionsList({
   transactions,
   isLoading,
   isError,
-  onAssign,
-  isPending,
+  onEdit,
 }: FlaggedTransactionsListProps) {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
@@ -131,7 +105,7 @@ export function FlaggedTransactionsList({
       {!isLoading && !isError && transactions && transactions.length > 0 && (
         <div>
           {transactions.map((tx) => (
-            <AssignRow key={tx.id} tx={tx} onAssign={onAssign} isPending={isPending} />
+            <FlaggedRow key={tx.id} tx={tx} onEdit={onEdit} />
           ))}
         </div>
       )}

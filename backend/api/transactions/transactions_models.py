@@ -65,6 +65,7 @@ class TransactionFilters(BaseModel):
     detailed_category: Optional[str] = Query(None)
     tags: Optional[str] = Query(None) # OR logic: match any of these tags, Will be comma seperated, must parse
     show_excluded: Optional[bool] = Query(False) # default false — excluded transactions are hidden
+    flagged: Optional[bool] = Query(None) # if True, return only status == "Unchecked" transactions
     date_from: Optional[str] = Query(None) # YYYY-MM-DD
     date_to: Optional[str] = Query(None) # YYYY-MM-DD
     sort_by: str = Field(default="date", pattern="^(date|amount)$") # date, amount, or description
@@ -84,6 +85,9 @@ class TransactionFilters(BaseModel):
 
         if not self.show_excluded:
             db_filters["exclude"] = ("==", False)
+
+        if self.flagged:
+            db_filters["status"] = ("==", "Unchecked")
 
         if self.primary_category in [e.value for e in PrimaryCategories]:
             db_filters["primary_category"] = ("==", self.primary_category)

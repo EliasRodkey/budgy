@@ -7,6 +7,9 @@ interface MappingReviewPanelProps {
   csvHeaders: string[];
   fieldMappings: Record<string, string | null>; // budgyField → csvHeader | null
   onMappingsChange: (updated: Record<string, string | null>) => void;
+  onAmountTransformChange: (transform: NormalizationPlan["amount_transform"]) => void;
+  onDebitColumnChange: (col: string | null) => void;
+  onCreditColumnChange: (col: string | null) => void;
 }
 
 const BUDGY_FIELDS = [
@@ -22,13 +25,28 @@ const BUDGY_FIELDS = [
   { key: "tags",             label: "Tags",              required: false, tooltip: "Comma-separated tags for filtering" },
 ] as const;
 
-const AMOUNT_TRANSFORM_LABELS: Record<NormalizationPlan["amount_transform"], string> = {
-  signed:       "Single signed column (negative = expense)",
-  invert:       "Inverted — positive values treated as expenses",
-  debit_credit: "Separate debit / credit columns",
-};
+const AMOUNT_TRANSFORM_OPTIONS: { value: NormalizationPlan["amount_transform"]; label: string }[] = [
+  { value: "expense_negative", label: "Expenses are negative (standard)" },
+  { value: "expense_positive", label: "Expenses are positive (will be negated)" },
+  { value: "debit_credit",     label: "Separate debit / credit columns" },
+];
 
-export function MappingReviewPanel({ plan, csvHeaders, fieldMappings, onMappingsChange }: MappingReviewPanelProps) {
+function ReasoningNote({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <p className="text-xs text-muted-foreground italic mt-1">{text}</p>
+  );
+}
+
+export function MappingReviewPanel({
+  plan,
+  csvHeaders,
+  fieldMappings,
+  onMappingsChange,
+  onAmountTransformChange,
+  onDebitColumnChange,
+  onCreditColumnChange,
+}: MappingReviewPanelProps) {
   function handleFieldChange(fieldKey: string, value: string) {
     onMappingsChange({ ...fieldMappings, [fieldKey]: value === "" ? null : value });
   }
@@ -43,7 +61,7 @@ export function MappingReviewPanel({ plan, csvHeaders, fieldMappings, onMappings
     <TooltipProvider>
       <div className="space-y-5">
 
-        {/* Issues */}
+        {/* Issues — structural errors only */}
         {plan.issues.length > 0 && (
           <div className="space-y-2">
             {plan.issues.map((issue, i) => (
@@ -128,14 +146,54 @@ export function MappingReviewPanel({ plan, csvHeaders, fieldMappings, onMappings
           <p className="text-xs text-muted-foreground">
             <span className="text-destructive">*</span> Required
           </p>
+          <ReasoningNote text={plan.column_map_reasoning} />
         </div>
 
         {/* Amount transform */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Amount detection:</span>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
-            {AMOUNT_TRANSFORM_LABELS[plan.amount_transform]}
-          </span>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-foreground">Amount Sign Convention</p>
+          <select
+            value={plan.amount_transform}
+            onChange={(e) => onAmountTransformChange(e.target.value as NormalizationPlan["amount_transform"])}
+            className="w-full h-8 rounded-md border border-border px-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {AMOUNT_TRANSFORM_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <ReasoningNote text={plan.amount_transform_reasoning} />
+
+          {/* Debit/credit column pickers — shown only when debit_credit is selected */}
+          {plan.amount_transform === "debit_credit" && (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Debit column</p>
+                <select
+                  value={plan.debit_column ?? ""}
+                  onChange={(e) => onDebitColumnChange(e.target.value || null)}
+                  className="w-full h-7 rounded-md border border-border px-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— select —</option>
+                  {csvHeaders.map((h) => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Credit column</p>
+                <select
+                  value={plan.credit_column ?? ""}
+                  onChange={(e) => onCreditColumnChange(e.target.value || null)}
+                  className="w-full h-7 rounded-md border border-border px-2 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— select —</option>
+                  {csvHeaders.map((h) => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Category mappings */}
@@ -168,6 +226,7 @@ export function MappingReviewPanel({ plan, csvHeaders, fieldMappings, onMappings
                 </tbody>
               </table>
             </div>
+            <ReasoningNote text={plan.category_map_reasoning} />
           </div>
         )}
       </div>

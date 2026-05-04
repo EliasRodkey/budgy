@@ -94,6 +94,9 @@ class CSVNormalizationPlanner:
             debit_column = ai_plan.debit_column
             credit_column = ai_plan.credit_column
             issues = ai_plan.issues
+            column_map_reasoning = ai_plan.column_map_reasoning
+            category_map_reasoning = ai_plan.category_map_reasoning
+            amount_transform_reasoning = ai_plan.amount_transform_reasoning
             used_cache = False
         else:
             merged_column_map = dict(cached_col_rules)
@@ -101,9 +104,13 @@ class CSVNormalizationPlanner:
                 k: CategoryMapping(primary=v["primary"], detailed=v["detailed"])
                 for k, v in cached_cat_rules.items()
             }
+            amount_transform = AmountTransform.EXPENSE_NEGATIVE
             debit_column = None
             credit_column = None
             issues = []
+            column_map_reasoning = None
+            category_map_reasoning = None
+            amount_transform_reasoning = None
             used_cache = True
             if sample_amount_values:
                 logger.info("Full cache hit but running sign detection with sample values")
@@ -135,5 +142,8 @@ class CSVNormalizationPlanner:
             credit_column=credit_column,
             issues=issues,
             unmapped_required_columns=unmapped_required,
+            column_map_reasoning=column_map_reasoning,
+            category_map_reasoning=category_map_reasoning,
+            amount_transform_reasoning=amount_transform_reasoning,
         )
         return plan, used_cache
