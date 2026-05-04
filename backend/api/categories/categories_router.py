@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pleasant_database import DatabaseFile
 
 from backend.api.categories.categories_models import (
@@ -162,8 +162,8 @@ def get_categories() -> dict:
 async def get_subcategory_detail(
     primary_category: str,
     detailed_category: str,
-    month: Optional[str] = Query(None),
-    year: Optional[int] = Query(None),
+    month: Optional[str] = None,
+    year: Optional[int] = None,
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
     """Returns aggregate and transaction data for a specific subcategory."""
@@ -248,8 +248,8 @@ async def get_subcategory_detail(
 @router.get("/{primary_category}")
 async def get_category_detail(
     primary_category: str,
-    month: Optional[str] = Query(None),
-    year: Optional[int] = Query(None),
+    month: Optional[str] = None,
+    year: Optional[int] = None,
     db: DatabaseSession = Depends(get_db),
 ) -> dict:
     """Returns aggregate detail for a primary category including spend over time and selected-period data."""

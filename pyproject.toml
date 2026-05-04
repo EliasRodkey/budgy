@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "budgy"
-version = "2.0.0"
+version = "2.0.3"
 description = "budget managing application"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = {text = "All Rights Reserved"}
@@ -17,7 +17,9 @@ dependencies = [
     "uvicorn",
     "pydantic",
     "pleasant_loggers",
-    "pleasant_database"
+    "pleasant_database",
+    "anthropic",
+    "python-dotenv"
 ]
 
 [project.optional-dependencies]

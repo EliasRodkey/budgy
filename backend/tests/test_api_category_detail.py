@@ -69,13 +69,13 @@ class TestGetCategoryDetail:
     def test_response_has_data_envelope(self):
         row = _make_summary_row()
         db = _make_mock_db(summary_rows=[row])
-        result = asyncio.run(get_category_detail("Food & drink", db))
+        result = asyncio.run(get_category_detail("Food & drink", db=db))
         assert "data" in result
 
     def test_response_shape(self):
         row = _make_summary_row()
         db = _make_mock_db(summary_rows=[row])
-        result = asyncio.run(get_category_detail("Food & drink", db))
+        result = asyncio.run(get_category_detail("Food & drink", db=db))
         data = result["data"]
         assert data["primaryCategory"] == "Food & drink"
         assert "spendOverTime" in data
@@ -89,19 +89,19 @@ class TestGetCategoryDetail:
     def test_spend_over_time_entry_per_summary_row(self):
         rows = [_make_summary_row(2025, m) for m in range(1, 4)]
         db = _make_mock_db(summary_rows=rows)
-        result = asyncio.run(get_category_detail("Income", db))
+        result = asyncio.run(get_category_detail("Income", db=db))
         assert len(result["data"]["spendOverTime"]) == 3
 
     def test_spend_over_time_month_format(self):
         row = _make_summary_row(2025, 3)
         db = _make_mock_db(summary_rows=[row])
-        result = asyncio.run(get_category_detail("Income", db))
+        result = asyncio.run(get_category_detail("Income", db=db))
         assert result["data"]["spendOverTime"][0]["month"] == "2025-03"
 
     def test_all_valid_primary_categories_accepted(self):
         db = _make_mock_db()
         for cat in PrimaryCategories:
-            result = asyncio.run(get_category_detail(cat.value, db))
+            result = asyncio.run(get_category_detail(cat.value, db=db))
             assert "data" in result
 
 
@@ -111,23 +111,23 @@ class TestGetSubcategoryDetail:
     def test_404_for_invalid_primary_category(self):
         db = _make_mock_db()
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(get_subcategory_detail("Not A Category", "Groceries", db))
+            asyncio.run(get_subcategory_detail("Not A Category", "Groceries", db=db))
         assert exc_info.value.status_code == 404
 
     def test_404_for_invalid_detailed_category(self):
         db = _make_mock_db()
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(get_subcategory_detail("Food & drink", "Not A Subcategory", db))
+            asyncio.run(get_subcategory_detail("Food & drink", "Not A Subcategory", db=db))
         assert exc_info.value.status_code == 404
 
     def test_response_has_data_envelope(self):
         db = _make_mock_db()
-        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db))
+        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db=db))
         assert "data" in result
 
     def test_response_shape(self):
         db = _make_mock_db()
-        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db))
+        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db=db))
         data = result["data"]
         assert data["primaryCategory"] == "Food & drink"
         assert data["detailedCategory"] == "Groceries"
@@ -150,29 +150,29 @@ class TestGetSubcategoryDetail:
              "notes": None, "tags": None},
         ]
         db = _make_mock_db(tx_rows=tx_rows)
-        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db))
+        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db=db))
         assert result["data"]["transactionCount"] == 2
 
     def test_top_vendors_aggregated_correctly(self):
         tx_rows = [
-            {"id": 1, "account_name": "Trader Joe's", "amount": -50.0,
+            {"id": 1, "account_name": "Chase", "amount": -50.0,
              "authorized_date": "2025-01-10", "posted_date": "2025-01-11",
-             "status": "posted", "description": "", "primary_category": "Food & drink",
+             "status": "posted", "description": "Trader Joe's", "primary_category": "Food & drink",
              "detailed_category": "Groceries", "repayment": False, "exclude": False,
              "notes": None, "tags": None},
-            {"id": 2, "account_name": "Trader Joe's", "amount": -30.0,
+            {"id": 2, "account_name": "Chase", "amount": -30.0,
              "authorized_date": "2025-01-15", "posted_date": "2025-01-16",
-             "status": "posted", "description": "", "primary_category": "Food & drink",
+             "status": "posted", "description": "Trader Joe's", "primary_category": "Food & drink",
              "detailed_category": "Groceries", "repayment": False, "exclude": False,
              "notes": None, "tags": None},
-            {"id": 3, "account_name": "Whole Foods", "amount": -90.0,
+            {"id": 3, "account_name": "Chase", "amount": -90.0,
              "authorized_date": "2025-01-20", "posted_date": "2025-01-21",
-             "status": "posted", "description": "", "primary_category": "Food & drink",
+             "status": "posted", "description": "Whole Foods", "primary_category": "Food & drink",
              "detailed_category": "Groceries", "repayment": False, "exclude": False,
              "notes": None, "tags": None},
         ]
         db = _make_mock_db(tx_rows=tx_rows)
-        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db))
+        result = asyncio.run(get_subcategory_detail("Food & drink", "Groceries", db=db))
         vendors = result["data"]["topVendors"]
         # Whole Foods has higher total ($90) than Trader Joe's ($80), should be first
         assert vendors[0]["name"] == "Whole Foods"

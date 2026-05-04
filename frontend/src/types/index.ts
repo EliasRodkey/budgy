@@ -83,3 +83,18 @@ export interface AISummary {
   anomalies: string[];
   suggestions: string[];
 }
+
+export interface NormalizationPlan {
+  column_map: Record<string, string | null>; // rawHeader → budgyField | null
+  category_map: Record<string, { primary: string; detailed: string }>;
+  amount_transform: "expense_negative" | "expense_positive" | "debit_credit";
+  debit_column: string | null;
+  credit_column: string | null;
+  issues: string[];
+  unmapped_required_columns: string[];
+  used_cache: boolean;
+  requires_manual_review: boolean;
+  column_map_reasoning: string | null;
+  category_map_reasoning: string | null;
+  amount_transform_reasoning: string | null;
+}

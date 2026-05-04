@@ -23,6 +23,7 @@ from pleasant_database import DatabaseFile
 
 from backend.database_modules.managers.budget_assignments_manager import BudgetAssignmentsManager
 from backend.database_modules.managers.budget_manager import BudgetsTableManager
+from backend.database_modules.managers.category_mapping_rules_manager import CategoryMappingRulesManager
 from backend.database_modules.managers.dirty_months_manager import DirtyMonthsManager
 from backend.database_modules.managers.rules_manager import TransactionRulesManager
 from backend.database_modules.managers.summary_manager import SummariesTableManager
@@ -41,6 +42,7 @@ class DatabaseSession:
         self.updates = UpdatesTableManager(db_file)
         self.transactions = TransactionsTableManager(db_file, self.updates)
         self.rules = TransactionRulesManager(db_file)
+        self.category_mapping_rules = CategoryMappingRulesManager(db_file)
         self.dirty_months = DirtyMonthsManager(db_file)
         self.summaries = SummariesTableManager(db_file)
         self.jobs = UploadJobsManager(db_file)
@@ -52,6 +54,7 @@ class DatabaseSession:
             self.transactions,
             self.updates,
             self.rules,
+            self.category_mapping_rules,
             self.dirty_months,
             self.summaries,
             self.jobs,
