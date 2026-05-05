@@ -25,19 +25,19 @@ class TestNormalizationPlan:
         plan = NormalizationPlan(
             column_map={"Txn Date": "authorized_date", "Debit": "amount"},
             category_map={"Dining": CategoryMapping(primary="Food & drink", detailed="Restaurants & bars")},
-            amount_transform=AmountTransform.INVERT,
+            amount_transform=AmountTransform.EXPENSE_POSITIVE,
             issues=["ambiguous date format"],
             unmapped_required_columns=[],
         )
         assert plan.column_map["Txn Date"] == "authorized_date"
         assert plan.category_map["Dining"].primary == "Food & drink"
-        assert plan.amount_transform == AmountTransform.INVERT
+        assert plan.amount_transform == AmountTransform.EXPENSE_POSITIVE
 
     def test_defaults_to_empty_lists(self):
         plan = NormalizationPlan(
             column_map={},
             category_map={},
-            amount_transform=AmountTransform.SIGNED,
+            amount_transform=AmountTransform.EXPENSE_NEGATIVE,
         )
         assert plan.issues == []
         assert plan.unmapped_required_columns == []
@@ -59,12 +59,12 @@ class TestNormalizationPlan:
         plan = NormalizationPlan(
             column_map={"Unknown Col": None},
             category_map={},
-            amount_transform=AmountTransform.SIGNED,
+            amount_transform=AmountTransform.EXPENSE_NEGATIVE,
         )
         assert plan.column_map["Unknown Col"] is None
 
     def test_amount_transform_all_values_valid(self):
-        for value in ("signed", "invert", "debit_credit"):
+        for value in ("expense_negative", "expense_positive", "debit_credit"):
             plan = NormalizationPlan(
                 column_map={},
                 category_map={},
@@ -116,7 +116,7 @@ class TestAIClientServicePlanCsv:
         mock_create = MagicMock(return_value=_make_mock_response({
             "column_map": {"Txn Date": "authorized_date", "Amount": "amount"},
             "category_map": {},
-            "amount_transform": "signed",
+            "amount_transform": "expense_negative",
             "debit_column": None,
             "credit_column": None,
             "issues": [],
@@ -135,7 +135,7 @@ class TestAIClientServicePlanCsv:
                 "Dining Out": {"primary": "Food & drink", "detailed": "Restaurants & bars"},
                 "Gas": {"primary": "Transportation", "detailed": "Gas & EV charging"},
             },
-            "amount_transform": "signed",
+            "amount_transform": "expense_negative",
             "debit_column": None,
             "credit_column": None,
             "issues": [],
@@ -148,11 +148,11 @@ class TestAIClientServicePlanCsv:
         assert plan.category_map["Dining Out"].primary == "Food & drink"
         assert plan.category_map["Gas"].detailed == "Gas & EV charging"
 
-    def test_amount_transform_invert_parsed(self):
+    def test_amount_transform_expense_positive_parsed(self):
         mock_create = MagicMock(return_value=_make_mock_response({
             "column_map": {},
             "category_map": {},
-            "amount_transform": "invert",
+            "amount_transform": "expense_positive",
             "debit_column": None,
             "credit_column": None,
             "issues": [],
@@ -160,7 +160,7 @@ class TestAIClientServicePlanCsv:
         }))
         svc = self._make_service(mock_create)
         plan = svc.plan_csv([], [])
-        assert plan.amount_transform == AmountTransform.INVERT
+        assert plan.amount_transform == AmountTransform.EXPENSE_POSITIVE
 
     def test_debit_credit_columns_parsed(self):
         mock_create = MagicMock(return_value=_make_mock_response({
@@ -182,7 +182,7 @@ class TestAIClientServicePlanCsv:
         mock_create = MagicMock(return_value=_make_mock_response({
             "column_map": {"Date": "authorized_date"},
             "category_map": {},
-            "amount_transform": "signed",
+            "amount_transform": "expense_negative",
             "debit_column": None,
             "credit_column": None,
             "issues": ["Cannot determine amount column"],
@@ -198,7 +198,7 @@ class TestAIClientServicePlanCsv:
         mock_create = MagicMock(return_value=_make_mock_response({
             "column_map": {},
             "category_map": {},
-            "amount_transform": "signed",
+            "amount_transform": "expense_negative",
             "debit_column": None,
             "credit_column": None,
             "issues": [],
