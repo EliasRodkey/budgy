@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from pleasant_loggers import get_logger
 
-from backend.ai_modules.ai_client_base import AIClient
+from backend.ai_modules.clients.ai_client_base import AIClient
 from backend.api.ai.ai_models import AISummaryData
 from backend.utils.summary_utils import MonthlySummaryResponse
 

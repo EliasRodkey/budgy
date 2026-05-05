@@ -9,7 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping
 
 
 class PlanCSVResponse(BaseModel):

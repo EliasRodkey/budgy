@@ -14,8 +14,8 @@ Covers:
 """
 import pytest
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
-from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_transform_applicator import apply_normalization_plan
 
 
 def _make_plan(**kwargs) -> NormalizationPlan:

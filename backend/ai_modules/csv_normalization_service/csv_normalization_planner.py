@@ -1,10 +1,10 @@
 #!python3
-from backend.ai_modules.csv_normalization_service import (
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import (
     CSVNormalizationService,
     ALL_SCHEMA_FIELDS,
     REQUIRED_SCHEMA_FIELDS,
 )
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.database_modules.managers.category_mapping_rules_manager import CategoryMappingRulesManager
 
 from pleasant_loggers import get_logger

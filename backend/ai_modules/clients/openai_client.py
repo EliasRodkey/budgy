@@ -3,7 +3,7 @@
 backend.ai_modules.openai_client
 OpenAI implementation of AIClient — not yet implemented.
 """
-from backend.ai_modules.ai_client_base import AIClient
+from backend.ai_modules.clients.ai_client_base import AIClient
 
 
 class OpenAIClient(AIClient):

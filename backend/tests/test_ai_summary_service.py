@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from backend.ai_modules.ai_summary_service import AISummaryService, _build_user_message
+from backend.ai_modules.summary_service.ai_summary_service import AISummaryService, _build_user_message
 from backend.api.ai.ai_models import AISummaryData
 from backend.utils.summary_utils import CategorySpendResponse, MonthlySummaryResponse
 

@@ -20,10 +20,10 @@ from backend.ai_modules.ai_errors import (
     AIRateLimitError,
     AITimeoutError,
 )
-from backend.ai_modules.anthropic_client import AnthropicClient
-from backend.ai_modules.csv_normalization_service import CSVNormalizationService
-from backend.ai_modules.csv_normalization_planner import CSVNormalizationPlanner
-from backend.ai_modules.ai_summary_service import AISummaryService
+from backend.ai_modules.clients.anthropic_client import AnthropicClient
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import CSVNormalizationService
+from backend.ai_modules.csv_normalization_service.csv_normalization_planner import CSVNormalizationPlanner
+from backend.ai_modules.summary_service.ai_summary_service import AISummaryService
 from backend.api.ai.ai_models import AISummaryResponse, PlanCSVResponse
 from backend.csv_modules.csv_parser import unwrap_row_quotes
 from backend.database_modules.db_session import DatabaseSession

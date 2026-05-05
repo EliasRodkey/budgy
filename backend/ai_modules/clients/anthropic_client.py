@@ -12,7 +12,7 @@ from typing import Any
 import anthropic
 from pleasant_loggers import get_logger
 
-from backend.ai_modules.ai_client_base import AIClient
+from backend.ai_modules.clients.ai_client_base import AIClient
 from backend.ai_modules.ai_errors import (
     AIAuthError,
     AICreditsError,

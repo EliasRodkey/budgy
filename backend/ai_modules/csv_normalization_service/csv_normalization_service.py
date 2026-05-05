@@ -9,8 +9,8 @@ from typing import Optional
 
 from pleasant_loggers import get_logger
 
-from backend.ai_modules.anthropic_client import AnthropicClient
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.clients.anthropic_client import AnthropicClient
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.utils.analysis_utils import PrimaryCategories
 
 logger = get_logger(__name__)

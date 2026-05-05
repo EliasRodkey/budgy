@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.api.ai.ai_router import _extract_candidate_categories, _is_numeric_or_date
 from backend.main import app
 

@@ -17,8 +17,8 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_transform_applicator import apply_normalization_plan
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.api.transactions.transactions_router import _process_csv_upload
 from backend.csv_modules.csv_parser import unwrap_row_quotes
 from backend.database_modules.db_session import DatabaseSession
