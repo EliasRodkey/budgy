@@ -1,0 +1,89 @@
+{
+  "description": "Apple Card export — expense-positive amounts (expenses are positive numbers, Type=Debit), both Description and Merchant columns present (AI should prefer Merchant as description), has 'Purchased By' to drop.",
+  "ideal_plan": {
+    "column_map": {
+      "Transaction Date": "authorized_date",
+      "Clearing Date": "posted_date",
+      "Merchant": "description",
+      "Category": "primary_category",
+      "Amount (USD)": "amount",
+      "Description": null,
+      "Type": null,
+      "Purchased By": null
+    },
+    "category_map": {
+      "Groceries": {
+        "primary": "Food & drink",
+        "detailed": "Groceries"
+      },
+      "Restaurants": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      },
+      "Shopping": {
+        "primary": "Shopping",
+        "detailed": "Retail"
+      },
+      "Entertainment": {
+        "primary": "Entertainment",
+        "detailed": "Other entertainment"
+      },
+      "Gas": {
+        "primary": "Transportation",
+        "detailed": "Gas & EV charging"
+      },
+      "Health": {
+        "primary": "Health & wellness",
+        "detailed": "Fitness"
+      },
+      "Utilities": {
+        "primary": "Housing & utilities",
+        "detailed": "Gas & electricity"
+      },
+      "Pharmacy": {
+        "primary": "Health & wellness",
+        "detailed": "Pharmacy"
+      },
+      "Transportation": {
+        "primary": "Transportation",
+        "detailed": "Taxi & ride shares"
+      },
+      "Housing": {
+        "primary": "Housing & utilities",
+        "detailed": "Rent"
+      },
+      "Payments": {
+        "primary": "Income",
+        "detailed": "Wages"
+      }
+    },
+    "amount_transform": "expense_positive",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-01-03",
+      "description": "Whole Foods Market",
+      "amount": -87.43,
+      "primary_category": "Food & drink",
+      "detailed_category": "Groceries"
+    },
+    {
+      "authorized_date": "2025-01-04",
+      "description": "Starbucks",
+      "amount": -6.75,
+      "primary_category": "Food & drink"
+    },
+    {
+      "authorized_date": "2025-01-08",
+      "description": "Shell Gas Station",
+      "amount": -58.20,
+      "primary_category": "Transportation",
+      "detailed_category": "Gas & EV charging"
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}

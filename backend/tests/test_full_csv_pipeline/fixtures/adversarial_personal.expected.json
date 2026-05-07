@@ -1,0 +1,80 @@
+{
+  "description": "Personal spreadsheet with non-standard headers, $ signs and commas in amounts, natural-language category names, and mixed date formats including '5-Apr-2025'. Tests maximum flexibility of the AI mapping.",
+  "ideal_plan": {
+    "column_map": {
+      "What I Spent On": "description",
+      "Date of Purchase": "authorized_date",
+      "How Much ($)": "amount",
+      "My Categories": "primary_category",
+      "Notes/Memo": "notes"
+    },
+    "category_map": {
+      "Books & Learning": {
+        "primary": "Shopping",
+        "detailed": "Other shopping"
+      },
+      "Coffee & Going Out": {
+        "primary": "Food & drink",
+        "detailed": "Coffee shops"
+      },
+      "Housing / Rent": {
+        "primary": "Housing & utilities",
+        "detailed": "Rent"
+      },
+      "Money In / Income": {
+        "primary": "Income",
+        "detailed": "Wages"
+      },
+      "Groceries / Food": {
+        "primary": "Food & drink",
+        "detailed": "Groceries"
+      },
+      "Gas & Car Stuff": {
+        "primary": "Transportation",
+        "detailed": "Gas & EV charging"
+      },
+      "Subscriptions": {
+        "primary": "Entertainment",
+        "detailed": "Other entertainment"
+      },
+      "Health stuff": {
+        "primary": "Health & wellness",
+        "detailed": "Other health & wellness"
+      },
+      "Fitness / Health": {
+        "primary": "Health & wellness",
+        "detailed": "Fitness"
+      },
+      "Eating Out": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      }
+    },
+    "amount_transform": "expense_positive",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-04-08",
+      "description": "Whole Foods weekly shop",
+      "amount": -94.12,
+      "primary_category": "Food & drink"
+    },
+    {
+      "authorized_date": "2025-04-01",
+      "description": "Monthly rent payment",
+      "amount": -1850.00,
+      "primary_category": "Housing & utilities"
+    },
+    {
+      "authorized_date": "2025-04-05",
+      "description": "Amazon order (work books)",
+      "amount": -42.50,
+      "primary_category": "Shopping"
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}

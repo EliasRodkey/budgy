@@ -1,0 +1,83 @@
+{
+  "description": "CSV with structural chaos: blank rows, a row with too many columns, all-whitespace rows, and a duplicate header row mid-file. Tests the pipeline's ability to skip corrupt rows gracefully while preserving valid data.",
+  "ideal_plan": {
+    "column_map": {
+      "Date": "authorized_date",
+      "Description": "description",
+      "Amount": "amount",
+      "Category": "primary_category"
+    },
+    "category_map": {
+      "Groceries": {
+        "primary": "Food & drink",
+        "detailed": "Groceries"
+      },
+      "Coffee": {
+        "primary": "Food & drink",
+        "detailed": "Coffee shops"
+      },
+      "Shopping": {
+        "primary": "Shopping",
+        "detailed": "Retail"
+      },
+      "Entertainment": {
+        "primary": "Entertainment",
+        "detailed": "Other entertainment"
+      },
+      "Gas": {
+        "primary": "Transportation",
+        "detailed": "Gas & EV charging"
+      },
+      "Health": {
+        "primary": "Health & wellness",
+        "detailed": "Other health & wellness"
+      },
+      "Income": {
+        "primary": "Income",
+        "detailed": "Wages"
+      },
+      "Utilities": {
+        "primary": "Housing & utilities",
+        "detailed": "Gas & electricity"
+      },
+      "Transportation": {
+        "primary": "Transportation",
+        "detailed": "Taxi & ride shares"
+      },
+      "Food": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      },
+      "Housing": {
+        "primary": "Housing & utilities",
+        "detailed": "Rent"
+      }
+    },
+    "amount_transform": "expense_negative",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-01-03",
+      "description": "Whole Foods Market",
+      "amount": -87.43,
+      "primary_category": "Food & drink"
+    },
+    {
+      "authorized_date": "2025-01-02",
+      "description": "Payroll Direct Deposit",
+      "amount": 3200.00,
+      "primary_category": "Income"
+    },
+    {
+      "authorized_date": "2025-01-08",
+      "description": "Shell Gas Station",
+      "amount": -58.20,
+      "primary_category": "Transportation"
+    }
+  ],
+  "expected_skipped_row_count": 3,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}

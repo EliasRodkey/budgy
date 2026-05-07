@@ -119,7 +119,7 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
 
     try:
         text = unwrap_row_quotes(text)
-        reader = csv.DictReader(io.StringIO(text))
+        reader = csv.DictReader(io.StringIO(text), delimiter=detect_delimiter(text))
         rows = list(reader)
         headers = list(reader.fieldnames or [])
     except Exception as exc:

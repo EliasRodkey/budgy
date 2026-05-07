@@ -1,0 +1,43 @@
+{
+  "description": "SoFi Relay export — clean headers close to Budgy schema, expense-negative amounts. Should be the highest-scoring fixture.",
+  "ideal_plan": {
+    "column_map": {
+      "Authorized Date": "authorized_date",
+      "Posted Date": "posted_date",
+      "Status": "status",
+      "Account Name": "account_name",
+      "Description": "description",
+      "Primary Category": "primary_category",
+      "Detailed Category": "detailed_category",
+      "Amount": "amount"
+    },
+    "category_map": {},
+    "amount_transform": "expense_negative",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-01-03",
+      "description": "Whole Foods Market",
+      "amount": -87.43,
+      "primary_category": "Food & drink",
+      "detailed_category": "Groceries"
+    },
+    {
+      "authorized_date": "2025-01-05",
+      "description": "Amazon.com",
+      "amount": -42.50,
+      "primary_category": "Shopping"
+    },
+    {
+      "authorized_date": "2025-01-02",
+      "description": "Direct Deposit Payroll",
+      "amount": 3200.00,
+      "primary_category": "Income"
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}

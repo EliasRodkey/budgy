@@ -282,7 +282,7 @@ def _process_csv_upload(
             with open(tmp_path, newline="", encoding="utf-8") as f:
                 text = f.read()
             text = unwrap_row_quotes(text)
-            reader = csv_lib.DictReader(io.StringIO(text))
+            reader = csv_lib.DictReader(io.StringIO(text), delimiter=detect_delimiter(text))
             raw_rows = list(reader)
 
             transformed_rows, skipped_rows = apply_normalization_plan(raw_rows, plan)

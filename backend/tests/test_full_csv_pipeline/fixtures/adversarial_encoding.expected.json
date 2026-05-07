@@ -1,0 +1,91 @@
+{
+  "description": "CSV with encoding and formatting chaos: EUR/GBP/JPY currency symbols, parenthesis-negatives like (42.50), mixed date formats (DD/MM/YYYY, 'Jan 15 2025', '15 January 2025'), and a plus-sign prefix. Tests _parse_amount and date normalization robustness.",
+  "ideal_plan": {
+    "column_map": {
+      "Date": "authorized_date",
+      "Merchant": "description",
+      "Amount": "amount",
+      "Category": "primary_category"
+    },
+    "category_map": {
+      "Online Shopping": {
+        "primary": "Shopping",
+        "detailed": "Retail"
+      },
+      "Restaurants": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      },
+      "Groceries": {
+        "primary": "Food & drink",
+        "detailed": "Groceries"
+      },
+      "Income": {
+        "primary": "Income",
+        "detailed": "Wages"
+      },
+      "Entertainment": {
+        "primary": "Entertainment",
+        "detailed": "Other entertainment"
+      },
+      "Fuel": {
+        "primary": "Transportation",
+        "detailed": "Gas & EV charging"
+      },
+      "Health & Fitness": {
+        "primary": "Health & wellness",
+        "detailed": "Fitness"
+      },
+      "Bills & Utilities": {
+        "primary": "Housing & utilities",
+        "detailed": "Gas & electricity"
+      },
+      "Health": {
+        "primary": "Health & wellness",
+        "detailed": "Pharmacy"
+      },
+      "Transport": {
+        "primary": "Transportation",
+        "detailed": "Taxi & ride shares"
+      },
+      "Retail": {
+        "primary": "Shopping",
+        "detailed": "Retail"
+      },
+      "Food & Dining": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      },
+      "Home & Living": {
+        "primary": "Housing & utilities",
+        "detailed": "Rent"
+      }
+    },
+    "amount_transform": "expense_negative",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-01-15",
+      "description": "Amazon.fr",
+      "amount": -42.50,
+      "primary_category": "Shopping"
+    },
+    {
+      "authorized_date": "2025-01-02",
+      "description": "Salary Deposit",
+      "amount": 3200.00,
+      "primary_category": "Income"
+    },
+    {
+      "authorized_date": "2025-01-10",
+      "description": "Starbucks Paris",
+      "amount": -6.75,
+      "primary_category": "Food & drink"
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}
