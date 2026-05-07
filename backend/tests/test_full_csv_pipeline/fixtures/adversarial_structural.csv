@@ -1,0 +1,19 @@
+Date,Description,Amount,Category
+
+2025-01-03,Whole Foods Market,-87.43,Groceries
+2025-01-04,Starbucks,-6.75,Coffee
+,,extra_col,,too_many_columns,here
+2025-01-05,Amazon.com,-42.50,Shopping
+2025-01-07,Netflix,-15.99,Entertainment
+   ,   ,   ,
+2025-01-08,Shell Gas Station,-58.20,Gas
+2025-01-10,Planet Fitness,-45.00,Health
+2025-01-02,Payroll Direct Deposit,3200.00,Income
+Date,Description,Amount,Category
+2025-01-12,Con Edison,-110.00,Utilities
+2025-01-14,CVS Pharmacy,-23.18,Health
+2025-01-15,Uber,-18.50,Transportation
+,,,
+2025-01-16,Target,-65.99,Shopping
+2025-01-18,Chipotle,-14.75,Food
+2025-01-25,Rent,-1850.00,Housing

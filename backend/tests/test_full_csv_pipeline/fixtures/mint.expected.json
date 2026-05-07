@@ -1,0 +1,89 @@
+{
+  "description": "Mint export — amounts always positive with Transaction Type (debit/credit) indicating direction, Mint-specific category names, has 'Original Description'/'Labels'/'Notes' columns.",
+  "ideal_plan": {
+    "column_map": {
+      "Date": "authorized_date",
+      "Description": "description",
+      "Amount": "amount",
+      "Category": "primary_category",
+      "Account Name": "account_name",
+      "Labels": "tags",
+      "Notes": "notes",
+      "Original Description": null,
+      "Transaction Type": null
+    },
+    "category_map": {
+      "Groceries": {
+        "primary": "Food & drink",
+        "detailed": "Groceries"
+      },
+      "Food & Dining": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      },
+      "Shopping": {
+        "primary": "Shopping",
+        "detailed": "Retail"
+      },
+      "Entertainment": {
+        "primary": "Entertainment",
+        "detailed": "Other entertainment"
+      },
+      "Gas & Fuel": {
+        "primary": "Transportation",
+        "detailed": "Gas & EV charging"
+      },
+      "Health & Fitness": {
+        "primary": "Health & wellness",
+        "detailed": "Fitness"
+      },
+      "Utilities": {
+        "primary": "Housing & utilities",
+        "detailed": "Gas & electricity"
+      },
+      "Auto & Transport": {
+        "primary": "Transportation",
+        "detailed": "Taxi & ride shares"
+      },
+      "Home": {
+        "primary": "Housing & utilities",
+        "detailed": "Rent"
+      },
+      "Paycheck": {
+        "primary": "Income",
+        "detailed": "Wages"
+      },
+      "Transfer": {
+        "primary": "Transfers",
+        "detailed": "Person to person payments"
+      }
+    },
+    "amount_transform": "expense_positive",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-01-03",
+      "description": "Whole Foods",
+      "amount": -87.43,
+      "primary_category": "Food & drink",
+      "detailed_category": "Groceries"
+    },
+    {
+      "authorized_date": "2025-01-04",
+      "description": "Starbucks",
+      "amount": -6.75,
+      "primary_category": "Food & drink"
+    },
+    {
+      "authorized_date": "2025-01-08",
+      "description": "Shell Gas",
+      "amount": -58.20,
+      "primary_category": "Transportation"
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}
