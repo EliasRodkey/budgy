@@ -27,9 +27,9 @@ logger = get_logger(__name__)
 from pleasant_database import DatabaseFile
 
 # Local imports
-from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
-from backend.csv_modules.csv_parser import detect_delimiter, unwrap_row_quotes
-from backend.ai_modules.normalization_plan import NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_transform_applicator import apply_normalization_plan
+from backend.csv_modules.csv_parser import unwrap_row_quotes
+from backend.ai_modules.csv_normalization_service.normalization_plan import NormalizationPlan
 from backend.api.transactions.transactions_models import (
     BulkUpdateRequest,
     Transaction,

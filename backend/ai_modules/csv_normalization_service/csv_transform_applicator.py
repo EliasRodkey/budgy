@@ -1,8 +1,8 @@
 #!python3
 from typing import Optional
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
-from backend.ai_modules.ai_client_service import ALL_SCHEMA_FIELDS, REQUIRED_SCHEMA_FIELDS
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import ALL_SCHEMA_FIELDS, REQUIRED_SCHEMA_FIELDS
 from backend.database_modules.models.common import TableStatus
 
 from pleasant_loggers import get_logger

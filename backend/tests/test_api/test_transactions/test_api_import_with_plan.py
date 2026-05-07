@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.api.transactions.transactions_router import _process_csv_upload
 from backend.main import app
 

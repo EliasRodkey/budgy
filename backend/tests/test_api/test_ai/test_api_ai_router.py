@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.api.ai.ai_router import _extract_candidate_categories, _is_numeric_or_date
 from backend.main import app
 
@@ -116,7 +116,7 @@ def _make_normalization_plan(**kwargs) -> NormalizationPlan:
     defaults = dict(
         column_map={},
         category_map={},
-        amount_transform=AmountTransform.SIGNED,
+        amount_transform=AmountTransform.EXPENSE_NEGATIVE,
         debit_column=None,
         credit_column=None,
         issues=[],
@@ -251,7 +251,7 @@ class TestPlanCSVEndpoint:
 
         captured_categories: list = []
 
-        def capture_plan(headers, unique_categories):
+        def capture_plan(headers, unique_categories, sample_amount_values=None):
             captured_categories.extend(unique_categories)
             return _make_normalization_plan(), False
 

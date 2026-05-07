@@ -14,9 +14,9 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
-from backend.ai_modules.ai_client_service import REQUIRED_SCHEMA_FIELDS
-from backend.ai_modules.csv_normalization_planner import CSVNormalizationPlanner
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import REQUIRED_SCHEMA_FIELDS
+from backend.ai_modules.csv_normalization_service.csv_normalization_planner import CSVNormalizationPlanner
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

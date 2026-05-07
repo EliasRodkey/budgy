@@ -1,10 +1,10 @@
 #!python3
-from backend.ai_modules.ai_client_service import (
-    AIClientService,
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import (
+    CSVNormalizationService,
     ALL_SCHEMA_FIELDS,
     REQUIRED_SCHEMA_FIELDS,
 )
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.database_modules.managers.category_mapping_rules_manager import CategoryMappingRulesManager
 
 from pleasant_loggers import get_logger
@@ -22,7 +22,7 @@ class CSVNormalizationPlanner:
       1. Look up each header and category value in the rules cache.
       2. If all required fields are covered by cache + exact header matches, and
          all categories are cached → return plan with zero AI calls.
-      3. For any uncached headers or categories, call AIClientService with only
+      3. For any uncached headers or categories, call CSVNormalizationService with only
          those items.
       4. Merge cached rules and AI results into a final NormalizationPlan.
 
@@ -33,7 +33,7 @@ class CSVNormalizationPlanner:
     def __init__(
         self,
         rules_manager: CategoryMappingRulesManager,
-        ai_service: AIClientService,
+        ai_service: CSVNormalizationService,
     ):
         self._rules = rules_manager
         self._ai = ai_service
@@ -120,7 +120,7 @@ class CSVNormalizationPlanner:
                 credit_column = sign_plan.credit_column
             else:
                 logger.info("Full cache hit: returning plan without AI call")
-                amount_transform = AmountTransform.SIGNED
+                amount_transform = AmountTransform.EXPENSE_NEGATIVE
 
         # 4. Strip identity mappings — headers already named as schema fields
         #    need no entry in column_map (the transform applicator passes them through)
