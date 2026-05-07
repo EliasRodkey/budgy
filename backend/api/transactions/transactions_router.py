@@ -28,7 +28,7 @@ from pleasant_database import DatabaseFile
 
 # Local imports
 from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
-from backend.csv_modules.csv_parser import unwrap_row_quotes
+from backend.csv_modules.csv_parser import detect_delimiter, unwrap_row_quotes
 from backend.ai_modules.normalization_plan import NormalizationPlan
 from backend.api.transactions.transactions_models import (
     BulkUpdateRequest,
@@ -282,7 +282,7 @@ def _process_csv_upload(
             with open(tmp_path, newline="", encoding="utf-8") as f:
                 text = f.read()
             text = unwrap_row_quotes(text)
-            reader = csv_lib.DictReader(io.StringIO(text))
+            reader = csv_lib.DictReader(io.StringIO(text), delimiter=detect_delimiter(text))
             raw_rows = list(reader)
 
             transformed_rows, skipped_rows = apply_normalization_plan(raw_rows, plan)

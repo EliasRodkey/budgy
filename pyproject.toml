@@ -24,3 +24,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+
+[tool.pytest.ini_options]
+markers = [
+    "ai_integration: marks tests that make real AI API calls (run with -m ai_integration)",
+]

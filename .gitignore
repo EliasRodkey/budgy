@@ -3,6 +3,9 @@
 *data
 *SoFi-Relay-All-Transactions_2025-12-31.csv
 
+# CSV pipeline integration test run results (committed baseline lives at results.baseline.json)
+backend/tests/test_full_csv_pipeline/results/results.json
+
 # Ignore vscode settings
 .vscode/
 
