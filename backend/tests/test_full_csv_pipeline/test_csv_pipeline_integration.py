@@ -5,35 +5,35 @@ Full CSV upload pipeline integration test suite.
 Runs real AI calls against 8 fixture CSVs covering major bank formats and adversarial
 edge cases. Tests each pipeline stage independently with early exit on fatal errors.
 
-Scores are written to results/results.json after every fixture — compare runs to measure
-prompt iteration impact. Pytest only fails on fatal pipeline errors (exceptions, job
-failure, unexpected unmapped required columns).
+Per-run detail is written to results/runs/<timestamp>.json; headline scores are
+appended to results/results.csv. Pass --run-description to label the run.
+Pytest only fails on fatal pipeline errors (exceptions, job failure, unexpected
+unmapped required columns).
 
 Run with:
-    pytest backend/tests/test_full_csv_pipeline/ -m ai_integration -v -s
+    pytest backend/tests/test_full_csv_pipeline/ -m ai_integration -v -s \\
+      --run-description "what changed"
 """
 import csv as csv_lib
 import io
 import json
-import os
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from backend.ai_modules.ai_client_service import AIClientService
-from backend.ai_modules.csv_normalization_planner import CSVNormalizationPlanner
-from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
-from backend.ai_modules.normalization_plan import NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import CSVNormalizationService
+from backend.ai_modules.csv_normalization_service.csv_normalization_planner import CSVNormalizationPlanner
+from backend.ai_modules.csv_normalization_service.csv_transform_applicator import apply_normalization_plan
+from backend.ai_modules.csv_normalization_service.normalization_plan import NormalizationPlan
 from backend.api.ai.ai_router import _extract_candidate_categories, _extract_sample_amounts
 from backend.api.transactions.transactions_router import _process_csv_upload
 from backend.csv_modules.csv_parser import detect_delimiter, unwrap_row_quotes
 from backend.tests.test_full_csv_pipeline.scorer import score_plan, score_rows
+from backend.tests.test_full_csv_pipeline.results_writer import write_results
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
-RESULTS_FILE = Path(__file__).parent / "results" / "results.json"
 
 FIXTURE_NAMES = [
     "sofi_happy_path",
@@ -71,29 +71,11 @@ def _skip_remaining(result: dict, stage_names: list[str]) -> None:
         result["stages"][name] = {"status": "skipped"}
 
 
-def _write_results(fixture_name: str, result: dict) -> None:
-    RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    existing: dict = {}
-    if RESULTS_FILE.exists():
-        try:
-            with open(RESULTS_FILE) as f:
-                existing = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            existing = {}
-
-    existing.setdefault("fixtures", {})[fixture_name] = result
-    existing["run_at"] = datetime.now().isoformat()
-    existing["model"] = os.environ.get("AI_MODEL", "claude-haiku-4-5-20251001")
-
-    with open(RESULTS_FILE, "w") as f:
-        json.dump(existing, f, indent=2, default=str)
-
-
 # ── Test ──────────────────────────────────────────────────────────────────────
 
 @pytest.mark.ai_integration
 @pytest.mark.parametrize("fixture_name", FIXTURE_NAMES)
-def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
+def test_csv_pipeline(fixture_name: str, tmp_path: Path, run_context: dict) -> None:
     csv_path, sidecar = _load_fixture(fixture_name)
 
     result: dict = {
@@ -122,7 +104,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
                 "row_count": 0,
                 "errors": ["No rows parsed from CSV"],
             }
-            _write_results(fixture_name, result)
+            write_results(fixture_name, result, run_context)
             pytest.fail(f"[{fixture_name}] csv_parsing: no rows parsed")
 
         result["stages"]["csv_parsing"] = {
@@ -136,7 +118,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
         result["stages"]["csv_parsing"] = {"status": "fatal", "errors": [str(exc)]}
         _skip_remaining(result, ["ai_planning", "plan_validation",
                                   "transform_application", "database_upload"])
-        _write_results(fixture_name, result)
+        write_results(fixture_name, result, run_context)
         pytest.fail(f"[{fixture_name}] csv_parsing raised: {exc}")
 
     # ── Stage 2: AI Planning ──────────────────────────────────────────────────
@@ -148,7 +130,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
         rules_mock.get_column_rule.return_value = None
         rules_mock.get_category_rule.return_value = None
 
-        ai_service = AIClientService()
+        ai_service = CSVNormalizationService()
         planner = CSVNormalizationPlanner(rules_manager=rules_mock, ai_service=ai_service)
         plan, used_cache = planner.plan(headers, unique_categories,
                                         sample_amount_values=sample_amounts)
@@ -179,7 +161,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
     except Exception as exc:
         result["stages"]["ai_planning"] = {"status": "fatal", "errors": [str(exc)]}
         _skip_remaining(result, ["plan_validation", "transform_application", "database_upload"])
-        _write_results(fixture_name, result)
+        write_results(fixture_name, result, run_context)
         pytest.fail(f"[{fixture_name}] ai_planning raised: {exc}")
 
     # ── Stage 3: Plan Validation ──────────────────────────────────────────────
@@ -201,7 +183,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
 
     if unexpected_unmapped:
         _skip_remaining(result, ["transform_application", "database_upload"])
-        _write_results(fixture_name, result)
+        write_results(fixture_name, result, run_context)
         pytest.fail(
             f"[{fixture_name}] plan_validation: unexpected unmapped required columns: "
             f"{unexpected_unmapped}"
@@ -226,7 +208,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
     except Exception as exc:
         result["stages"]["transform_application"] = {"status": "fatal", "errors": [str(exc)]}
         _skip_remaining(result, ["database_upload"])
-        _write_results(fixture_name, result)
+        write_results(fixture_name, result, run_context)
         pytest.fail(f"[{fixture_name}] transform_application raised: {exc}")
 
     # ── Stage 5: Database Upload ──────────────────────────────────────────────
@@ -249,7 +231,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
                 "status": "fatal",
                 "errors": [str(error_msg)],
             }
-            _write_results(fixture_name, result)
+            write_results(fixture_name, result, run_context)
             pytest.fail(f"[{fixture_name}] database_upload job failed: {error_msg}")
 
         complete_kwargs = status_calls["complete"][1]
@@ -263,7 +245,7 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
         }
     except Exception as exc:
         result["stages"]["database_upload"] = {"status": "fatal", "errors": [str(exc)]}
-        _write_results(fixture_name, result)
+        write_results(fixture_name, result, run_context)
         pytest.fail(f"[{fixture_name}] database_upload raised: {exc}")
 
     # ── Overall Score ─────────────────────────────────────────────────────────
@@ -279,4 +261,4 @@ def test_csv_pipeline(fixture_name: str, tmp_path: Path) -> None:
         (col_score + cat_score + transform_score + row_score_val) / 4, 4
     )
 
-    _write_results(fixture_name, result)
+    write_results(fixture_name, result, run_context)

@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional
 
-from backend.ai_modules.normalization_plan import NormalizationPlan
+from backend.ai_modules.csv_normalization_service.normalization_plan import NormalizationPlan
 
 
 def _try_parse_date(val: str) -> Optional[str]:

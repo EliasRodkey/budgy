@@ -24,7 +24,7 @@ You can explore the app without uploading any data. Use the **Demo Mode** toggle
 
 **Currently implemented:**
 
-- **Automatic transaction categorization** — classify imported transactions using a fine-tuned or few-shot model, reducing manual review.
+- **Automatic transaction categorization** — classify imported transactions using a fine-tuned or few-shot model, reducing manual review. End-to-end AI integration tests on the backend for the CSV upload pipeline. Runs real Claude API calls against 8 fixture CSVs and scores each stage to refine prompting / tooling.
 - **AI monthly summary** — the dashboard generates a natural-language summary of your month's spending, income, and notable patterns via an LLM call
 
 **Planned:**

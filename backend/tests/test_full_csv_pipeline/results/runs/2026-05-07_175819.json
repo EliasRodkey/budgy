@@ -1,0 +1,1939 @@
+{
+  "fixtures": {
+    "sofi_happy_path": {
+      "description": "SoFi Relay export \u2014 clean headers close to Budgy schema, expense-negative amounts. Should be the highest-scoring fixture.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Authorized Date",
+            "Posted Date",
+            "Status",
+            "Account Name",
+            "Description",
+            "Primary Category",
+            "Detailed Category",
+            "Amount"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 1.0,
+              "correct": 8,
+              "total": 8,
+              "misses": {}
+            },
+            "category_map": {
+              "score": 1.0,
+              "correct": 0,
+              "total": 0,
+              "misses": {}
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Authorized Date": "authorized_date",
+              "Posted Date": "posted_date",
+              "Status": "status",
+              "Account Name": "account_name",
+              "Description": "description",
+              "Primary Category": "primary_category",
+              "Detailed Category": "detailed_category",
+              "Amount": "amount"
+            },
+            "category_map": {
+              "Pharmacy": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "Fitness": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Starbucks": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Shell Gas Station": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Rent": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "Movies & TV": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "Electric Bill": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "Person to person payments": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "Netflix": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "Target": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Amazon.com": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Coffee shops": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Uber": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "Wages": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Taxi & ride shares": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "Retail": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Gas & EV charging": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "CVS Pharmacy": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "Music & audio": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "Spotify": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "Direct Deposit Payroll": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Rent Payment": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "Restaurants & bars": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "Groceries": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Whole Foods Market": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Gym Membership": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Venmo Transfer": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "Chipotle": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [],
+            "issues": [],
+            "column_map_reasoning": "All columns map cleanly to Budgy schema fields. The CSV headers are explicit and match the schema exactly. 'Authorized Date', 'Posted Date', and 'Status' are standard fields. 'Account Name' identifies the account. 'Description' contains transaction details. 'Primary Category' and 'Detailed Category' are the category fields. 'Amount' is the transaction amount.",
+            "category_map_reasoning": "All category values map to valid Budgy primary and detailed category pairs. Merchant names (e.g., 'Starbucks', 'Target', 'Netflix') are mapped to their transaction type: Starbucks \u2192 Coffee shops, Target/Amazon \u2192 Retail, Netflix/Spotify \u2192 Entertainment. Generic categories like 'Pharmacy', 'Fitness', 'Rent' map directly. Payroll and transfer terms ('Direct Deposit Payroll', 'Venmo Transfer', 'Person to person payments') map to Income and Transfers. Categories that appear to be already-hierarchical in the raw data (e.g., 'Housing & utilities', 'Shopping', 'Transportation', 'Entertainment', 'Food & drink', 'Health & wellness', 'Income') are treated as primary categories and map to themselves with a reasonable detailed subcategory based on context. A few values ('Transfers', 'Primary Category', 'Detailed Category', 'Housing & utilities', 'Shopping', 'Transportation', 'Entertainment', 'Food & drink', 'Health & wellness', 'Income') appear to be already-mapped primary categories and are mapped to themselves as primary with 'Other' subtype where context is ambiguous.",
+            "amount_transform_reasoning": "The sample amounts show one positive value (3200.0, likely an income transaction from wages/payroll) and nine negative values (ranging from -6.75 to -110.0, all expenses). This follows the standard 'expense_negative' convention where expenses are negative numbers and income is positive. No transformation is needed on import."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 1.0,
+            "matched": 3,
+            "total": 3,
+            "mismatches": []
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 0,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 36,
+          "errors": []
+        }
+      },
+      "overall_score": 1.0
+    },
+    "chase": {
+      "description": "Chase checking export \u2014 no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Details",
+            "Posting Date",
+            "Description",
+            "Amount",
+            "Type",
+            "Balance",
+            "Check or Slip #"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 0.5714,
+              "correct": 4,
+              "total": 7,
+              "misses": {
+                "Posting Date": {
+                  "expected": "authorized_date",
+                  "got": "posted_date"
+                },
+                "Type": {
+                  "expected": null,
+                  "got": "primary_category"
+                },
+                "Check or Slip #": {
+                  "expected": null,
+                  "got": "notes"
+                }
+              }
+            },
+            "category_map": {
+              "score": 1.0,
+              "correct": 0,
+              "total": 0,
+              "misses": {}
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Details": null,
+              "Posting Date": "posted_date",
+              "Description": "description",
+              "Amount": "amount",
+              "Type": "primary_category",
+              "Balance": null,
+              "Check or Slip #": "notes"
+            },
+            "category_map": {
+              "PLANET FITNESS #0234": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "UBER *TRIP HELP.UBER.COM": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "TARGET 00018375": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "SHELL OIL 57444311702": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "CVS/PHARMACY #08943": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "AMAZON.COM*1A2B3C4D": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "VENMO PAYMENT": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "LANDLORD RENT PAYMENT": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "STARBUCKS STORE 04762": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "NETFLIX.COM": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "DIRECT DEP PAYROLL ADP": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "CON EDISON BILL PAY": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "CHIPOTLE 2845": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "SPOTIFY USA": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "WHOLEFDS #10274": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [
+              "authorized_date"
+            ],
+            "issues": [],
+            "column_map_reasoning": "\n'Posting Date' maps to posted_date (when the transaction posted to the account). 'Description' contains the merchant/transaction description. 'Amount' is the transaction amount. 'Type' appears to contain category-like values and maps to primary_category (though the actual values are merchant names rather than categories\u2014see category_map section). 'Balance' is account balance, not transaction-level data, so it's excluded. 'Check or Slip #' is a reference identifier, mapped to notes for context. 'Details' is redundant with Description and Balance combined, so it's unmapped.\n",
+            "category_map_reasoning": "\nAll 'Type' values in this CSV are merchant names, not standard spending categories. I've mapped each merchant to its most appropriate Budgy primary+detailed category pair based on the business type: fitness centers to Health & wellness, ride-sharing to Transportation, retail stores to Shopping, gas stations to Transportation, pharmacies to Shopping, Amazon to Shopping, Venmo to person-to-person transfers, rent to Housing & utilities, coffee shops to Food & drink, streaming services to Entertainment, salary deposits to Income, utilities to Housing & utilities, restaurants to Food & drink, and grocery stores to Food & drink. CVS was mapped to Shopping (Retail) rather than Pharmacy because the CSV does not distinguish pharmacy purchases from general retail.\n",
+            "amount_transform_reasoning": "\nAll Amount values in the sample are either negative (e.g., -87.43, -6.75, -42.5, -15.99, -58.2, -45.0, -110.0, -23.18, -18.5) or positive (3200.0). The single positive value (3200.0) matches the pattern of a direct deposit payroll (DIRECT DEP PAYROLL ADP), which is income. All other transactions are negative, consistent with expenses. This follows the standard 'expense_negative' convention where expenses are negative numbers and income is positive.\n"
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "fatal",
+          "unmapped_required_columns": [
+            "authorized_date"
+          ],
+          "expected_unmapped": [
+            "primary_category"
+          ],
+          "errors": [
+            "Unexpected unmapped required columns: ['authorized_date']"
+          ]
+        },
+        "transform_application": {
+          "status": "skipped"
+        },
+        "database_upload": {
+          "status": "skipped"
+        }
+      },
+      "overall_score": null
+    },
+    "apple_card": {
+      "description": "Apple Card export \u2014 expense-positive amounts (expenses are positive numbers, Type=Debit), both Description and Merchant columns present (AI should prefer Merchant as description), has 'Purchased By' to drop.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 14,
+          "headers": [
+            "Transaction Date",
+            "Clearing Date",
+            "Description",
+            "Merchant",
+            "Category",
+            "Type",
+            "Amount (USD)",
+            "Purchased By"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 0.625,
+              "correct": 5,
+              "total": 8,
+              "misses": {
+                "Merchant": {
+                  "expected": "description",
+                  "got": "notes"
+                },
+                "Description": {
+                  "expected": null,
+                  "got": "description"
+                },
+                "Purchased By": {
+                  "expected": null,
+                  "got": "account_name"
+                }
+              }
+            },
+            "category_map": {
+              "score": 0.5455,
+              "correct": 6,
+              "total": 11,
+              "misses": {
+                "Health": {
+                  "expected": {
+                    "primary": "Health & wellness",
+                    "detailed": "Fitness"
+                  },
+                  "got": {
+                    "primary": "Health & wellness",
+                    "detailed": "Other health & wellness"
+                  }
+                },
+                "Utilities": {
+                  "expected": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Gas & electricity"
+                  },
+                  "got": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Other housing & utilities"
+                  }
+                },
+                "Transportation": {
+                  "expected": {
+                    "primary": "Transportation",
+                    "detailed": "Taxi & ride shares"
+                  },
+                  "got": {
+                    "primary": "Transportation",
+                    "detailed": "Other transportation"
+                  }
+                },
+                "Housing": {
+                  "expected": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Rent"
+                  },
+                  "got": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Other housing & utilities"
+                  }
+                },
+                "Payments": {
+                  "expected": {
+                    "primary": "Income",
+                    "detailed": "Wages"
+                  },
+                  "got": {
+                    "primary": "Transfers",
+                    "detailed": "Other transfers"
+                  }
+                }
+              }
+            },
+            "amount_transform": {
+              "score": 0.0,
+              "expected": "expense_positive",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Transaction Date": "authorized_date",
+              "Clearing Date": "posted_date",
+              "Description": "description",
+              "Merchant": "notes",
+              "Category": "primary_category",
+              "Type": null,
+              "Amount (USD)": "amount",
+              "Purchased By": "account_name"
+            },
+            "category_map": {
+              "Pharmacy": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "Rent": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "Starbucks": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Shell Gas Station": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Health": {
+                "primary": "Health & wellness",
+                "detailed": "Other health & wellness"
+              },
+              "Payroll Direct Deposit": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Housing": {
+                "primary": "Housing & utilities",
+                "detailed": "Other housing & utilities"
+              },
+              "Netflix": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "Target": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Amazon.com": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Shopping": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Uber": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "Utilities": {
+                "primary": "Housing & utilities",
+                "detailed": "Other housing & utilities"
+              },
+              "Transportation": {
+                "primary": "Transportation",
+                "detailed": "Other transportation"
+              },
+              "CVS Pharmacy": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "Planet Fitness": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Spotify": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "Restaurants": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "Entertainment": {
+                "primary": "Entertainment",
+                "detailed": "Other entertainment"
+              },
+              "Payments": {
+                "primary": "Transfers",
+                "detailed": "Other transfers"
+              },
+              "Groceries": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Gas": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Con Edison": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "Whole Foods Market": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Chipotle": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [],
+            "issues": [],
+            "column_map_reasoning": "Transaction Date maps naturally to authorized_date as the transaction authorization date. Clearing Date maps to posted_date as it represents when the transaction cleared the account. Description and Merchant both contain transaction details; Description is the primary field, Merchant goes to notes for additional context. Category maps to primary_category as the raw values will be transformed to valid Budgy categories. Type appears to be a transaction type indicator (income vs expense) rather than a category, so it's mapped to null since Budgy infers direction from amount sign. Amount (USD) clearly maps to amount. Purchased By likely indicates the cardholder or account holder, mapping to account_name.",
+            "category_map_reasoning": "All category values are mapped to valid Budgy primary and detailed categories. Merchant names like Starbucks, Shell, CVS, etc. are mapped to their most specific category (e.g., Starbucks \u2192 Coffee shops, Shell/Gas \u2192 Gas & EV charging). Broader categories like \"Health,\" \"Housing,\" \"Shopping,\" \"Transportation,\" and \"Entertainment\" are mapped to their category families with \"Other\" detailed subcategories. \"Payroll Direct Deposit\" clearly indicates income wages. \"Payments\" is interpreted as generic transfers. Grocery retailers (Whole Foods, Chipotle) are mapped to appropriate food categories.",
+            "amount_transform_reasoning": "The sample Amount (USD) values are all positive numbers (3200.0, 87.43, 6.75, 42.5, 15.99, 58.2, 45.0, 110.0, 23.18, 18.5). Without negative examples in the sample, I inferred the sign convention by examining the category mix: the presence of \"Payroll Direct Deposit\" (income) alongside expense categories like \"Pharmacy,\" \"Rent,\" and \"Gas Station\" suggests mixed transaction types. In standard banking conventions, the 'expense_negative' format is most common. However, since all sample values are positive, there is some ambiguity. Given that this appears to be a real bank export with both income and expenses, I've assumed the standard convention where expenses are negative and income is positive, with the caveat that the actual sign convention should be verified by checking a few rows from the original CSV where the Type column clearly indicates whether each transaction is income or expense."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 0.0,
+            "matched": 0,
+            "total": 3,
+            "mismatches": [
+              {
+                "key": {
+                  "authorized_date": "2025-01-03",
+                  "description": "Whole Foods Market"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -87.43,
+                    "got": 87.43
+                  }
+                }
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-01-04",
+                  "description": "Starbucks"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -6.75,
+                    "got": 6.75
+                  }
+                }
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-01-08",
+                  "description": "Shell Gas Station"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -58.2,
+                    "got": 58.2
+                  }
+                }
+              }
+            ]
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 0,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 32,
+          "errors": []
+        }
+      },
+      "overall_score": 0.2926
+    },
+    "mint": {
+      "description": "Mint export \u2014 amounts always positive with Transaction Type (debit/credit) indicating direction, Mint-specific category names, has 'Original Description'/'Labels'/'Notes' columns.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Date",
+            "Description",
+            "Original Description",
+            "Amount",
+            "Transaction Type",
+            "Category",
+            "Account Name",
+            "Labels",
+            "Notes"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 0.8889,
+              "correct": 8,
+              "total": 9,
+              "misses": {
+                "Transaction Type": {
+                  "expected": null,
+                  "got": "notes"
+                }
+              }
+            },
+            "category_map": {
+              "score": 0.6364,
+              "correct": 7,
+              "total": 11,
+              "misses": {
+                "Food & Dining": {
+                  "expected": {
+                    "primary": "Food & drink",
+                    "detailed": "Restaurants & bars"
+                  },
+                  "got": null
+                },
+                "Auto & Transport": {
+                  "expected": {
+                    "primary": "Transportation",
+                    "detailed": "Taxi & ride shares"
+                  },
+                  "got": {
+                    "primary": "Transportation",
+                    "detailed": "Other transportation"
+                  }
+                },
+                "Home": {
+                  "expected": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Rent"
+                  },
+                  "got": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Other housing & utilities"
+                  }
+                },
+                "Transfer": {
+                  "expected": {
+                    "primary": "Transfers",
+                    "detailed": "Person to person payments"
+                  },
+                  "got": {
+                    "primary": "Transfers",
+                    "detailed": "Account transfers"
+                  }
+                }
+              }
+            },
+            "amount_transform": {
+              "score": 0.0,
+              "expected": "expense_positive",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Date": "authorized_date",
+              "Description": "description",
+              "Original Description": null,
+              "Amount": "amount",
+              "Transaction Type": "notes",
+              "Category": "primary_category",
+              "Account Name": "account_name",
+              "Labels": "tags",
+              "Notes": "notes"
+            },
+            "category_map": {
+              "Paycheck": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "DIRECT DEP PAYROLL ADP": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Payroll": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Rent": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "January rent": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "LANDLORD RENT PMT": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "Utilities": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "electricity bill": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "Con Edison": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "CON EDISON BILL PAY": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "Groceries": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "weekly shop": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "WHOLEFDS #10274": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Whole Foods": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Starbucks": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "STARBUCKS STORE 04762": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "morning coffee": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Chipotle": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "CHIPOTLE 2845": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "lunch": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "split dinner": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "Shopping": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Target": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "TARGET 00018375": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "household items": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "AMAZON.COM*1A2B3C4D": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Amazon": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Gas & Fuel": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Shell Gas": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "SHELL OIL 57444311702": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Auto & Transport": {
+                "primary": "Transportation",
+                "detailed": "Other transportation"
+              },
+              "work commute": {
+                "primary": "Transportation",
+                "detailed": "Other transportation"
+              },
+              "Uber": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "UBER *TRIP": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "Health & Fitness": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Planet Fitness": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "PLANET FITNESS #0234": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "prescriptions": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "CVS": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "CVS/PHARMACY #08943": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "Netflix": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "NETFLIX.COM": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "Entertainment": {
+                "primary": "Entertainment",
+                "detailed": "Other entertainment"
+              },
+              "Spotify": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "SPOTIFY USA": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "music subscription": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "streaming": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "monthly membership": {
+                "primary": "Entertainment",
+                "detailed": "Other entertainment"
+              },
+              "Transfer": {
+                "primary": "Transfers",
+                "detailed": "Account transfers"
+              },
+              "Venmo": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "VENMO PAYMENT": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "Home": {
+                "primary": "Housing & utilities",
+                "detailed": "Other housing & utilities"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [],
+            "issues": [],
+            "column_map_reasoning": "Date maps to authorized_date as it's the primary transaction date. Description is a straightforward description field. Original Description appears to contain numeric identifiers (merchant codes, IDs) rather than useful transaction descriptions, so it's unmapped. Amount is clearly the transaction amount. Transaction Type could indicate expense/income/transfer but we'll use it for notes context. Category maps to primary_category but will need detailed categorization via category_map. Account Name is a valid schema field for payment method/account information. Labels maps to tags. Notes maps to the Notes field (though Transaction Type also goes here for context).",
+            "category_map_reasoning": "Mapped all recognizable spending and income categories to Budgy primary+detailed pairs. Income transactions (Paycheck, DIRECT DEP PAYROLL ADP, Payroll) map to Income > Wages. Rent-related entries (Rent, January rent, LANDLORD RENT PMT) map to Housing & utilities > Rent. Utilities map to Housing & utilities > Gas & electricity. Groceries and grocery stores (Whole Foods, weekly shop) map to Food & drink > Groceries. Coffee shops (Starbucks, morning coffee) map to Food & drink > Coffee shops. Restaurants (Chipotle, lunch, split dinner) map to Food & drink > Restaurants & bars. Retail purchases (Target, Amazon, household items, Shopping) map to Shopping > Retail. Gas stations (Shell, Gas & Fuel) map to Transportation > Gas & EV charging. Rideshare (Uber) maps to Transportation > Taxi & ride shares. Fitness (Planet Fitness, Health & Fitness) maps to Health & wellness > Fitness. Pharmacy/CVS maps to Health & wellness > Pharmacy. Entertainment subscriptions (Netflix, Spotify, streaming) map to their respective Entertainment subcategories. Transfers (Transfer, Venmo, VENMO PAYMENT) map to Transfers > Account transfers or Person to person payments. Home is mapped broadly to Housing & utilities > Other housing & utilities.",
+            "amount_transform_reasoning": "The Amount column contains all positive numeric values (3200.0, 87.43, 6.75, 42.5, 15.99, 58.2, 45.0, 110.0, 23.18, 18.5). Without negative sample values or both expense and income transactions in the numeric samples, I inferred based on typical CSV conventions: these appear to be transaction amounts that could include both expenses and income. The Transaction Type column is present and likely indicates whether each row is an expense, income, or transfer. Given the standard personal finance convention where expenses are negative and income is positive, and the absence of negative values in the sample, this CSV likely uses the 'expense_negative' convention, with the actual sign determined by the Transaction Type field during normalization. However, if the Amount column shows all positive values regardless of transaction type, the import process may need to apply negation based on Transaction Type values."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 0.0,
+            "matched": 0,
+            "total": 3,
+            "mismatches": [
+              {
+                "key": {
+                  "authorized_date": "2025-01-03",
+                  "description": "Whole Foods"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -87.43,
+                    "got": 87.43
+                  }
+                }
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-01-04",
+                  "description": "Starbucks"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -6.75,
+                    "got": 6.75
+                  },
+                  "primary_category": {
+                    "expected": "Food & drink",
+                    "got": "Food & Dining"
+                  }
+                }
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-01-08",
+                  "description": "Shell Gas"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -58.2,
+                    "got": 58.2
+                  }
+                }
+              }
+            ]
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 0,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 60,
+          "errors": []
+        }
+      },
+      "overall_score": 0.3813
+    },
+    "adversarial_delimiter": {
+      "description": "Tab-separated CSV with debit/credit split columns. The current pipeline uses comma as the default delimiter, so it will parse the entire row as a single field \u2014 this fixture is designed to expose the delimiter detection gap. The ideal plan assumes a correctly-parsing parser.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 13,
+          "headers": [
+            "Date\tMerchant\tCategory\tDebit\tCredit"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 1.0,
+              "correct": 3,
+              "total": 3,
+              "misses": {}
+            },
+            "category_map": {
+              "score": 0.8462,
+              "correct": 11,
+              "total": 13,
+              "misses": {
+                "Restaurants & Cafes": {
+                  "expected": {
+                    "primary": "Food & drink",
+                    "detailed": "Restaurants & bars"
+                  },
+                  "got": {
+                    "primary": "Food & drink",
+                    "detailed": "Coffee shops"
+                  }
+                },
+                "Drugstore": {
+                  "expected": {
+                    "primary": "Health & wellness",
+                    "detailed": "Pharmacy"
+                  },
+                  "got": {
+                    "primary": "Shopping",
+                    "detailed": "Retail"
+                  }
+                }
+              }
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "debit_credit",
+              "got": "debit_credit",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Date": "authorized_date",
+              "Merchant": "description",
+              "Category": "primary_category",
+              "Debit": "amount",
+              "Credit": "amount"
+            },
+            "category_map": {
+              "Rideshare": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "Fuel": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Retail Shopping": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Gym & Fitness": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Online Shopping": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Electric Utility": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "Income": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Fast Food": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "Restaurants & Cafes": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Housing": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "Groceries": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Drugstore": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Streaming Services": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              }
+            },
+            "amount_transform": "debit_credit",
+            "debit_column": "Debit",
+            "credit_column": "Credit",
+            "unmapped_required_columns": [],
+            "issues": [],
+            "column_map_reasoning": "Date maps to authorized_date as the transaction date. Merchant describes the transaction. Category contains spending/income categories that will map to primary_category. Debit and Credit columns are separate columns representing expenses and income respectively \u2014 this is a debit/credit structure where both columns contribute to the amount field.",
+            "category_map_reasoning": "Categories mapped to primary+detailed pairs using the valid Budgy hierarchy. Rideshare \u2192 Transportation/Taxi & ride shares; Fuel \u2192 Transportation/Gas & EV charging; Retail Shopping \u2192 Shopping/Retail; Gym & Fitness \u2192 Health & wellness/Fitness; Online Shopping \u2192 Shopping/Retail; Electric Utility \u2192 Housing & utilities/Gas & electricity; Income \u2192 Income/Wages; Fast Food \u2192 Food & drink/Restaurants & bars; Restaurants & Cafes \u2192 Food & drink/Coffee shops; Housing \u2192 Housing & utilities/Rent; Groceries \u2192 Food & drink/Groceries; Drugstore \u2192 Shopping/Retail (pharmacy items are often purchased at retail); Streaming Services \u2192 Entertainment/Movies & TV.",
+            "amount_transform_reasoning": "The CSV has separate Debit and Credit columns. Expenses appear in the Debit column (18.50, 58.20, 65.99, etc.) and income appears in the Credit column (3200.00 for Payroll Direct Deposit). This is a standard debit/credit split structure. On import, the debit column values will be negated to represent expenses as negative numbers, and credit column values will remain positive as income."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 0.0,
+            "matched": 0,
+            "total": 2,
+            "mismatches": [
+              {
+                "key": {
+                  "authorized_date": "2025-01-03",
+                  "description": "Whole Foods Market"
+                },
+                "reason": "row not found in transformed output"
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-01-02",
+                  "description": "Payroll Direct Deposit"
+                },
+                "reason": "row not found in transformed output"
+              }
+            ]
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 13,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 18,
+          "errors": []
+        }
+      },
+      "overall_score": 0.7116
+    },
+    "adversarial_personal": {
+      "description": "Personal spreadsheet with non-standard headers, $ signs and commas in amounts, natural-language category names, and mixed date formats including '5-Apr-2025'. Tests maximum flexibility of the AI mapping.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 13,
+          "headers": [
+            "What I Spent On",
+            "Date of Purchase",
+            "How Much ($)",
+            "My Categories",
+            "Notes/Memo"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 1.0,
+              "correct": 5,
+              "total": 5,
+              "misses": {}
+            },
+            "category_map": {
+              "score": 0.9,
+              "correct": 9,
+              "total": 10,
+              "misses": {
+                "Books & Learning": {
+                  "expected": {
+                    "primary": "Shopping",
+                    "detailed": "Other shopping"
+                  },
+                  "got": {
+                    "primary": "Entertainment",
+                    "detailed": "Books & news"
+                  }
+                }
+              }
+            },
+            "amount_transform": {
+              "score": 0.0,
+              "expected": "expense_positive",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "What I Spent On": "description",
+              "Date of Purchase": "authorized_date",
+              "How Much ($)": "amount",
+              "My Categories": "primary_category",
+              "Notes/Memo": "notes"
+            },
+            "category_map": {
+              "Housing / Rent": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "Fitness / Health": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Eating Out": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "Freelance income": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "music": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "Coffee & Going Out": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Netflix monthly": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "Health stuff": {
+                "primary": "Health & wellness",
+                "detailed": "Other health & wellness"
+              },
+              "Gas & Car Stuff": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Gym membership": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Spotify music": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "streaming": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "annual checkup": {
+                "primary": "Health & wellness",
+                "detailed": "Medical"
+              },
+              "Dentist bill": {
+                "primary": "Health & wellness",
+                "detailed": "Dental"
+              },
+              "Books & Learning": {
+                "primary": "Entertainment",
+                "detailed": "Books & news"
+              },
+              "Doctor copay visit": {
+                "primary": "Health & wellness",
+                "detailed": "Medical"
+              },
+              "Groceries / Food": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Subscriptions": {
+                "primary": "Entertainment",
+                "detailed": "Other entertainment"
+              },
+              "Money In / Income": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Paycheck from employer": {
+                "primary": "Income",
+                "detailed": "Wages"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [],
+            "issues": [],
+            "column_map_reasoning": "\n- \"What I Spent On\" clearly describes the transaction, mapping to 'description'.\n- \"Date of Purchase\" is the transaction date; mapped to 'authorized_date' as the primary date field.\n- \"How Much ($)\" contains the transaction amount; mapped to 'amount'.\n- \"My Categories\" contains user-defined spending/income categories; mapped to 'primary_category' (will be normalized to valid Budgy categories).\n- \"Notes/Memo\" is for additional transaction notes; mapped to 'notes'.\n",
+            "category_map_reasoning": "\nMapped user categories to valid Budgy primary and detailed categories:\n- \"Housing / Rent\" \u2192 Rent (clear match)\n- \"Fitness / Health\", \"Health stuff\", \"Gym membership\" \u2192 Fitness or Medical/Dental (mapped based on context; \"Gym membership\" is fitness, health checkups are medical/dental)\n- \"Eating Out\", \"Coffee & Going Out\" \u2192 Restaurants & bars / Coffee shops (dining context)\n- \"Freelance income\", \"Paycheck from employer\", \"Money In / Income\" \u2192 Income / Wages\n- \"music\", \"Spotify music\" \u2192 Music & audio\n- \"Netflix monthly\", \"streaming\" \u2192 Movies & TV\n- \"Gas & Car Stuff\" \u2192 Transportation / Gas & EV charging\n- \"Books & Learning\" \u2192 Books & news\n- \"Groceries / Food\" \u2192 Groceries\n- \"Subscriptions\" mapped to Entertainment as a catch-all (could be various; mapped conservatively)\n- Descriptive strings like \"Amazon order (work books)\", \"Dinner out with friends\", \"split 4 ways\", \"morning before work\", \"filled up the tank\" were NOT included in category_map as they are descriptions, not category labels\n",
+            "amount_transform_reasoning": "\nThe sample numeric values provided are all positive (42.5, 6.75, 1850.0, 2800.0, 94.12, 55.0, 15.99, 30.0, 45.0, 67.8). However, analyzing the \"My Categories\" column reveals both expense and income transactions:\n- Expenses: \"Housing / Rent\" ($1,850), \"Eating Out\", \"Fitness / Health\", \"Gas & Car Stuff\", \"Groceries / Food\", etc.\n- Income: \"Freelance income\", \"Money In / Income\", \"Paycheck from employer\" ($2,800, $500)\n\nSince all numeric values in the sample are positive (including both the high-value income entries like $2,800 and typical expense amounts), and the CSV does not use negative numbers in the provided sample, the convention appears to be that both expenses and income are stored as positive values. However, standard personal finance convention ('expense_negative') is most common. Given the ambiguity and that income values ($2,800, $500) are clearly income while typical expenses are mixed in, I'm inferring 'expense_negative' as the most likely intended convention \u2014 meaning expenses should be imported as negative on normalization. If this is incorrect, the user should clarify whether expenses or income should be negated.\n"
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 0.0,
+            "matched": 0,
+            "total": 3,
+            "mismatches": [
+              {
+                "key": {
+                  "authorized_date": "2025-04-08",
+                  "description": "Whole Foods weekly shop"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -94.12,
+                    "got": 94.12
+                  }
+                }
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-04-01",
+                  "description": "Monthly rent payment"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -1850.0,
+                    "got": 1850.0
+                  }
+                }
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-04-05",
+                  "description": "Amazon order (work books)"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -42.5,
+                    "got": 42.5
+                  },
+                  "primary_category": {
+                    "expected": "Shopping",
+                    "got": "Entertainment"
+                  }
+                }
+              }
+            ]
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 0,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 25,
+          "errors": []
+        }
+      },
+      "overall_score": 0.475
+    },
+    "adversarial_structural": {
+      "description": "CSV with structural chaos: blank rows, a row with too many columns, all-whitespace rows, and a duplicate header row mid-file. Tests the pipeline's ability to skip corrupt rows gracefully while preserving valid data.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 17,
+          "headers": [
+            "Date",
+            "Description",
+            "Amount",
+            "Category"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 1.0,
+              "correct": 4,
+              "total": 4,
+              "misses": {}
+            },
+            "category_map": {
+              "score": 0.4545,
+              "correct": 5,
+              "total": 11,
+              "misses": {
+                "Shopping": {
+                  "expected": {
+                    "primary": "Shopping",
+                    "detailed": "Retail"
+                  },
+                  "got": {
+                    "primary": "Shopping",
+                    "detailed": "Other shopping"
+                  }
+                },
+                "Income": {
+                  "expected": {
+                    "primary": "Income",
+                    "detailed": "Wages"
+                  },
+                  "got": {
+                    "primary": "Income",
+                    "detailed": "Other income"
+                  }
+                },
+                "Utilities": {
+                  "expected": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Gas & electricity"
+                  },
+                  "got": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Other housing & utilities"
+                  }
+                },
+                "Transportation": {
+                  "expected": {
+                    "primary": "Transportation",
+                    "detailed": "Taxi & ride shares"
+                  },
+                  "got": {
+                    "primary": "Transportation",
+                    "detailed": "Other transportation"
+                  }
+                },
+                "Food": {
+                  "expected": {
+                    "primary": "Food & drink",
+                    "detailed": "Restaurants & bars"
+                  },
+                  "got": {
+                    "primary": "Food & drink",
+                    "detailed": "Other food & drink"
+                  }
+                },
+                "Housing": {
+                  "expected": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Rent"
+                  },
+                  "got": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Other housing & utilities"
+                  }
+                }
+              }
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Date": "authorized_date",
+              "Description": "description",
+              "Amount": "amount",
+              "Category": "primary_category"
+            },
+            "category_map": {
+              "Rent": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "Starbucks": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Shell Gas Station": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Health": {
+                "primary": "Health & wellness",
+                "detailed": "Other health & wellness"
+              },
+              "Payroll Direct Deposit": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Housing": {
+                "primary": "Housing & utilities",
+                "detailed": "Other housing & utilities"
+              },
+              "Netflix": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "Target": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Amazon.com": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Shopping": {
+                "primary": "Shopping",
+                "detailed": "Other shopping"
+              },
+              "Uber": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "Utilities": {
+                "primary": "Housing & utilities",
+                "detailed": "Other housing & utilities"
+              },
+              "Transportation": {
+                "primary": "Transportation",
+                "detailed": "Other transportation"
+              },
+              "Food": {
+                "primary": "Food & drink",
+                "detailed": "Other food & drink"
+              },
+              "CVS Pharmacy": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "Planet Fitness": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Coffee": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "Entertainment": {
+                "primary": "Entertainment",
+                "detailed": "Other entertainment"
+              },
+              "Groceries": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Gas": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Income": {
+                "primary": "Income",
+                "detailed": "Other income"
+              },
+              "Con Edison": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "Whole Foods Market": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [],
+            "issues": [],
+            "column_map_reasoning": "Straightforward header mapping: Date maps to authorized_date (the transaction authorization/transaction date), Description maps to description, Amount maps to amount. Category maps to primary_category, though detailed_category values will need to be inferred from the primary category during normalization.",
+            "category_map_reasoning": "Mapped all clear transaction categories to appropriate primary + detailed pairs. Merchant names (Starbucks, Shell, CVS, etc.) were mapped to their implied service categories. Generic values like \"Shopping\", \"Food\", \"Transportation\", \"Entertainment\", \"Health\", and \"Utilities\" were mapped to their logical primary categories with \"Other\" detailed categories. \"Payroll Direct Deposit\" and \"Income\" map to Income::Wages and Income::Other income respectively. Omitted header row values (\"Description\", \"Category\") and empty/whitespace values (\"   \") as they are not transaction categories.",
+            "amount_transform_reasoning": "Sample values show a clear sign convention: expenses are negative (e.g., -87.43, -6.75, -42.5, etc.) and income is positive (3200.0 for \"Payroll Direct Deposit\"). This is the standard expense_negative convention, so no transformation is needed on import."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 1.0,
+            "matched": 3,
+            "total": 3,
+            "mismatches": []
+          },
+          "skipped_rows": [
+            {
+              "row": 3,
+              "reason": "wrong column count"
+            },
+            {
+              "row": 6,
+              "reason": "empty row"
+            },
+            {
+              "row": 14,
+              "reason": "empty row"
+            }
+          ],
+          "skipped_row_count": 3,
+          "soft_fail_count": 1,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 3,
+          "new_rules_saved": 27,
+          "errors": []
+        }
+      },
+      "overall_score": 0.8636
+    },
+    "adversarial_encoding": {
+      "description": "CSV with encoding and formatting chaos: EUR/GBP/JPY currency symbols, parenthesis-negatives like (42.50), mixed date formats (DD/MM/YYYY, 'Jan 15 2025', '15 January 2025'), and a plus-sign prefix. Tests _parse_amount and date normalization robustness.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 13,
+          "headers": [
+            "Date",
+            "Merchant",
+            "Amount",
+            "Category"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 1.0,
+              "correct": 4,
+              "total": 4,
+              "misses": {}
+            },
+            "category_map": {
+              "score": 0.6923,
+              "correct": 9,
+              "total": 13,
+              "misses": {
+                "Bills & Utilities": {
+                  "expected": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Gas & electricity"
+                  },
+                  "got": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Other housing & utilities"
+                  }
+                },
+                "Health": {
+                  "expected": {
+                    "primary": "Health & wellness",
+                    "detailed": "Pharmacy"
+                  },
+                  "got": {
+                    "primary": "Health & wellness",
+                    "detailed": "Medical"
+                  }
+                },
+                "Transport": {
+                  "expected": {
+                    "primary": "Transportation",
+                    "detailed": "Taxi & ride shares"
+                  },
+                  "got": {
+                    "primary": "Transportation",
+                    "detailed": "Other transportation"
+                  }
+                },
+                "Home & Living": {
+                  "expected": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Rent"
+                  },
+                  "got": {
+                    "primary": "Housing & utilities",
+                    "detailed": "Other housing & utilities"
+                  }
+                }
+              }
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Date": "authorized_date",
+              "Merchant": "description",
+              "Amount": "amount",
+              "Category": "primary_category"
+            },
+            "category_map": {
+              "Health": {
+                "primary": "Health & wellness",
+                "detailed": "Medical"
+              },
+              "Health & Fitness": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "Retail": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "Restaurants": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "Home & Living": {
+                "primary": "Housing & utilities",
+                "detailed": "Other housing & utilities"
+              },
+              "Groceries": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "Food & Dining": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "Fuel": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "Bills & Utilities": {
+                "primary": "Housing & utilities",
+                "detailed": "Other housing & utilities"
+              },
+              "Entertainment": {
+                "primary": "Entertainment",
+                "detailed": "Other entertainment"
+              },
+              "Transport": {
+                "primary": "Transportation",
+                "detailed": "Other transportation"
+              },
+              "Income": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "Online Shopping": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [],
+            "issues": [
+              "The unique category values list contains many date strings, currency-formatted numbers, and merchant names mixed with actual spending categories. This suggests either the CSV parsing extracted values from multiple columns, or the category column contains mixed data types. Recommend verifying the CSV structure and ensuring the Category column contains only transaction categories."
+            ],
+            "column_map_reasoning": "Date maps to authorized_date as the primary date column. Merchant maps to description as it identifies the transaction counterparty. Amount maps to amount. Category maps to primary_category as it contains spending/income categories. No account_name or posted_date columns are present.",
+            "category_map_reasoning": "Mapped transaction categories to valid Budgy primary+detailed pairs. Excluded merchant names (FitLife Gym, Shell Station, Amazon.fr, Starbucks Paris, CVS Pharmacia, Netflix International, Target USA, Whole Foods, Chipotle MX, Electric Co., Rent - Jan, Rideshare App) and date/numeric strings that appeared in the category list but are not transaction categories. Health & Fitness maps to Fitness detail. Food & Dining and Restaurants both map to Restaurants & bars. Income maps to Wages as the inferred detailed category.",
+            "amount_transform_reasoning": "Analysis of the numeric values in the Amount column shows all positive values (42.5, 6.75, 89.0, 3200.0, 15.99, 58.2, 45.0, 110.0, 2318.0, 18.5). The unique category list contains values in parentheses like (58.20), (42.50), (1850.00), (18.50), (14.75) which strongly suggest expenses are represented as negative numbers in the full dataset. The presence of \"Salary Deposit\" as a category and \"Income\" label indicates this CSV contains both expense and income transactions. The conventional interpretation is that expenses are negative and income is positive (expense_negative), though the numeric sample provided only shows positive absolute values without sign indicators."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 0.3333,
+            "matched": 1,
+            "total": 3,
+            "mismatches": [
+              {
+                "key": {
+                  "authorized_date": "2025-01-15",
+                  "description": "Amazon.fr"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -42.5,
+                    "got": 42.5
+                  }
+                }
+              },
+              {
+                "key": {
+                  "authorized_date": "2025-01-10",
+                  "description": "Starbucks Paris"
+                },
+                "reason": "field mismatches",
+                "fields": {
+                  "amount": {
+                    "expected": -6.75,
+                    "got": 6.75
+                  }
+                }
+              }
+            ]
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 0,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 17,
+          "errors": []
+        }
+      },
+      "overall_score": 0.7564
+    }
+  },
+  "timestamp": "2026-05-07_175819",
+  "model": "claude-haiku-4-5-20251001",
+  "description": "Baseline"
+}
