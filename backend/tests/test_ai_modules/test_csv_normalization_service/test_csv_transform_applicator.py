@@ -22,7 +22,7 @@ def _make_plan(**kwargs) -> NormalizationPlan:
     defaults = dict(
         column_map={},
         category_map={},
-        amount_transform=AmountTransform.SIGNED,
+        amount_transform=AmountTransform.EXPENSE_NEGATIVE,
     )
     defaults.update(kwargs)
     return NormalizationPlan(**defaults)
@@ -43,7 +43,7 @@ class TestColumnRenames:
                 "Category": "primary_category",
                 "Amount": "amount",
             },
-            amount_transform=AmountTransform.SIGNED,
+            amount_transform=AmountTransform.EXPENSE_NEGATIVE,
         )
         result, _ = apply_normalization_plan(rows, plan)
 
@@ -174,12 +174,12 @@ class TestAmountInvert:
         }
 
     def test_invert_negates_positive_amount(self):
-        plan = _make_plan(amount_transform=AmountTransform.INVERT)
+        plan = _make_plan(amount_transform=AmountTransform.EXPENSE_POSITIVE)
         result, _ = apply_normalization_plan([self._row("15.50")], plan)
         assert result[0]["amount"] == -15.50
 
     def test_invert_negates_negative_amount(self):
-        plan = _make_plan(amount_transform=AmountTransform.INVERT)
+        plan = _make_plan(amount_transform=AmountTransform.EXPENSE_POSITIVE)
         result, _ = apply_normalization_plan([self._row("-15.50")], plan)
         assert result[0]["amount"] == 15.50
 

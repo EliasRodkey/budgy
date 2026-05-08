@@ -52,7 +52,7 @@ def _make_plan(**kwargs) -> NormalizationPlan:
             "Dining": CategoryMapping(primary="Food & drink", detailed="Restaurants & bars"),
             "Transport": CategoryMapping(primary="Transportation", detailed="Gas & EV charging"),
         },
-        amount_transform=AmountTransform.SIGNED,
+        amount_transform=AmountTransform.EXPENSE_NEGATIVE,
         debit_column=None,
         credit_column=None,
         issues=[],

@@ -25,7 +25,7 @@ def _make_ai_plan(**kwargs) -> NormalizationPlan:
     defaults = dict(
         column_map={},
         category_map={},
-        amount_transform=AmountTransform.SIGNED,
+        amount_transform=AmountTransform.EXPENSE_NEGATIVE,
         debit_column=None,
         credit_column=None,
         issues=[],
@@ -80,7 +80,7 @@ class TestExactMatchFastPath:
     def test_amount_transform_is_signed(self):
         planner = _make_planner()
         plan, _ = planner.plan(self.EXACT_HEADERS, [])
-        assert plan.amount_transform == AmountTransform.SIGNED
+        assert plan.amount_transform == AmountTransform.EXPENSE_NEGATIVE
 
     def test_no_unmapped_required_columns(self):
         planner = _make_planner()

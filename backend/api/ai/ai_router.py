@@ -25,7 +25,7 @@ from backend.ai_modules.csv_normalization_service.csv_normalization_service impo
 from backend.ai_modules.csv_normalization_service.csv_normalization_planner import CSVNormalizationPlanner
 from backend.ai_modules.summary_service.ai_summary_service import AISummaryService
 from backend.api.ai.ai_models import AISummaryResponse, PlanCSVResponse
-from backend.csv_modules.csv_parser import unwrap_row_quotes
+from backend.csv_modules.csv_parser import detect_delimiter, unwrap_row_quotes
 from backend.database_modules.db_session import DatabaseSession
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
