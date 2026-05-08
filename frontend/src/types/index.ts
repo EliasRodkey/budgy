@@ -13,7 +13,7 @@ export interface ApiResponse<T> {
 export interface Transaction {
   id: string;
   authorizedDate: string; // ISO 8601
-  postedDate: string; // ISO 8601
+  postedDate?: string; // ISO 8601, optional (not always provided by bank)
   status: string
   accountName: string;
   description: string;
