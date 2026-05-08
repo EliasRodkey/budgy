@@ -77,14 +77,21 @@ class CSVNormalizationPlanner:
             c for c in unique_categories if c not in cached_cat_rules
         ]
 
-        # 3. Call AI only for uncached items, or skip entirely on pure cache hit
+        # 3. Call AI only for uncached items, or skip entirely on pure cache hit.
+        # Always pass full headers for context so the AI doesn't complain about an
+        # empty header list when only categories are uncached. Restrict the column
+        # map merge to headers that weren't already covered by the cache.
         if uncached_headers or uncached_categories:
             logger.info(
-                f"Cache miss: sending {len(uncached_headers)} headers and "
-                f"{len(uncached_categories)} categories to AI"
+                f"Cache miss: {len(uncached_headers)} uncached headers, "
+                f"{len(uncached_categories)} uncached categories — calling AI with full header context"
             )
-            ai_plan = self._ai.plan_csv(uncached_headers, uncached_categories, sample_amount_values=sample_amount_values)
-            merged_column_map = {**cached_col_rules, **ai_plan.column_map}
+            ai_plan = self._ai.plan_csv(headers, uncached_categories, sample_amount_values=sample_amount_values)
+            # Only apply AI column mappings for headers not already in the cache
+            ai_column_map_filtered = {
+                k: v for k, v in ai_plan.column_map.items() if k not in cached_col_rules
+            }
+            merged_column_map = {**cached_col_rules, **ai_column_map_filtered}
             merged_category_map = {
                 **{k: CategoryMapping(primary=v["primary"], detailed=v["detailed"])
                    for k, v in cached_cat_rules.items()},
