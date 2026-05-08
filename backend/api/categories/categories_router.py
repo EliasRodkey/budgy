@@ -58,19 +58,19 @@ def _orm_row_to_transaction_item(row: dict) -> TransactionItem:
         return str(val)[:10]
 
     return TransactionItem(
-        id=int(row.get("id", 0)),
-        authorized_date=_fmt_date(row.get("authorized_date")),
-        posted_date=_fmt_date(row.get("posted_date")),
-        status=str(row.get("status", "")),
-        account_name=str(row.get("account_name", "")),
-        description=str(row.get("description", "")),
-        primary_category=str(row.get("primary_category", "")),
-        detailed_category=str(row.get("detailed_category", "")),
-        amount=float(row.get("amount", 0.0)),
-        repayment=bool(row.get("repayment", False)),
-        exclude=bool(row.get("exclude", False)),
-        notes=row.get("notes"),
-        tags=[t.strip() for t in raw.split(",") if t.strip()] if (raw := row.get("tags")) else [],
+        id=int(row.get(TransactionsTable.id.name, 0)),
+        authorized_date=_fmt_date(row.get(TransactionsTable.authorized_date.name)),
+        posted_date=_fmt_date(row.get(TransactionsTable.posted_date.name)),
+        status=str(row.get(TransactionsTable.status.name, "")),
+        account_name=str(row.get(TransactionsTable.account_name.name, "")),
+        description=str(row.get(TransactionsTable.description.name, "")),
+        primary_category=str(row.get(TransactionsTable.primary_category.name, "")),
+        detailed_category=str(row.get(TransactionsTable.detailed_category.name, "")),
+        amount=float(row.get(TransactionsTable.amount.name, 0.0)),
+        repayment=bool(row.get(TransactionsTable.repayment.name, False)),
+        exclude=bool(row.get(TransactionsTable.exclude.name, False)),
+        notes=row.get(TransactionsTable.notes.name),
+        tags=[t.strip() for t in raw.split(",") if t.strip()] if (raw := row.get(TransactionsTable.tags.name)) else [],
     )
 
 
@@ -189,13 +189,13 @@ async def get_subcategory_detail(
         sel_year = now.year
 
     db_filters: dict = {
-        "primary_category": ("==", primary_category),
-        "detailed_category": ("==", detailed_category),
-        "exclude": ("==", False),
+        TransactionsTable.primary_category.name: ("==", primary_category),
+        TransactionsTable.detailed_category.name: ("==", detailed_category),
+        TransactionsTable.exclude.name: ("==", False),
     }
     if month is not None or year is not None:
         period_start, period_end = convert_datetime_nums_to_range(sel_month, sel_year)
-        db_filters["authorized_date"] = ("between", (period_start, period_end))
+        db_filters[TransactionsTable.authorized_date.name] = ("between", (period_start, period_end))
 
     result = db.transactions.query(
         columns=db.transactions.return_columns,
@@ -206,13 +206,13 @@ async def get_subcategory_detail(
     rows = result.data.to_dict(orient="records")
 
     transaction_count = len(rows)
-    total_amount = sum(abs(float(r.get("amount", 0.0))) for r in rows)
+    total_amount = sum(abs(float(r.get(TransactionsTable.amount.name, 0.0))) for r in rows)
     avg_transaction_size = total_amount / transaction_count if transaction_count > 0 else 0.0
 
     vendor_totals: dict[str, dict] = defaultdict(lambda: {"amount": 0.0, "count": 0})
     for r in rows:
-        name = str(r.get("description", ""))
-        vendor_totals[name]["amount"] += abs(float(r.get("amount", 0.0)))
+        name = str(r.get(TransactionsTable.description.name, ""))
+        vendor_totals[name]["amount"] += abs(float(r.get(TransactionsTable.amount.name, 0.0)))
         vendor_totals[name]["count"] += 1
 
     top_vendors = sorted(
@@ -338,9 +338,9 @@ async def get_category_detail(
 
     # Transactions for selected period
     tx_filters = {
-        "primary_category": ("==", primary_category),
-        "exclude": ("==", False),
-        "authorized_date": ("between", (period_start, period_end)),
+        TransactionsTable.primary_category.name: ("==", primary_category),
+        TransactionsTable.exclude.name: ("==", False),
+        TransactionsTable.authorized_date.name: ("between", (period_start, period_end)),
     }
     tx_result = db.transactions.query(
         columns=db.transactions.return_columns,

@@ -11,14 +11,25 @@ from pleasant_loggers import get_logger
 
 from backend.ai_modules.clients.anthropic_client import AnthropicClient
 from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.database_modules.models.transactions import TransactionsTable
 from backend.utils.analysis_utils import PrimaryCategories
 
 logger = get_logger(__name__)
 
 # Schema fields the AI can map CSV columns to
-REQUIRED_SCHEMA_FIELDS = ["authorized_date", "description", "primary_category", "amount"]
+REQUIRED_SCHEMA_FIELDS = [
+    TransactionsTable.authorized_date.name,
+    TransactionsTable.description.name,
+    TransactionsTable.primary_category.name,
+    TransactionsTable.amount.name,
+]
 OPTIONAL_SCHEMA_FIELDS = [
-    "posted_date", "status", "account_name", "detailed_category", "notes", "tags"
+    TransactionsTable.posted_date.name,
+    TransactionsTable.status.name,
+    TransactionsTable.account_name.name,
+    TransactionsTable.detailed_category.name,
+    TransactionsTable.notes.name,
+    TransactionsTable.tags.name,
 ]
 ALL_SCHEMA_FIELDS = REQUIRED_SCHEMA_FIELDS + OPTIONAL_SCHEMA_FIELDS
 
@@ -152,6 +163,8 @@ def _build_system_prompt() -> list[dict]:
                 "(e.g. 'MOP', 'Method of Payment', 'Account', 'Card', 'Institution'), map it to "
                 "'account_name' in column_map — these are valid schema fields even though their values "
                 "are not spending categories.\n"
+                "- When in doubt, if there is only one column with date like values, map it to 'authorized_date' even if the header is unclear."
+                "'posted_date' refers to when the transaction was posted to the account, which is often different from the authorized date for credit card transactions.\n"  
                 "CATEGORY MAPPING:\n"
                 "- Map raw category strings to the most specific valid primary+detailed category pair.\n"
                 "- Only include a value in category_map if it is clearly a spending or income category "

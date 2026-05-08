@@ -4,6 +4,7 @@ from typing import Optional
 from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
 from backend.ai_modules.csv_normalization_service.csv_normalization_service import ALL_SCHEMA_FIELDS, REQUIRED_SCHEMA_FIELDS
 from backend.database_modules.models.common import TableStatus
+from backend.database_modules.models.transactions import TransactionsTable
 
 from pleasant_loggers import get_logger
 logger = get_logger(__name__)
@@ -69,34 +70,34 @@ def apply_normalization_plan(
             # else: unknown/unmapped column — drop it
 
         # 2. Category substitution
-        raw_cat_val: Optional[str] = new_row.get("primary_category")
+        raw_cat_val: Optional[str] = new_row.get(TransactionsTable.primary_category.name)
         if raw_cat_val is not None:
             mapping: Optional[CategoryMapping] = plan.category_map.get(raw_cat_val)
             if mapping:
-                new_row["primary_category"] = mapping.primary
-                new_row["detailed_category"] = mapping.detailed
+                new_row[TransactionsTable.primary_category.name] = mapping.primary
+                new_row[TransactionsTable.detailed_category.name] = mapping.detailed
 
         # 3. Amount normalization
         if plan.amount_transform == AmountTransform.EXPENSE_NEGATIVE:
-            if "amount" in new_row:
-                new_row["amount"] = _parse_amount(new_row["amount"])
+            if TransactionsTable.amount.name in new_row:
+                new_row[TransactionsTable.amount.name] = _parse_amount(new_row[TransactionsTable.amount.name])
 
         elif plan.amount_transform == AmountTransform.EXPENSE_POSITIVE:
-            if "amount" in new_row:
-                parsed = _parse_amount(new_row["amount"])
-                new_row["amount"] = -parsed if parsed is not None else None
+            if TransactionsTable.amount.name in new_row:
+                parsed = _parse_amount(new_row[TransactionsTable.amount.name])
+                new_row[TransactionsTable.amount.name] = -parsed if parsed is not None else None
 
         elif plan.amount_transform == AmountTransform.DEBIT_CREDIT:
             debit = _parse_amount(raw_row.get(plan.debit_column) or "0") or 0.0
             credit = _parse_amount(raw_row.get(plan.credit_column) or "0") or 0.0
-            new_row["amount"] = credit - debit
+            new_row[TransactionsTable.amount.name] = credit - debit
 
         # 4. Soft-fail missing required fields — mark as UNCHECKED with "Other" fallback
         missing = [f for f in REQUIRED_SCHEMA_FIELDS if not new_row.get(f)]
         if missing:
-            new_row["status"] = TableStatus.UNCHECKED.value
-            if "primary_category" in missing:
-                new_row["primary_category"] = "Other"
+            new_row[TransactionsTable.status.name] = TableStatus.UNCHECKED.value
+            if TransactionsTable.primary_category.name in missing:
+                new_row[TransactionsTable.primary_category.name] = "Other"
             # Leave other missing fields as None — user fixes via edit modal
 
         transformed.append(new_row)
