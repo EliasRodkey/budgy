@@ -12,7 +12,8 @@ import { useNavigate } from "react-router-dom";
 export default function Categories() {
   const navigate = useNavigate();
   const { month, year } = useDateRangeStore();
-  const { data: categories, isLoading, isError, refetch } = useCategoryOverview(month, year);
+  const { data: categories, isLoading, isError, error, refetch } = useCategoryOverview(month, year);
+  const isNoData = isError && (error as (Error & { status?: number }) | null)?.status === 404;
 
   const spending = (categories ?? [])
     .filter((c) => !NON_SPENDING_CATEGORIES.has(c.categoryName))
@@ -40,7 +41,13 @@ export default function Categories() {
         <DateRangeSelector />
       </div>
 
-      {isError && (
+      {isNoData && (
+        <div className="rounded-xl border border-border bg-muted/30 p-5 text-center">
+          <p className="text-sm text-muted-foreground">No data available for this period — try selecting a different month.</p>
+        </div>
+      )}
+
+      {isError && !isNoData && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-5 flex items-center gap-3">
           <AlertCircle size={18} className="text-destructive shrink-0" />
           <p className="text-sm flex-1">Failed to load category overview.</p>

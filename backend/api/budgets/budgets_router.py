@@ -99,8 +99,12 @@ async def delete_budget_assignment(
 
 @router.get("")
 async def get_budgets(db: DatabaseSession = Depends(get_db)) -> dict:
-    rows = db.budgets.get_all()
-    return {"data": [db_row_to_budget_response(r).model_dump(by_alias=True) for r in rows]}
+    try:
+        rows = db.budgets.get_all()
+        return {"data": [db_row_to_budget_response(r).model_dump(by_alias=True) for r in rows]}
+    except Exception as exc:
+        logger.error("GET /budgets failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load budgets") from exc
 
 
 @router.post("", response_model=BudgetResponse, status_code=201)

@@ -115,7 +115,7 @@ def db_row_to_budget_response(row) -> BudgetResponse:
     }
     return BudgetResponse(
         id=row.id,
-        date_created=row.date_created,
+        date_created=row.date_created or datetime.now(),
         monthly_income_estimate=row.income or 0,
         net_gain_or_loss=row.net_gain_or_loss or 0,
         category_limits=category_limits,
