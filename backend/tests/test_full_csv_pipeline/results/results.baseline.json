@@ -1,0 +1,6 @@
+{
+  "_note": "Manually commit a snapshot here after a satisfying run to track prompt iteration milestones. Compare against results.json to measure progress.",
+  "run_at": null,
+  "model": null,
+  "fixtures": {}
+}

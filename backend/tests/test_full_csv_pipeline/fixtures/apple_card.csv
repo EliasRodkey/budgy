@@ -1,0 +1,15 @@
+Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD),Purchased By
+01/02/2025,01/03/2025,Payroll Direct Deposit,Payroll Direct Deposit,Payments,Credit,3200.00,Elias Rodkey
+01/03/2025,01/04/2025,Whole Foods Market,Whole Foods Market,Groceries,Debit,87.43,Elias Rodkey
+01/04/2025,01/05/2025,Starbucks,Starbucks,Restaurants,Debit,6.75,Elias Rodkey
+01/05/2025,01/06/2025,Amazon.com,Amazon.com,Shopping,Debit,42.50,Elias Rodkey
+01/07/2025,01/08/2025,Netflix,Netflix,Entertainment,Debit,15.99,Elias Rodkey
+01/08/2025,01/09/2025,Shell Gas Station,Shell Gas Station,Gas,Debit,58.20,Elias Rodkey
+01/10/2025,01/11/2025,Planet Fitness,Planet Fitness,Health,Debit,45.00,Elias Rodkey
+01/12/2025,01/13/2025,Con Edison,Con Edison,Utilities,Debit,110.00,Elias Rodkey
+01/14/2025,01/15/2025,CVS Pharmacy,CVS Pharmacy,Pharmacy,Debit,23.18,Elias Rodkey
+01/15/2025,01/16/2025,Uber,Uber,Transportation,Debit,18.50,Elias Rodkey
+01/16/2025,01/17/2025,Target,Target,Shopping,Debit,65.99,Elias Rodkey
+01/18/2025,01/19/2025,Chipotle,Chipotle,Restaurants,Debit,14.75,Elias Rodkey
+01/20/2025,01/21/2025,Spotify,Spotify,Entertainment,Debit,9.99,Elias Rodkey
+01/25/2025,01/26/2025,Rent,Rent,Housing,Debit,1850.00,Elias Rodkey

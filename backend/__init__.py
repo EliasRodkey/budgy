@@ -15,7 +15,7 @@ custom_mode = LoggingMode(
     directory_layout=DirectoryLayout.DAILY,
 )
 
-configure_logging(
+logging_handler_controller = configure_logging(
     log_directory=EDirectories.LOG_DIR,
     mode=custom_mode
 )

@@ -9,9 +9,9 @@ import pytest
 from fastapi import HTTPException
 from unittest.mock import MagicMock, patch
 
-from backend.api.summaries.summaries_router import (
-    _build_monthly_summary,
-    get_monthly_summary,
+from backend.api.summaries.summaries_router import get_monthly_summary
+from backend.utils.summary_utils import (
+    build_monthly_summary as _build_monthly_summary,
     MonthlySummaryResponse,
     CategorySpendResponse,
 )

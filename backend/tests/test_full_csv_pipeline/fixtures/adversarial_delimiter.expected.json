@@ -1,0 +1,84 @@
+{
+  "description": "Tab-separated CSV with debit/credit split columns. The current pipeline uses comma as the default delimiter, so it will parse the entire row as a single field — this fixture is designed to expose the delimiter detection gap. The ideal plan assumes a correctly-parsing parser.",
+  "ideal_plan": {
+    "column_map": {
+      "Date": "authorized_date",
+      "Merchant": "description",
+      "Category": "primary_category"
+    },
+    "category_map": {
+      "Groceries": {
+        "primary": "Food & drink",
+        "detailed": "Groceries"
+      },
+      "Restaurants & Cafes": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      },
+      "Online Shopping": {
+        "primary": "Shopping",
+        "detailed": "Retail"
+      },
+      "Streaming Services": {
+        "primary": "Entertainment",
+        "detailed": "Movies & TV"
+      },
+      "Fuel": {
+        "primary": "Transportation",
+        "detailed": "Gas & EV charging"
+      },
+      "Gym & Fitness": {
+        "primary": "Health & wellness",
+        "detailed": "Fitness"
+      },
+      "Electric Utility": {
+        "primary": "Housing & utilities",
+        "detailed": "Gas & electricity"
+      },
+      "Drugstore": {
+        "primary": "Health & wellness",
+        "detailed": "Pharmacy"
+      },
+      "Rideshare": {
+        "primary": "Transportation",
+        "detailed": "Taxi & ride shares"
+      },
+      "Retail Shopping": {
+        "primary": "Shopping",
+        "detailed": "Retail"
+      },
+      "Fast Food": {
+        "primary": "Food & drink",
+        "detailed": "Restaurants & bars"
+      },
+      "Housing": {
+        "primary": "Housing & utilities",
+        "detailed": "Rent"
+      },
+      "Income": {
+        "primary": "Income",
+        "detailed": "Wages"
+      }
+    },
+    "amount_transform": "debit_credit",
+    "debit_column": "Debit",
+    "credit_column": "Credit"
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-01-03",
+      "description": "Whole Foods Market",
+      "amount": -87.43,
+      "primary_category": "Food & drink"
+    },
+    {
+      "authorized_date": "2025-01-02",
+      "description": "Payroll Direct Deposit",
+      "amount": 3200.00,
+      "primary_category": "Income"
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}

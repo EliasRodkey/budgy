@@ -15,6 +15,7 @@ from typing import Optional
 from fastapi import Query
 
 # Local imports
+from backend.database_modules.models.transactions import TransactionsTable
 from backend.utils.analysis_utils import PrimaryCategories, DetailedCategories
 
 
@@ -84,21 +85,21 @@ class TransactionFilters(BaseModel):
         db_filters: dict = {}
 
         if not self.show_excluded:
-            db_filters["exclude"] = ("==", False)
+            db_filters[TransactionsTable.exclude.name] = ("==", False)
 
         if self.flagged:
-            db_filters["status"] = ("==", "Unchecked")
+            db_filters[TransactionsTable.status.name] = ("==", "Unchecked")
 
         if self.primary_category in [e.value for e in PrimaryCategories]:
-            db_filters["primary_category"] = ("==", self.primary_category)
+            db_filters[TransactionsTable.primary_category.name] = ("==", self.primary_category)
 
         if self.detailed_category in [e.value for e in DetailedCategories]:
-            db_filters["detailed_category"] = ("==", self.detailed_category)
+            db_filters[TransactionsTable.detailed_category.name] = ("==", self.detailed_category)
 
         if self.date_from or self.date_to:
             date_from = self.date_from or "1900-01-01"
             date_to = self.date_to or datetime.now().strftime("%Y-%m-%d")
-            db_filters["authorized_date"] = (
+            db_filters[TransactionsTable.authorized_date.name] = (
                 "between",
                 (
                     datetime.strptime(date_from, "%Y-%m-%d"),
