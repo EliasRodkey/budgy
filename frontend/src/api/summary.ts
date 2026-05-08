@@ -4,7 +4,7 @@ import { useMockMode } from "../store/mockMode";
 
 const isMock = () => useMockMode.getState().isMockMode;
 
-export async function getMonthlySummary(month: string): Promise<MonthlySummary> {
+export async function getMonthlySummary(month: string): Promise<MonthlySummary | null> {
   if (isMock()) {
     const summary = mockMonthlySummaries.find((s) => s.month === month);
     if (!summary) {
@@ -14,6 +14,7 @@ export async function getMonthlySummary(month: string): Promise<MonthlySummary> 
   }
 
   const res = await fetch(`/api/summaries/${month}`);
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to fetch summary for ${month}`);
   const json = await res.json();
   return json.data as MonthlySummary;

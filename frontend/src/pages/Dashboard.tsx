@@ -14,7 +14,7 @@ import { currentMonth, formatMonth } from "@/lib/formatters";
 import { recomputeSummaries } from "@/api/summary";
 import { useMockMode } from "@/store/mockMode";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, FlaskConical, RefreshCw, Upload } from "lucide-react";
+import { AlertCircle, FlaskConical, PlusCircle, RefreshCw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Transaction } from "@/types";
@@ -116,6 +116,14 @@ export default function Dashboard() {
             <Button size="sm" onClick={() => navigate("/transactions")}>
               <Upload size={13} className="mr-1.5" />
               Upload CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/transactions?add=1")}
+            >
+              <PlusCircle size={13} className="mr-1.5" />
+              Add Transaction
             </Button>
             <Button
               variant="outline"

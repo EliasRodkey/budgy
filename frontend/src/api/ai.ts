@@ -35,7 +35,7 @@ const MOCK_PLAN: NormalizationPlan = {
   requires_manual_review: false,
 };
 
-export async function getAISummary(month: string): Promise<AISummary> {
+export async function getAISummary(month: string): Promise<AISummary | null> {
   if (isMock()) {
     await new Promise((r) => setTimeout(r, 400));
     return { ...mockAISummary };
@@ -46,6 +46,8 @@ export async function getAISummary(month: string): Promise<AISummary> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ month }),
   });
+
+  if (res.status === 404) return null;
 
   if (!res.ok) {
     let detail = `AI summary failed (${res.status})`;
