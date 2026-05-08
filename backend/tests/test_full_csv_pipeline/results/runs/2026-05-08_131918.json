@@ -1,0 +1,43 @@
+{
+  "fixtures": {
+    "chase": {
+      "description": "Chase checking export \u2014 no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Details",
+            "Posting Date",
+            "Description",
+            "Amount",
+            "Type",
+            "Balance",
+            "Check or Slip #"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "fatal",
+          "errors": [
+            "Connection error."
+          ]
+        },
+        "plan_validation": {
+          "status": "skipped"
+        },
+        "transform_application": {
+          "status": "skipped"
+        },
+        "database_upload": {
+          "status": "skipped"
+        }
+      },
+      "overall_score": null
+    }
+  },
+  "timestamp": "2026-05-08_131918",
+  "model": "claude-haiku-4-5-20251001",
+  "description": ""
+}

@@ -13,3 +13,4 @@ timestamp,model,description,fixture_name,column_map_score,category_map_score,amo
 2026-05-07_185359,claude-haiku-4-5-20251001,,adversarial_personal,1.0,0.5,0.0,0.0,0.375
 2026-05-07_185359,claude-haiku-4-5-20251001,,adversarial_structural,1.0,0.5455,1.0,1.0,0.8864
 2026-05-07_185359,claude-haiku-4-5-20251001,,adversarial_encoding,1.0,0.6923,0.0,0.6667,0.5897
+2026-05-08_131810,claude-haiku-4-5-20251001,,sofi_happy_path,1.0,1.0,1.0,0.6667,0.9167

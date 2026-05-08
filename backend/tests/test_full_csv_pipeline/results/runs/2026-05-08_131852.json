@@ -1,0 +1,168 @@
+{
+  "fixtures": {
+    "chase": {
+      "description": "Chase checking export \u2014 no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Details",
+            "Posting Date",
+            "Description",
+            "Amount",
+            "Type",
+            "Balance",
+            "Check or Slip #"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 0.5714,
+              "correct": 4,
+              "total": 7,
+              "misses": {
+                "Posting Date": {
+                  "expected": "authorized_date",
+                  "got": "posted_date"
+                },
+                "Type": {
+                  "expected": null,
+                  "got": "primary_category"
+                },
+                "Check or Slip #": {
+                  "expected": null,
+                  "got": "notes"
+                }
+              }
+            },
+            "category_map": {
+              "score": 1.0,
+              "correct": 0,
+              "total": 0,
+              "misses": {}
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Details": null,
+              "Posting Date": "posted_date",
+              "Description": "description",
+              "Amount": "amount",
+              "Type": "primary_category",
+              "Balance": null,
+              "Check or Slip #": "notes"
+            },
+            "category_map": {
+              "SHELL OIL 57444311702": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "CVS/PHARMACY #08943": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "DIRECT DEP PAYROLL ADP": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "CON EDISON BILL PAY": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "UBER *TRIP HELP.UBER.COM": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "TARGET 00018375": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "VENMO PAYMENT": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "STARBUCKS STORE 04762": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "PLANET FITNESS #0234": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "LANDLORD RENT PAYMENT": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "CHIPOTLE 2845": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "AMAZON.COM*1A2B3C4D": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "SPOTIFY USA": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "WHOLEFDS #10274": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "NETFLIX.COM": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [
+              "authorized_date"
+            ],
+            "issues": [],
+            "column_map_reasoning": "Details is a generic header with unclear content \u2014 mapped to null. Posting Date maps clearly to posted_date. Description contains merchant/transaction details, so it maps to description. Amount is the transaction amount column. Type likely indicates transaction type (e.g., purchase, deposit, payment) and is the most appropriate home for primary_category values, or it may contain the raw category strings themselves. Balance is running account balance, not part of the transaction schema \u2014 mapped to null. Check or Slip # is a reference number suitable for notes.",
+            "category_map_reasoning": "Each value in the unique category list is a merchant or transaction descriptor, and I've mapped them to their most specific Budgy category. For example, Shell Oil \u2192 Transportation/Gas & EV charging, CVS/Pharmacy \u2192 Health & wellness/Pharmacy, Direct Deposit Payroll \u2192 Income/Wages. Venmo Payment is a transfer mechanism, so it maps to Transfers/Person to person payments. All mappings are based on the merchant type or payment method implied by the descriptor.",
+            "amount_transform_reasoning": "The Amount column shows: most values are negative (e.g., -87.43, -6.75, -42.5, -15.99, -58.2, -45.0, -110.0, -23.18, -18.5), with one positive value (3200.0). Given that \"DIRECT DEP PAYROLL ADP\" is an income transaction and appears in the category list, the single positive value likely represents this income transaction. This confirms the expense_negative sign convention: expenses are negative numbers, income is positive."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "fatal",
+          "unmapped_required_columns": [
+            "authorized_date"
+          ],
+          "expected_unmapped": [
+            "primary_category"
+          ],
+          "errors": [
+            "Unexpected unmapped required columns: ['authorized_date']"
+          ]
+        },
+        "transform_application": {
+          "status": "skipped"
+        },
+        "database_upload": {
+          "status": "skipped"
+        }
+      },
+      "overall_score": null
+    }
+  },
+  "timestamp": "2026-05-08_131852",
+  "model": "claude-haiku-4-5-20251001",
+  "description": ""
+}
