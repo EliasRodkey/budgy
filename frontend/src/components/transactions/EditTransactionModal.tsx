@@ -132,7 +132,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function EditTransactionModal({ transaction, isPending, availableTags, onSave, onClose }: EditTransactionModalProps) {
+export function EditTransactionModal({ transaction, isPending, availableTags, onSave, onClose, onDelete }: EditTransactionModalProps) {
   const missingFields = computeMissingFields(transaction);
 
   const {
