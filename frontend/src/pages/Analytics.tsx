@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MOCK_DEFAULT_DATE_FROM, MOCK_DEFAULT_DATE_TO } from "@/api/analytics";
+import { getDefaultDateRange } from "@/api/analytics";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { formatCurrency, formatMonth } from "@/lib/formatters";
 import { AlertCircle, RefreshCw } from "lucide-react";
@@ -131,8 +131,9 @@ function ErrorCard({ onRetry }: { onRetry: () => void }) {
 export default function Analytics() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const dateFrom = searchParams.get("dateFrom") ?? MOCK_DEFAULT_DATE_FROM;
-  const dateTo = searchParams.get("dateTo") ?? MOCK_DEFAULT_DATE_TO;
+  const defaults = getDefaultDateRange();
+  const dateFrom = searchParams.get("dateFrom") ?? defaults.from;
+  const dateTo = searchParams.get("dateTo") ?? defaults.to;
 
   function setParam(key: string, value: string) {
     setSearchParams((prev) => {
