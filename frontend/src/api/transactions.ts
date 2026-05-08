@@ -194,6 +194,69 @@ export async function getAvailableTags(): Promise<string[]> {
   return json as string[];
 }
 
+// ─── Create Transaction ───────────────────────────────────────────────────────
+
+export interface NewTransactionFields {
+  date: string;           // YYYY-MM-DD
+  description: string;
+  amount: number;
+  accountName: string;
+  primaryCategory: string;
+  detailedCategory: string;
+}
+
+export class DuplicateTransactionError extends Error {
+  count: number;
+  constructor(count: number) {
+    super("Duplicate transaction detected");
+    this.count = count;
+  }
+}
+
+export async function createTransaction(
+  fields: NewTransactionFields,
+  force = false,
+): Promise<Transaction> {
+  if (isMock()) {
+    const newTx: Transaction = {
+      id: String(Date.now()),
+      authorizedDate: fields.date,
+      status: "Unchecked",
+      accountName: fields.accountName,
+      description: fields.description,
+      primaryCategory: fields.primaryCategory,
+      detailedCategory: fields.detailedCategory,
+      amount: fields.amount,
+      repayment: false,
+      exclude: false,
+      tags: [],
+    };
+    mutableTransactions.unshift(newTx);
+    return newTx;
+  }
+
+  const url = force ? "/api/transactions?force=true" : "/api/transactions";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      date: fields.date,
+      description: fields.description,
+      amount: fields.amount,
+      accountName: fields.accountName,
+      primaryCategory: fields.primaryCategory,
+      detailedCategory: fields.detailedCategory,
+    }),
+  });
+
+  if (res.status === 409) {
+    const body = await res.json();
+    throw new DuplicateTransactionError(body?.detail?.count ?? 1);
+  }
+  if (!res.ok) throw new Error("Failed to create transaction");
+  return res.json().then(normalizeTransaction);
+}
+
 export async function updateTransaction(
   id: string,
   updates: Partial<Pick<Transaction, "authorizedDate" | "postedDate" | "status" | "accountName" | "description" | "primaryCategory" | "detailedCategory" | "amount" | "repayment" | "exclude" | "notes" | "tags">>,

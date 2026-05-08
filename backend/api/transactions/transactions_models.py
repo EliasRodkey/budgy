@@ -26,8 +26,9 @@ incoming_config = ConfigDict(
 )
 
 outgoing_config = ConfigDict(
-    populate_by_name=True, # Accept both camelCase and snake_case for incoming data.
-    alias_generator=to_camel # Convert to camelCase for front end consumption.
+    from_attributes=True,  # Allow ORM objects to be used directly
+    populate_by_name=True,
+    alias_generator=to_camel,
 )
 
 
@@ -120,6 +121,18 @@ class TransactionsPage(BaseModel): # Pydantic model for get transactions respons
     has_next_page: bool
 
     model_config = outgoing_config
+
+
+class TransactionCreate(BaseModel):
+    """Request body for POST /transactions — manually create a single transaction."""
+    model_config = ConfigDict(extra="ignore", alias_generator=to_camel, populate_by_name=True)
+
+    date: str                           # YYYY-MM-DD → authorized_date
+    description: str
+    amount: float
+    account_name: str
+    primary_category: str
+    detailed_category: str
 
 
 class TransactionUpdate(BaseModel):

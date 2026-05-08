@@ -1,5 +1,6 @@
 import { getSimilarTransactions } from "@/api/transactions";
 import { BulkApplyDialog, type BulkApplyChange, type BulkApplyScope } from "@/components/transactions/BulkApplyDialog";
+import { AddTransactionModal } from "@/components/transactions/AddTransactionModal";
 import { CSVUploadModal } from "@/components/transactions/CSVUploadModal";
 import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDialog";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
@@ -16,7 +17,7 @@ import {
 import { useMockMode } from "@/store/mockMode";
 import { tagPillStyle } from "@/lib/tagColors";
 import type { Transaction } from "@/types";
-import { AlertCircle, ArrowUpDown, ChevronDown, FlaskConical, RefreshCw, Upload, X } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ChevronDown, FlaskConical, PlusCircle, RefreshCw, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -256,6 +257,7 @@ export default function Transactions() {
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showAdd, setShowAdd] = useState(() => searchParams.get("add") === "1");
 
   // Bulk-apply dialog state
   const [bulkChange, setBulkChange] = useState<BulkApplyChange | null>(null);
@@ -351,10 +353,16 @@ export default function Transactions() {
             Search, filter, and manage your transactions
           </p>
         </div>
-        <Button onClick={() => setShowImport(true)}>
-          <Upload size={14} className="mr-1.5" />
-          Import CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowAdd(true)}>
+            <PlusCircle size={14} className="mr-1.5" />
+            Add Transaction
+          </Button>
+          <Button onClick={() => setShowImport(true)}>
+            <Upload size={14} className="mr-1.5" />
+            Import CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -554,6 +562,9 @@ export default function Transactions() {
         onConfirm={handleDelete}
         onClose={() => setDeleteTarget(null)}
       />
+      {showAdd && (
+        <AddTransactionModal onClose={() => setShowAdd(false)} />
+      )}
       {showImport && (
         <CSVUploadModal
           onClose={() => setShowImport(false)}

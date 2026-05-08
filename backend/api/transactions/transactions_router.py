@@ -9,6 +9,7 @@ Functions:
 """
 # Standard library imports
 import csv as csv_lib
+import hashlib
 import io
 import json as json_lib
 from pleasant_loggers import get_logger
@@ -29,10 +30,12 @@ from pleasant_database import DatabaseFile
 # Local imports
 from backend.ai_modules.csv_normalization_service.csv_transform_applicator import apply_normalization_plan
 from backend.csv_modules.csv_parser import detect_delimiter, unwrap_row_quotes
+from backend.csv_modules.transactions_csv_loader import generate_base_hash
 from backend.ai_modules.csv_normalization_service.normalization_plan import NormalizationPlan
 from backend.api.transactions.transactions_models import (
     BulkUpdateRequest,
     Transaction,
+    TransactionCreate,
     TransactionFilters,
     TransactionUpdate,
     TransactionsPage,
@@ -133,6 +136,78 @@ async def get_available_tags(db: DatabaseSession = Depends(get_db)) -> list[str]
                 all_tags.add(tag)
 
     return sorted(all_tags)
+
+
+# ─── Transaction Create Endpoint ─────────────────────────────────────────────
+
+@router.post("", response_model=Transaction, status_code=201)
+async def create_transaction(
+    body: TransactionCreate,
+    force: bool = False,
+    db: DatabaseSession = Depends(get_db),
+) -> Transaction:
+    """
+    Manually creates a single transaction and marks the affected month dirty
+    so summaries are recomputed on the next dashboard load.
+
+    Duplicate detection: if a transaction with identical (date, account, description, amount)
+    already exists, returns 409. Pass ?force=true to insert anyway using the same
+    iterative uq_hash scheme as CSV uploads (base_hash:N where N = existing occurrence count).
+    """
+    try:
+        authorized_date = datetime.strptime(body.date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Invalid date format '{body.date}'. Expected YYYY-MM-DD.")
+
+    record_for_hash = {
+        TransactionsTable.authorized_date.name: authorized_date,
+        TransactionsTable.posted_date.name: None,
+        TransactionsTable.account_name.name: body.account_name,
+        TransactionsTable.description.name: body.description,
+        TransactionsTable.amount.name: body.amount,
+    }
+    base_hash = generate_base_hash(record_for_hash)
+
+    existing = db.transactions.fetch_items_by_attribute(base_hash=base_hash)
+    if existing and not force:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "A transaction with identical date, account, description, and amount already exists.",
+                "count": len(existing),
+            },
+        )
+
+    # uq_hash mirrors the CSV iterative scheme: sha256(base_hash:N) where N = prior occurrence count
+    count = len(existing)
+    uq_hash = hashlib.sha256(f"{base_hash}:{count}".encode()).hexdigest()
+
+    db.transactions.add_item(
+        **{
+            TransactionsTable.authorized_date.name: authorized_date,
+            TransactionsTable.status.name: "Unchecked",
+            TransactionsTable.account_name.name: body.account_name,
+            TransactionsTable.description.name: body.description,
+            TransactionsTable.primary_category.name: body.primary_category,
+            TransactionsTable.detailed_category.name: body.detailed_category,
+            TransactionsTable.amount.name: body.amount,
+            TransactionsTable.repayment.name: False,
+            TransactionsTable.exclude.name: False,
+            TransactionsTable.base_hash.name: base_hash,
+            TransactionsTable.uq_hash.name: uq_hash,
+        }
+    )
+
+    db.dirty_months.mark_dirty(authorized_date.month, authorized_date.year)
+
+    result = db.transactions.query(
+        columns=db.transactions.return_columns,
+        filters={TransactionsTable.uq_hash.name: ("==", uq_hash)},
+    )
+    if result.data.empty:
+        raise HTTPException(status_code=500, detail="Transaction was created but could not be retrieved.")
+
+    return result.data.to_dict(orient="records")[0]
 
 
 # ─── Transaction Update Endpoint ─────────────────────────────────────────────

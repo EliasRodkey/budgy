@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   bulkUpdateTransactions,
+  createTransaction,
   deleteTransaction,
   getAvailableTags,
   getSimilarTransactions,
@@ -8,6 +9,7 @@ import {
   importTransactions,
   updateTransaction,
   type BulkUpdatePayload,
+  type NewTransactionFields,
   type TransactionFilters,
 } from "../api/transactions";
 
@@ -15,6 +17,18 @@ export function useTransactions(filters: TransactionFilters = {}) {
   return useQuery({
     queryKey: ["transactions", filters],
     queryFn: () => getTransactions(filters),
+  });
+}
+
+export function useCreateTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fields, force }: { fields: NewTransactionFields; force?: boolean }) =>
+      createTransaction(fields, force),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["summaries", "dirty"] });
+    },
   });
 }
 
