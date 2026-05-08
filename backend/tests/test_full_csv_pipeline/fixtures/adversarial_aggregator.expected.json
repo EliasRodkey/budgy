@@ -1,0 +1,75 @@
+{
+  "description": "Aggregator-style export with redundant and overlapping columns. Tests that the AI disambiguates: two date columns (Date vs Posted Date), two description-like columns (Merchant vs Transaction Description), an irrelevant numeric column (Running Balance), and a payment method column whose values are institution names that must map to account_name rather than be treated as spending categories.",
+  "ideal_plan": {
+    "column_map": {
+      "Date": "authorized_date",
+      "Posted Date": "posted_date",
+      "Merchant": "description",
+      "Transaction Description": null,
+      "Type": null,
+      "Category": "primary_category",
+      "Sub-category": "detailed_category",
+      "Amount": "amount",
+      "Running Balance": null,
+      "Payment Method": "account_name"
+    },
+    "category_map": {
+      "Income": { "primary": "Income", "detailed": "Wages" },
+      "Freelance Income": { "primary": "Income", "detailed": "Other income" },
+      "Pet Care": { "primary": "Shopping", "detailed": "Pet supplies" },
+      "Subscriptions": { "primary": "Entertainment", "detailed": "Other entertainment" },
+      "Healthcare": { "primary": "Health & wellness", "detailed": "Medical" },
+      "Travel": { "primary": "Travel", "detailed": "Other travel" },
+      "Home Improvement": { "primary": "Housing & utilities", "detailed": "Home improvement & repairs" },
+      "Groceries": { "primary": "Food & drink", "detailed": "Groceries" }
+    },
+    "amount_transform": "expense_negative",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-02-01",
+      "description": "Employer Direct Deposit",
+      "amount": 3200.00,
+      "primary_category": "Income",
+      "detailed_category": "Wages",
+      "account_name": "Direct Deposit"
+    },
+    {
+      "authorized_date": "2025-02-03",
+      "description": "Chewy.com",
+      "amount": -67.43,
+      "primary_category": "Shopping",
+      "detailed_category": "Pet supplies",
+      "account_name": "Mastercard"
+    },
+    {
+      "authorized_date": "2025-02-08",
+      "description": "United Airlines",
+      "amount": -342.00,
+      "primary_category": "Travel",
+      "detailed_category": "Other travel",
+      "account_name": "Mastercard"
+    },
+    {
+      "authorized_date": "2025-02-05",
+      "description": "Netflix",
+      "amount": -15.99,
+      "primary_category": "Entertainment",
+      "detailed_category": "Other entertainment",
+      "account_name": "Apple Pay"
+    },
+    {
+      "authorized_date": "2025-02-28",
+      "description": "Urgent Care Medical",
+      "amount": -75.00,
+      "primary_category": "Health & wellness",
+      "detailed_category": "Medical",
+      "account_name": "Visa"
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 0,
+  "expected_unmapped_required_columns": []
+}

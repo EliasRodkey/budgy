@@ -44,6 +44,7 @@ FIXTURE_NAMES = [
     "adversarial_personal",
     "adversarial_structural",
     "adversarial_encoding",
+    "adversarial_aggregator",
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

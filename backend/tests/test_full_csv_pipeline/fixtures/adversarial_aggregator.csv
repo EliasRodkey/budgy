@@ -1,0 +1,16 @@
+Date,Posted Date,Merchant,Transaction Description,Type,Category,Sub-category,Amount,Running Balance,Payment Method
+2025-02-01,2025-02-03,Employer Direct Deposit,PAYROLL ACH 01FEB,Credit,Income,Wages,3200.00,5841.22,Direct Deposit
+2025-02-03,2025-02-04,Chewy.com,CHEWY AUTO-SHIP 0203,Debit,Pet Care,Pet Food & Supplies,-67.43,5773.79,Mastercard
+2025-02-05,2025-02-05,Netflix,NETFLIX.COM 0205,Debit,Subscriptions,Streaming,-15.99,5757.80,Apple Pay
+2025-02-06,2025-02-07,CVS Pharmacy,CVS PHARMACY 0206,Debit,Healthcare,Pharmacy,-28.50,5729.30,Visa
+2025-02-08,2025-02-09,United Airlines,UNITED AIRLINES 0208,Debit,Travel,Flights,-342.00,5387.30,Mastercard
+2025-02-10,2025-02-11,Home Depot,HOME DEPOT 0210,Debit,Home Improvement,Repairs,-156.72,5230.58,Visa
+2025-02-12,2025-02-12,Spotify,SPOTIFY USA 0212,Debit,Subscriptions,Music,-9.99,5220.59,Apple Pay
+2025-02-14,2025-02-15,Downtown Dental Group,DENTAL OFFICE 0214,Debit,Healthcare,Dental,-150.00,5070.59,Mastercard
+2025-02-15,2025-02-16,Banfield Pet Hospital,BANFIELD VET 0215,Debit,Pet Care,Vet Visit,-85.00,4985.59,Visa
+2025-02-17,2025-02-18,Marriott Hotels,MARRIOTT INTL 0217,Debit,Travel,Hotels,-189.00,4796.59,Mastercard
+2025-02-19,2025-02-19,Whole Foods Market,WHOLEFDS 0219,Debit,Groceries,Weekly Shop,-112.34,4684.25,Apple Pay
+2025-02-21,2025-02-22,Adobe Systems,ADOBE CREATIVE 0221,Debit,Subscriptions,Software,-54.99,4629.26,Visa
+2025-02-22,2025-02-22,Freelance Client,ACH FREELANCE PYMT,Credit,Freelance Income,Project Payment,750.00,5379.26,Direct Deposit
+2025-02-25,2025-02-26,Lowe's Home Improvement,LOWES 0225,Debit,Home Improvement,Repairs,-89.45,5289.81,Mastercard
+2025-02-28,2025-02-28,Urgent Care Medical,URGENT CARE 0228,Debit,Healthcare,Medical,-75.00,5214.81,Visa
