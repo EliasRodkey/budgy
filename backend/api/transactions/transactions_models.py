@@ -36,7 +36,7 @@ class Transaction(BaseModel):
     id: int
     authorized_date: date
     posted_date: Optional[date] = None
-    status: str
+    status: Optional[str] = "Unchecked"
     account_name: Optional[str] = None
     description: str
     primary_category: str
