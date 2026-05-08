@@ -147,7 +147,10 @@ class TestProcessCSVUploadWithPlan:
         assert upload_path != str(csv_file)
         assert "_transformed.csv" in upload_path
 
-    def test_job_fails_when_unmapped_required_columns(self, tmp_path):
+    def test_job_completes_when_unmapped_required_columns(self, tmp_path):
+        # Unmapped required columns no longer block the upload — rows soft-fail to
+        # UNCHECKED status via the transform applicator. The frontend enforces
+        # column assignment; the backend processes whatever plan it receives.
         csv_file = tmp_path / "test.csv"
         csv_file.write_text(MESSY_CSV)
         plan = _make_plan(unmapped_required_columns=["primary_category"])
@@ -159,10 +162,8 @@ class TestProcessCSVUploadWithPlan:
             _process_csv_upload("job-1", str(csv_file), plan.model_dump_json())
 
         status_calls = {c[0][1]: c for c in session.jobs.set_status.call_args_list}
-        assert "failed" in status_calls
-        error_msg = status_calls["failed"][1].get("errors", "")
-        assert "primary_category" in error_msg
-        session.transactions.upload_csv.assert_not_called()
+        assert "complete" in status_calls
+        session.transactions.upload_csv.assert_called_once()
 
     def test_job_fails_on_unexpected_transform_exception(self, tmp_path):
         csv_file = tmp_path / "test.csv"

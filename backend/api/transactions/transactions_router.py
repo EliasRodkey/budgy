@@ -357,13 +357,6 @@ def _process_csv_upload(
         if normalization_plan_json:
             plan = NormalizationPlan.model_validate_json(normalization_plan_json)
 
-            if plan.unmapped_required_columns:
-                session.jobs.set_status(
-                    job_id, "failed",
-                    errors=f"Required columns not mapped: {plan.unmapped_required_columns}",
-                )
-                return
-
             with open(tmp_path, newline="", encoding="utf-8") as f:
                 text = f.read()
             text = unwrap_row_quotes(text)

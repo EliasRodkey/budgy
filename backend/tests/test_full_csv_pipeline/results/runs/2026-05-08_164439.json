@@ -1,0 +1,164 @@
+{
+  "fixtures": {
+    "chase": {
+      "description": "Chase checking export \u2014 no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Details",
+            "Posting Date",
+            "Description",
+            "Amount",
+            "Type",
+            "Balance",
+            "Check or Slip #"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 0.7143,
+              "correct": 5,
+              "total": 7,
+              "misses": {
+                "Posting Date": {
+                  "expected": "authorized_date",
+                  "got": "posted_date"
+                },
+                "Type": {
+                  "expected": null,
+                  "got": "primary_category"
+                }
+              }
+            },
+            "category_map": {
+              "score": 1.0,
+              "correct": 0,
+              "total": 0,
+              "misses": {}
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Details": null,
+              "Posting Date": "posted_date",
+              "Description": "description",
+              "Amount": "amount",
+              "Type": "primary_category",
+              "Balance": null,
+              "Check or Slip #": null
+            },
+            "category_map": {
+              "AMAZON.COM*1A2B3C4D": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "SHELL OIL 57444311702": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "DIRECT DEP PAYROLL ADP": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "CVS/PHARMACY #08943": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "UBER *TRIP HELP.UBER.COM": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "VENMO PAYMENT": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "TARGET 00018375": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "STARBUCKS STORE 04762": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "CHIPOTLE 2845": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "LANDLORD RENT PAYMENT": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "SPOTIFY USA": {
+                "primary": "Services",
+                "detailed": "Digital services"
+              },
+              "CON EDISON BILL PAY": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "PLANET FITNESS #0234": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "WHOLEFDS #10274": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "NETFLIX.COM": {
+                "primary": "Services",
+                "detailed": "Digital services"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [
+              "authorized_date"
+            ],
+            "issues": [],
+            "column_map_reasoning": "The 'Posting Date' clearly maps to posted_date. 'Description' contains transaction details and merchant names, so it maps to description. 'Amount' is the transaction value. 'Type' appears to hold transaction type/category information, so it maps to primary_category. 'Details', 'Balance', and 'Check or Slip #' don't map cleanly to Budgy schema fields \u2014 'Balance' is an account balance (informational, not a transaction field), 'Check or Slip #' is an identifier that doesn't fit the schema, and 'Details' is unclear. These are mapped to null.",
+            "category_map_reasoning": "All unique category values are merchant names and transaction descriptions rather than categorical labels. Each has been mapped to the most specific Budgy category based on the merchant type: e.g., Amazon \u2192 Shopping/Retail, Shell Oil \u2192 Transportation/Gas & EV charging, Direct Deposit \u2192 Income/Wages, CVS \u2192 Health & wellness/Pharmacy, Uber \u2192 Transportation/Taxi & ride shares, Venmo \u2192 Transfers/Person to person payments, Target \u2192 Shopping/Retail, Starbucks \u2192 Food & drink/Coffee shops, Chipotle \u2192 Food & drink/Restaurants & bars, Landlord \u2192 Housing & utilities/Rent, Spotify and Netflix \u2192 Services/Digital services, Con Edison \u2192 Housing & utilities/Gas & electricity, Planet Fitness \u2192 Health & wellness/Fitness, Whole Foods \u2192 Food & drink/Groceries.",
+            "amount_transform_reasoning": "All sample Amount values are either negative (expenses: -87.43, -6.75, -42.5, -15.99, -58.2, -45.0, -110.0, -23.18, -18.5) or positive (income: 3200.0). The presence of a positive 3200.0 value alongside many negative values, combined with the merchant data (DIRECT DEP PAYROLL suggests income), indicates that expenses are represented as negative numbers and income as positive. This follows the standard 'expense_negative' convention, so no transformation is needed."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "fatal",
+          "unmapped_required_columns": [
+            "authorized_date"
+          ],
+          "expected_unmapped": [
+            "primary_category"
+          ],
+          "errors": [
+            "Unexpected unmapped required columns: ['authorized_date']"
+          ]
+        },
+        "transform_application": {
+          "status": "skipped"
+        },
+        "database_upload": {
+          "status": "skipped"
+        }
+      },
+      "overall_score": null
+    }
+  },
+  "timestamp": "2026-05-08_164439",
+  "model": "claude-haiku-4-5-20251001",
+  "description": "prompt fix: never null category_map entries"
+}

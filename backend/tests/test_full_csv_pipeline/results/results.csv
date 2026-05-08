@@ -22,3 +22,7 @@ timestamp,model,description,fixture_name,column_map_score,category_map_score,amo
 2026-05-08_163833,claude-haiku-4-5-20251001,adversarial_aggregator: ambiguous column selection fixture,adversarial_structural,1.0,0.6364,1.0,1.0,0.9091
 2026-05-08_163833,claude-haiku-4-5-20251001,adversarial_aggregator: ambiguous column selection fixture,adversarial_encoding,1.0,0.7692,1.0,0.3333,0.7756
 2026-05-08_163833,claude-haiku-4-5-20251001,adversarial_aggregator: ambiguous column selection fixture,adversarial_aggregator,1.0,0.625,1.0,0.4,0.7562
+2026-05-08_164707,claude-haiku-4-5-20251001,prompt fix: single date col always maps to authorized_date,chase,0.7143,1.0,1.0,1.0,0.9286
+2026-05-08_164719,claude-haiku-4-5-20251001,prompt fix: single date col always maps to authorized_date,chase,0.7143,1.0,1.0,1.0,0.9286
+2026-05-08_165618,claude-haiku-4-5-20251001,remove unmapped_required_columns guard from router,chase,1.0,1.0,1.0,1.0,1.0
+2026-05-08_165630,claude-haiku-4-5-20251001,remove unmapped_required_columns guard from router,chase,1.0,1.0,1.0,1.0,1.0

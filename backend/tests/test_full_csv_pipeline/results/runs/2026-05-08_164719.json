@@ -1,0 +1,173 @@
+{
+  "fixtures": {
+    "chase": {
+      "description": "Chase checking export \u2014 no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Details",
+            "Posting Date",
+            "Description",
+            "Amount",
+            "Type",
+            "Balance",
+            "Check or Slip #"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 0.7143,
+              "correct": 5,
+              "total": 7,
+              "misses": {
+                "Type": {
+                  "expected": null,
+                  "got": "primary_category"
+                },
+                "Check or Slip #": {
+                  "expected": null,
+                  "got": "notes"
+                }
+              }
+            },
+            "category_map": {
+              "score": 1.0,
+              "correct": 0,
+              "total": 0,
+              "misses": {}
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Details": null,
+              "Posting Date": "authorized_date",
+              "Description": "description",
+              "Amount": "amount",
+              "Type": "primary_category",
+              "Balance": null,
+              "Check or Slip #": "notes"
+            },
+            "category_map": {
+              "NETFLIX.COM": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "DIRECT DEP PAYROLL ADP": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "SPOTIFY USA": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "LANDLORD RENT PAYMENT": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "TARGET 00018375": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "CVS/PHARMACY #08943": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "WHOLEFDS #10274": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "STARBUCKS STORE 04762": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "PLANET FITNESS #0234": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              },
+              "CON EDISON BILL PAY": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "VENMO PAYMENT": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "AMAZON.COM*1A2B3C4D": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "CHIPOTLE 2845": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "SHELL OIL 57444311702": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "UBER *TRIP HELP.UBER.COM": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [],
+            "issues": [],
+            "column_map_reasoning": "- 'Posting Date' is the only date column, so it maps to 'authorized_date' per the rule for single date columns.\n- 'Description' contains the transaction details and maps to 'description'.\n- 'Amount' is the transaction amount.\n- 'Type' appears to contain category values (e.g., merchant names, transaction types), but closer inspection reveals these are actually merchant/description strings, not category types. Since 'Type' header suggests a category field, it is mapped to 'primary_category' as a fallback, though the actual category inference will need to come from the Description column analysis.\n- 'Balance' is account balance, which is not a required schema field; mapped to null.\n- 'Check or Slip #' is a transaction reference identifier; mapped to 'notes'.\n- 'Details' is unmapped (null) as its purpose is unclear and not needed for core transaction fields.",
+            "category_map_reasoning": "All unique values in the CSV are merchant names or transaction descriptions, not category types. I mapped each to the most specific primary+detailed category pair based on what the merchant represents:\n- Streaming services (Netflix, Spotify) \u2192 Entertainment\n- Payroll deposit \u2192 Income/Wages\n- Rent payment \u2192 Housing & utilities/Rent\n- Retail stores (Target, Amazon) \u2192 Shopping/Retail\n- Pharmacy \u2192 Health & wellness/Pharmacy\n- Grocery stores (Whole Foods) \u2192 Food & drink/Groceries\n- Coffee shops \u2192 Food & drink/Coffee shops\n- Fitness center \u2192 Health & wellness/Fitness\n- Utilities bill (Con Edison) \u2192 Housing & utilities/Gas & electricity\n- P2P payment (Venmo) \u2192 Transfers/Person to person payments\n- Restaurants (Chipotle) \u2192 Food & drink/Restaurants & bars\n- Gas station (Shell) \u2192 Transportation/Gas & EV charging\n- Rideshare (Uber) \u2192 Transportation/Taxi & ride shares",
+            "amount_transform_reasoning": "The Amount column shows both positive and negative values. Sample values include: 3200.0 (positive, consistent with income from DIRECT DEP PAYROLL ADP), and multiple negative values (-87.43, -6.75, -42.5, -15.99, -58.2, -45.0, -110.0, -23.18, -18.5) corresponding to expenses (Netflix, Starbucks, Target, CVS, etc.). This follows the standard convention where expenses are negative and income is positive, so no transformation is needed."
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [],
+          "expected_unmapped": [
+            "primary_category"
+          ],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 1.0,
+            "matched": 3,
+            "total": 3,
+            "mismatches": []
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 0,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 20,
+          "errors": []
+        }
+      },
+      "overall_score": 0.9286
+    }
+  },
+  "timestamp": "2026-05-08_164719",
+  "model": "claude-haiku-4-5-20251001",
+  "description": "prompt fix: single date col always maps to authorized_date"
+}

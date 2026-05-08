@@ -1,0 +1,168 @@
+{
+  "fixtures": {
+    "chase": {
+      "description": "Chase checking export \u2014 no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Details",
+            "Posting Date",
+            "Description",
+            "Amount",
+            "Type",
+            "Balance",
+            "Check or Slip #"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 1.0,
+              "correct": 7,
+              "total": 7,
+              "misses": {}
+            },
+            "category_map": {
+              "score": 1.0,
+              "correct": 0,
+              "total": 0,
+              "misses": {}
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Details": null,
+              "Posting Date": "authorized_date",
+              "Description": "description",
+              "Amount": "amount",
+              "Type": null,
+              "Balance": null,
+              "Check or Slip #": null
+            },
+            "category_map": {
+              "STARBUCKS STORE 04762": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "SPOTIFY USA": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "LANDLORD RENT PAYMENT": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "CVS/PHARMACY #08943": {
+                "primary": "Health & wellness",
+                "detailed": "Pharmacy"
+              },
+              "VENMO PAYMENT": {
+                "primary": "Transfers",
+                "detailed": "Person to person payments"
+              },
+              "SHELL OIL 57444311702": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "AMAZON.COM*1A2B3C4D": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "TARGET 00018375": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "UBER *TRIP HELP.UBER.COM": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "CHIPOTLE 2845": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "DIRECT DEP PAYROLL ADP": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "CON EDISON BILL PAY": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "WHOLEFDS #10274": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "NETFLIX.COM": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "PLANET FITNESS #0234": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [
+              "primary_category"
+            ],
+            "issues": [],
+            "column_map_reasoning": "\n'Posting Date' is the only date column present, so it maps to 'authorized_date' per the rule that a single date column should map to authorized_date regardless of its label. 'Description' contains the merchant names and transaction details, so it maps to 'description'. 'Amount' is clearly the transaction amount. 'Details', 'Type', 'Balance', and 'Check or Slip #' either appear to be metadata (balance history, check numbers) or have unclear purpose, so they map to null.\n",
+            "category_map_reasoning": "\nAll values are merchant/payee names that clearly indicate spending or income categories. STARBUCKS \u2192 Coffee shops, SPOTIFY \u2192 Music & audio, LANDLORD RENT \u2192 Rent, CVS/PHARMACY \u2192 Pharmacy, VENMO \u2192 Person to person payments, SHELL OIL \u2192 Gas & EV charging, AMAZON/TARGET \u2192 Retail, UBER \u2192 Taxi & ride shares, CHIPOTLE \u2192 Restaurants & bars, DIRECT DEP PAYROLL \u2192 Wages (income), CON EDISON \u2192 Gas & electricity, WHOLEFDS (Whole Foods) \u2192 Groceries, NETFLIX \u2192 Movies & TV, PLANET FITNESS \u2192 Fitness. The numeric suffixes in the merchant names (like #08943, 57444311702) are store identifiers, not categories, and are stripped in the categorization.\n",
+            "amount_transform_reasoning": "\nThe Amount column contains mostly negative values (e.g., -87.43, -6.75, -42.5, -15.99, -58.2, -45.0, -110.0, -23.18, -18.5) and one positive value (3200.0). The negative values correspond to expenses (Starbucks, Spotify, CVS, Shell Oil, etc.), while the positive value (3200.0) corresponds to DIRECT DEP PAYROLL ADP, which is income. This is the standard 'expense_negative' convention where expenses are represented as negative numbers and income as positive.\n"
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [
+            "primary_category"
+          ],
+          "expected_unmapped": [
+            "primary_category"
+          ],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 1.0,
+            "matched": 3,
+            "total": 3,
+            "mismatches": []
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 15,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "pass",
+          "rows_imported": 0,
+          "rows_updated": 0,
+          "rows_skipped": 0,
+          "new_rules_saved": 18,
+          "errors": []
+        }
+      },
+      "overall_score": 1.0
+    }
+  },
+  "timestamp": "2026-05-08_165630",
+  "model": "claude-haiku-4-5-20251001",
+  "description": "remove unmapped_required_columns guard from router"
+}
