@@ -183,6 +183,7 @@ export async function getCategoryOverview(month: number | null, year: number): P
     ? `/api/summaries/${monthStr}`
     : `/api/summaries/year/${year}`;
   const res = await fetch(url);
+  if (res.status === 404) throw Object.assign(new Error("No data for this period"), { status: 404 });
   if (!res.ok) throw new Error("Failed to fetch category overview");
   const json = await res.json();
   return (json.data as MonthlySummary).byCategory.filter((c) => c.transactionCount > 0);

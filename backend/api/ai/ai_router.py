@@ -1,25 +1,35 @@
 #!python3
 """
 backend.api.ai.ai_router
-FastAPI router for AI-assisted CSV normalization endpoints.
+FastAPI router for AI endpoints: CSV normalization and monthly summary.
 """
 import csv
 import io
 import re
 from pleasant_loggers import get_logger
 
-import anthropic
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from pleasant_database import DatabaseFile
 
-from backend.ai_modules.ai_client_service import AIClientService
-from backend.ai_modules.csv_normalization_planner import CSVNormalizationPlanner
-from backend.api.ai.ai_models import PlanCSVResponse
-from backend.csv_modules.csv_parser import unwrap_row_quotes
+from backend.ai_modules.ai_errors import (
+    AIAuthError,
+    AICreditsError,
+    AIProviderError,
+    AIRateLimitError,
+    AITimeoutError,
+)
+from backend.ai_modules.clients.anthropic_client import AnthropicClient
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import CSVNormalizationService
+from backend.ai_modules.csv_normalization_service.csv_normalization_planner import CSVNormalizationPlanner
+from backend.ai_modules.summary_service.ai_summary_service import AISummaryService
+from backend.api.ai.ai_models import AISummaryResponse, PlanCSVResponse
+from backend.csv_modules.csv_parser import detect_delimiter, unwrap_row_quotes
 from backend.database_modules.db_session import DatabaseSession
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
+from backend.utils.summary_utils import build_period_summary
 
 logger = get_logger(__name__)
 
@@ -109,7 +119,7 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
 
     try:
         text = unwrap_row_quotes(text)
-        reader = csv.DictReader(io.StringIO(text))
+        reader = csv.DictReader(io.StringIO(text), delimiter=detect_delimiter(text))
         rows = list(reader)
         headers = list(reader.fieldnames or [])
     except Exception as exc:
@@ -132,35 +142,13 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
     db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
     session = DatabaseSession(db_file)
     try:
-        planner = CSVNormalizationPlanner(session.category_mapping_rules, AIClientService())
+        planner = CSVNormalizationPlanner(session.category_mapping_rules, CSVNormalizationService())
         plan, used_cache = planner.plan(headers, unique_categories, sample_amount_values=sample_amounts)
-    except anthropic.AuthenticationError as exc:
-        logger.error(f"Anthropic API key missing or invalid: {exc}")
-        raise HTTPException(
-            status_code=503,
-            detail="AI service is not configured. Ensure ANTHROPIC_API_KEY is set in your .env file.",
-        ) from exc
-    except anthropic.BadRequestError as exc:
-        if "credit balance is too low" in str(exc).lower():
-            logger.error(f"Anthropic account out of credits: {exc}")
-            raise HTTPException(
-                status_code=402,
-                detail="Anthropic account has no credits. Add credits at console.anthropic.com/settings/billing.",
-            ) from exc
-        logger.error(f"Anthropic bad request during CSV analysis: {exc}")
-        raise HTTPException(status_code=400, detail=f"AI service rejected the request: {exc}") from exc
-    except anthropic.APIError as exc:
-        logger.error(f"Anthropic API error during CSV analysis: {exc}")
-        raise HTTPException(
-            status_code=502,
-            detail=f"AI service error: {exc}",
-        ) from exc
+    except (AIAuthError, AICreditsError, AIRateLimitError, AITimeoutError, AIProviderError) as exc:
+        raise _ai_error_to_http(exc) from exc
     except Exception as exc:
         logger.error(f"Unexpected error during CSV analysis: {exc}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"CSV analysis failed: {exc}",
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"CSV analysis failed: {exc}") from exc
     finally:
         session.close()
 
@@ -169,3 +157,69 @@ async def plan_csv(file: UploadFile = File(...)) -> PlanCSVResponse:
         used_cache=used_cache,
         requires_manual_review=bool(plan.unmapped_required_columns),
     )
+
+
+# ─── AI Summary ──────────────────────────────────────────────────────────────
+
+class SummaryRequest(BaseModel):
+    month: str
+
+
+@router.post("/summary", response_model=AISummaryResponse)
+async def get_ai_summary(body: SummaryRequest) -> AISummaryResponse:
+    """
+    Generate an AI summary for a given month (YYYY-MM) or year (YYYY).
+    Fetches the MonthlySummary, constructs a prompt, and calls the AI provider.
+    """
+    db_file = DatabaseFile(EDirectories.DB_FILENAME, EDirectories.DB_DIR)
+    with DatabaseSession(db_file) as session:
+        summary = build_period_summary(body.month, session)
+
+    if summary is None:
+        raise HTTPException(status_code=404, detail=f"No summary data found for '{body.month}'.")
+
+    try:
+        client = _make_ai_client()
+        service = AISummaryService(client)
+        result = service.summarize(summary)
+    except (AIAuthError, AICreditsError, AIRateLimitError, AITimeoutError, AIProviderError) as exc:
+        raise _ai_error_to_http(exc) from exc
+    except Exception as exc:
+        logger.error(f"Unexpected error during AI summary generation: {exc}")
+        raise HTTPException(status_code=500, detail=f"Summary generation failed: {exc}") from exc
+
+    return AISummaryResponse(data=result)
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _make_ai_client() -> AnthropicClient:
+    """
+    Instantiate the correct AI provider client from environment config.
+    Only Anthropic is currently supported; OpenAI raises 503.
+    """
+    import os
+    provider = os.environ.get("AI_PROVIDER", "anthropic").lower()
+    if provider == "anthropic":
+        return AnthropicClient()
+    raise HTTPException(
+        status_code=503,
+        detail=f"AI provider '{provider}' is not yet supported. Set AI_PROVIDER=anthropic.",
+    )
+
+
+def _ai_error_to_http(exc: Exception) -> HTTPException:
+    if isinstance(exc, AIAuthError):
+        logger.error(f"AI auth error: {exc}")
+        return HTTPException(status_code=503, detail=f"AI service unavailable: {exc}")
+    if isinstance(exc, AICreditsError):
+        logger.error(f"AI credits error: {exc}")
+        return HTTPException(status_code=402, detail=f"AI account has no credits: {exc}")
+    if isinstance(exc, AIRateLimitError):
+        logger.error(f"AI rate limit: {exc}")
+        return HTTPException(status_code=429, detail=f"AI rate limit exceeded: {exc}")
+    if isinstance(exc, AITimeoutError):
+        logger.error(f"AI timeout: {exc}")
+        return HTTPException(status_code=504, detail=f"AI request timed out: {exc}")
+    logger.error(f"AI provider error: {exc}")
+    return HTTPException(status_code=502, detail=f"AI provider error: {exc}")

@@ -9,6 +9,7 @@ Functions:
 """
 # Standard library imports
 import csv as csv_lib
+import hashlib
 import io
 import json as json_lib
 from pleasant_loggers import get_logger
@@ -27,12 +28,14 @@ logger = get_logger(__name__)
 from pleasant_database import DatabaseFile
 
 # Local imports
-from backend.ai_modules.csv_transform_applicator import apply_normalization_plan
-from backend.csv_modules.csv_parser import unwrap_row_quotes
-from backend.ai_modules.normalization_plan import NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_transform_applicator import apply_normalization_plan
+from backend.csv_modules.csv_parser import detect_delimiter, unwrap_row_quotes
+from backend.csv_modules.transactions_csv_loader import generate_base_hash
+from backend.ai_modules.csv_normalization_service.normalization_plan import NormalizationPlan
 from backend.api.transactions.transactions_models import (
     BulkUpdateRequest,
     Transaction,
+    TransactionCreate,
     TransactionFilters,
     TransactionUpdate,
     TransactionsPage,
@@ -135,20 +138,92 @@ async def get_available_tags(db: DatabaseSession = Depends(get_db)) -> list[str]
     return sorted(all_tags)
 
 
+# ─── Transaction Create Endpoint ─────────────────────────────────────────────
+
+@router.post("", response_model=Transaction, status_code=201)
+async def create_transaction(
+    body: TransactionCreate,
+    force: bool = False,
+    db: DatabaseSession = Depends(get_db),
+) -> Transaction:
+    """
+    Manually creates a single transaction and marks the affected month dirty
+    so summaries are recomputed on the next dashboard load.
+
+    Duplicate detection: if a transaction with identical (date, account, description, amount)
+    already exists, returns 409. Pass ?force=true to insert anyway using the same
+    iterative uq_hash scheme as CSV uploads (base_hash:N where N = existing occurrence count).
+    """
+    try:
+        authorized_date = datetime.strptime(body.date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Invalid date format '{body.date}'. Expected YYYY-MM-DD.")
+
+    record_for_hash = {
+        TransactionsTable.authorized_date.name: authorized_date,
+        TransactionsTable.posted_date.name: None,
+        TransactionsTable.account_name.name: body.account_name,
+        TransactionsTable.description.name: body.description,
+        TransactionsTable.amount.name: body.amount,
+    }
+    base_hash = generate_base_hash(record_for_hash)
+
+    existing = db.transactions.fetch_items_by_attribute(base_hash=base_hash)
+    if existing and not force:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "A transaction with identical date, account, description, and amount already exists.",
+                "count": len(existing),
+            },
+        )
+
+    # uq_hash mirrors the CSV iterative scheme: sha256(base_hash:N) where N = prior occurrence count
+    count = len(existing)
+    uq_hash = hashlib.sha256(f"{base_hash}:{count}".encode()).hexdigest()
+
+    db.transactions.add_item(
+        **{
+            TransactionsTable.authorized_date.name: authorized_date,
+            TransactionsTable.status.name: "Unchecked",
+            TransactionsTable.account_name.name: body.account_name,
+            TransactionsTable.description.name: body.description,
+            TransactionsTable.primary_category.name: body.primary_category,
+            TransactionsTable.detailed_category.name: body.detailed_category,
+            TransactionsTable.amount.name: body.amount,
+            TransactionsTable.repayment.name: False,
+            TransactionsTable.exclude.name: False,
+            TransactionsTable.base_hash.name: base_hash,
+            TransactionsTable.uq_hash.name: uq_hash,
+        }
+    )
+
+    db.dirty_months.mark_dirty(authorized_date.month, authorized_date.year)
+
+    result = db.transactions.query(
+        columns=db.transactions.return_columns,
+        filters={TransactionsTable.uq_hash.name: ("==", uq_hash)},
+    )
+    if result.data.empty:
+        raise HTTPException(status_code=500, detail="Transaction was created but could not be retrieved.")
+
+    return result.data.to_dict(orient="records")[0]
+
+
 # ─── Transaction Update Endpoint ─────────────────────────────────────────────
 
 # Maps TransactionUpdate field names (camelCase, matching the form exactly) to DB column names
 _FIELD_TO_COLUMN = {
     # 'date' is handled separately (Pydantic field-name/type collision — see endpoint)
-    "description":      "description",
-    "account_name":     "account_name",
-    "amount":           "amount",
-    "primaryCategory":  "primary_category",
-    "detailedCategory": "detailed_category",
-    "isExcluded":       "exclude",
-    "isRepayment":      "repayment",
-    "notes":            "notes",
-    "tags":             "tags",
+    "description":      TransactionsTable.description.name,
+    "account_name":     TransactionsTable.account_name.name,
+    "amount":           TransactionsTable.amount.name,
+    "primaryCategory":  TransactionsTable.primary_category.name,
+    "detailedCategory": TransactionsTable.detailed_category.name,
+    "isExcluded":       TransactionsTable.exclude.name,
+    "isRepayment":      TransactionsTable.repayment.name,
+    "notes":            TransactionsTable.notes.name,
+    "tags":             TransactionsTable.tags.name,
 }
 
 
@@ -188,7 +263,7 @@ async def update_transaction(
     # Handle date separately (extracted above to avoid Pydantic field/type name collision)
     if date_str:
         try:
-            updates["authorized_date"] = datetime.strptime(date_str, "%Y-%m-%d")
+            updates[TransactionsTable.authorized_date.name] = datetime.strptime(date_str, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(status_code=422, detail=f"Invalid date format '{date_str}'. Expected YYYY-MM-DD.")
 
@@ -205,19 +280,23 @@ async def update_transaction(
         raise HTTPException(status_code=400, detail="No updatable fields provided")
 
     # Capture existing date before update so we can mark the old month dirty if date changes
-    summary_dirty_fields = {"authorized_date", "primary_category", "detailed_category"}
+    summary_dirty_fields = {
+        TransactionsTable.authorized_date.name,
+        TransactionsTable.primary_category.name,
+        TransactionsTable.detailed_category.name,
+    }
     needs_dirty_mark = bool(summary_dirty_fields.intersection(updates))
     existing_date: datetime | None = None
     if needs_dirty_mark:
         existing = db.transactions.fetch_item_by_id(transaction_id)
-        existing_date = getattr(existing, "authorized_date", None)
+        existing_date = getattr(existing, TransactionsTable.authorized_date.name, None)
 
     db.transactions.update_item(transaction_id, **updates)
 
     if needs_dirty_mark and existing_date is not None:
-        new_date: datetime = updates.get("authorized_date", existing_date)
+        new_date: datetime = updates.get(TransactionsTable.authorized_date.name, existing_date)
         db.dirty_months.mark_dirty(new_date.month, new_date.year)
-        if "authorized_date" in updates and existing_date.month != new_date.month:
+        if TransactionsTable.authorized_date.name in updates and existing_date.month != new_date.month:
             db.dirty_months.mark_dirty(existing_date.month, existing_date.year)
 
     db.rules.apply_rules_to_transaction(transaction_id, db.transactions)
@@ -234,10 +313,16 @@ async def update_transaction(
 
     # Auto-promote: if the transaction was Unchecked and all required fields are now populated,
     # set status to "Verified" so it drops off the flagged list automatically.
-    _REQUIRED_FOR_VERIFY = ("description", "amount", "authorized_date", "primary_category", "detailed_category")
-    if row.get("status") == "Unchecked" and all(row.get(f) not in (None, "") for f in _REQUIRED_FOR_VERIFY):
+    _REQUIRED_FOR_VERIFY = (
+        TransactionsTable.description.name,
+        TransactionsTable.amount.name,
+        TransactionsTable.authorized_date.name,
+        TransactionsTable.primary_category.name,
+        TransactionsTable.detailed_category.name,
+    )
+    if row.get(TransactionsTable.status.name) == "Unchecked" and all(row.get(f) not in (None, "") for f in _REQUIRED_FOR_VERIFY):
         db.transactions.update_item(transaction_id, status="Verified")
-        row["status"] = "Verified"
+        row[TransactionsTable.status.name] = "Verified"
 
     return row
 
@@ -272,17 +357,10 @@ def _process_csv_upload(
         if normalization_plan_json:
             plan = NormalizationPlan.model_validate_json(normalization_plan_json)
 
-            if plan.unmapped_required_columns:
-                session.jobs.set_status(
-                    job_id, "failed",
-                    errors=f"Required columns not mapped: {plan.unmapped_required_columns}",
-                )
-                return
-
             with open(tmp_path, newline="", encoding="utf-8") as f:
                 text = f.read()
             text = unwrap_row_quotes(text)
-            reader = csv_lib.DictReader(io.StringIO(text))
+            reader = csv_lib.DictReader(io.StringIO(text), delimiter=detect_delimiter(text))
             raw_rows = list(reader)
 
             transformed_rows, skipped_rows = apply_normalization_plan(raw_rows, plan)
@@ -334,11 +412,12 @@ def _process_csv_upload(
 
         # Compute summaries for all months present in the DB after import
         all_tx_df = session.transactions.to_dataframe()
-        if not all_tx_df.empty and "authorized_date" in all_tx_df.columns:
-            all_tx_df["authorized_date"] = pd.to_datetime(all_tx_df["authorized_date"])
+        _ad = TransactionsTable.authorized_date.name
+        if not all_tx_df.empty and _ad in all_tx_df.columns:
+            all_tx_df[_ad] = pd.to_datetime(all_tx_df[_ad])
             affected_months = (
-                all_tx_df[["authorized_date"]]
-                .assign(month=all_tx_df["authorized_date"].dt.month, year=all_tx_df["authorized_date"].dt.year)
+                all_tx_df[[_ad]]
+                .assign(month=all_tx_df[_ad].dt.month, year=all_tx_df[_ad].dt.year)
                 [["month", "year"]]
                 .drop_duplicates()
                 .itertuples(index=False)
@@ -485,11 +564,11 @@ async def bulk_update_transactions(
         col_updates: dict = {}
 
         if body.primary_category is not None:
-            col_updates["primary_category"] = body.primary_category
+            col_updates[TransactionsTable.primary_category.name] = body.primary_category
         if body.detailed_category is not None:
-            col_updates["detailed_category"] = body.detailed_category
+            col_updates[TransactionsTable.detailed_category.name] = body.detailed_category
         if body.exclude is not None:
-            col_updates["exclude"] = body.exclude
+            col_updates[TransactionsTable.exclude.name] = body.exclude
 
         if body.tags:
             existing_tags: list[str] = [t for t in (row.get("tags") or "").split(",") if t]

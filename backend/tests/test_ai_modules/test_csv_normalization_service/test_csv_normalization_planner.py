@@ -14,9 +14,9 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
-from backend.ai_modules.ai_client_service import REQUIRED_SCHEMA_FIELDS
-from backend.ai_modules.csv_normalization_planner import CSVNormalizationPlanner
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.ai_modules.csv_normalization_service.csv_normalization_service import REQUIRED_SCHEMA_FIELDS
+from backend.ai_modules.csv_normalization_service.csv_normalization_planner import CSVNormalizationPlanner
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ def _make_ai_plan(**kwargs) -> NormalizationPlan:
     defaults = dict(
         column_map={},
         category_map={},
-        amount_transform=AmountTransform.SIGNED,
+        amount_transform=AmountTransform.EXPENSE_NEGATIVE,
         debit_column=None,
         credit_column=None,
         issues=[],
@@ -80,7 +80,7 @@ class TestExactMatchFastPath:
     def test_amount_transform_is_signed(self):
         planner = _make_planner()
         plan, _ = planner.plan(self.EXACT_HEADERS, [])
-        assert plan.amount_transform == AmountTransform.SIGNED
+        assert plan.amount_transform == AmountTransform.EXPENSE_NEGATIVE
 
     def test_no_unmapped_required_columns(self):
         planner = _make_planner()
@@ -155,22 +155,27 @@ class TestFullCacheHit:
 class TestPartialCacheHit:
     """Some items cached, others need AI."""
 
-    def test_only_uncached_headers_sent_to_ai(self):
+    def test_full_headers_sent_to_ai_for_context(self):
+        # All headers are sent so the AI has structural context, even when some
+        # are already cached. The cached header's mapping must still win.
         planner = _make_planner(
             col_rules={"Txn Date": "authorized_date"},  # one header cached
             ai_plan=_make_ai_plan(
                 column_map={
+                    "Txn Date": "posted_date",   # AI disagrees with cache — cache must win
                     "Merchant": "description",
                     "Category": "primary_category",
                     "Amount": "amount",
                 }
             ),
         )
-        planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
+        plan, _ = planner.plan(["Txn Date", "Merchant", "Category", "Amount"], [])
 
         ai_headers = planner._ai.plan_csv.call_args[0][0]
-        assert "Txn Date" not in ai_headers
+        assert "Txn Date" in ai_headers      # full headers sent for context
         assert "Merchant" in ai_headers
+        # Cache wins over the AI's conflicting suggestion for "Txn Date"
+        assert plan.column_map.get("Txn Date") == "authorized_date"
 
     def test_used_cache_false_when_ai_called(self):
         planner = _make_planner(

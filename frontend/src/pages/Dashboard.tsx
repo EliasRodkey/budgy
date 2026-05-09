@@ -3,17 +3,18 @@ import { BudgetGauge } from "@/components/dashboard/BudgetGauge";
 import { FlaggedTransactionsList } from "@/components/dashboard/FlaggedTransactionsList";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { CategoryDonut } from "@/components/categories/CategoryDonut";
+import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDialog";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
 import { Button } from "@/components/ui/button";
 import { useAISummary } from "@/hooks/useAISummary";
 import { useFlaggedTransactions } from "@/hooks/useFlaggedTransactions";
-import { useUpdateTransaction, useAvailableTags } from "@/hooks/useTransactions";
+import { useUpdateTransaction, useDeleteTransaction, useAvailableTags } from "@/hooks/useTransactions";
 import { useSummary, useDirtyMonths } from "@/hooks/useSummary";
 import { currentMonth, formatMonth } from "@/lib/formatters";
 import { recomputeSummaries } from "@/api/summary";
 import { useMockMode } from "@/store/mockMode";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, FlaskConical, RefreshCw, Upload } from "lucide-react";
+import { AlertCircle, FlaskConical, PlusCircle, RefreshCw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Transaction } from "@/types";
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [recomputing, setRecomputing] = useState(false);
   const recomputeStarted = useRef(false);
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 
   const { data: dirtyData } = useDirtyMonths();
 
@@ -64,6 +66,7 @@ export default function Dashboard() {
   } = useFlaggedTransactions();
 
   const { mutate: updateTx, isPending: updatePending } = useUpdateTransaction();
+  const { mutate: deleteTx, isPending: deletePending } = useDeleteTransaction();
   const { data: availableTags = [] } = useAvailableTags();
 
   function handleRegenerate() {
@@ -75,6 +78,15 @@ export default function Dashboard() {
     updateTx({ id, updates }, {
       onSuccess: () => {
         setEditTarget(null);
+        queryClient.invalidateQueries({ queryKey: ["flaggedTransactions"] });
+      },
+    });
+  }
+
+  function handleDelete(id: string) {
+    deleteTx(id, {
+      onSuccess: () => {
+        setDeleteTarget(null);
         queryClient.invalidateQueries({ queryKey: ["flaggedTransactions"] });
       },
     });
@@ -104,6 +116,14 @@ export default function Dashboard() {
             <Button size="sm" onClick={() => navigate("/transactions")}>
               <Upload size={13} className="mr-1.5" />
               Upload CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/transactions?add=1")}
+            >
+              <PlusCircle size={13} className="mr-1.5" />
+              Add Transaction
             </Button>
             <Button
               variant="outline"
@@ -176,8 +196,15 @@ export default function Dashboard() {
           availableTags={availableTags}
           onSave={handleSave}
           onClose={() => setEditTarget(null)}
+          onDelete={() => { setDeleteTarget(editTarget); setEditTarget(null); }}
         />
       )}
+      <DeleteConfirmDialog
+        transaction={deleteTarget}
+        isPending={deletePending}
+        onConfirm={handleDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

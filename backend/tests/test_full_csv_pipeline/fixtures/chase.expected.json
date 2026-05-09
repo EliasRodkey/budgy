@@ -1,0 +1,38 @@
+{
+  "description": "Chase checking export — no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+  "ideal_plan": {
+    "column_map": {
+      "Posting Date": "authorized_date",
+      "Description": "description",
+      "Amount": "amount",
+      "Details": null,
+      "Type": null,
+      "Balance": null,
+      "Check or Slip #": null
+    },
+    "category_map": {},
+    "amount_transform": "expense_negative",
+    "debit_column": null,
+    "credit_column": null
+  },
+  "expected_rows": [
+    {
+      "authorized_date": "2025-01-03",
+      "description": "WHOLEFDS #10274",
+      "amount": -87.43
+    },
+    {
+      "authorized_date": "2025-01-02",
+      "description": "DIRECT DEP PAYROLL ADP",
+      "amount": 3200.00
+    },
+    {
+      "authorized_date": "2025-01-05",
+      "description": "AMAZON.COM*1A2B3C4D",
+      "amount": -42.50
+    }
+  ],
+  "expected_skipped_row_count": 0,
+  "expected_soft_fail_count": 15,
+  "expected_unmapped_required_columns": ["primary_category"]
+}

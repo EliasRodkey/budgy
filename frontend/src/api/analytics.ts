@@ -58,10 +58,15 @@ export interface AnalyticsData {
   monthlyBudgetTotals: MonthlyBudgetTotal[]; // total expense over/under per month
 }
 
-// Exposed so the Analytics page can set sensible defaults when no URL params exist
-export const MOCK_DEFAULT_DATE_FROM = mockAnalyticsSeries.labels[0];
-export const MOCK_DEFAULT_DATE_TO =
-  mockAnalyticsSeries.labels[mockAnalyticsSeries.labels.length - 1];
+// Returns a { from, to } range covering the last 12 months relative to today.
+// Used by the Analytics page when no URL params are present.
+export function getDefaultDateRange(): { from: string; to: string } {
+  const now = new Date();
+  const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const fromDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  const from = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}`;
+  return { from, to };
+}
 
 // ─── API Function ─────────────────────────────────────────────────────────────
 

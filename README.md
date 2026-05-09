@@ -24,7 +24,7 @@ You can explore the app without uploading any data. Use the **Demo Mode** toggle
 
 **Currently implemented:**
 
-- **Automatic transaction categorization** — classify imported transactions using a fine-tuned or few-shot model, reducing manual review.
+- **Automatic transaction categorization** — classify imported transactions using a fine-tuned or few-shot model, reducing manual review. End-to-end AI integration tests on the backend for the CSV upload pipeline. Runs real Claude API calls against 8 fixture CSVs and scores each stage to refine prompting / tooling.
 - **AI monthly summary** — the dashboard generates a natural-language summary of your month's spending, income, and notable patterns via an LLM call
 
 **Planned:**
@@ -60,8 +60,13 @@ The data model and API architecture are designed to support these features. Summ
 budgy_2.0/
 ├── backend/           # FastAPI application
 │   ├── api/           # Route handlers (transactions, categories, summaries, analytics, budgets)
+│   ├── ai_modules/    # AI provider abstraction and services
+│   │   ├── clients/               # AIClient base + Anthropic/OpenAI implementations
+│   │   ├── csv_normalization_service/  # AI-driven CSV column mapping and transform
+│   │   └── summary_service/       # AI monthly summary generation
 │   ├── database_modules/  # SQLAlchemy models and query managers
-│   └── csv_modules/   # CSV ingestion and normalization pipeline
+│   ├── csv_modules/   # CSV ingestion and normalization pipeline
+│   └── utils/         # Shared backend utilities (summary, analysis, API helpers)
 │
 └── frontend/          # React + Vite SPA
     └── src/

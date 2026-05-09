@@ -4,7 +4,7 @@ import type { DirtyStatusResponse } from "../api/summary";
 import type { MonthlySummary } from "../types";
 
 export function useSummary(month: string) {
-  return useQuery<MonthlySummary, Error>({
+  return useQuery<MonthlySummary | null, Error>({
     queryKey: ["summary", month],
     queryFn: () => getMonthlySummary(month),
   });

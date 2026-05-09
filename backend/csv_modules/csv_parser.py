@@ -5,6 +5,15 @@ import io
 _DELIMITERS = (",", ";", "\t")
 
 
+def detect_delimiter(text: str) -> str:
+    """Sniff the delimiter from the first 4KB of text. Falls back to comma."""
+    try:
+        dialect = csv.Sniffer().sniff(text[:4096], delimiters=",\t;|")
+        return dialect.delimiter
+    except csv.Error:
+        return ","
+
+
 def unwrap_row_quotes(text: str) -> str:
     """
     Some CSV exports (e.g. Google Sheets) wrap each entire row in double quotes:

@@ -1,0 +1,167 @@
+{
+  "fixtures": {
+    "chase": {
+      "description": "Chase checking export \u2014 no category column (all rows will soft-fail to 'Other'/Unchecked), has 'Balance' and 'Check or Slip #' columns that must be dropped, expense-negative amounts.",
+      "stages": {
+        "csv_parsing": {
+          "status": "pass",
+          "delimiter_detected": ",",
+          "row_count": 15,
+          "headers": [
+            "Details",
+            "Posting Date",
+            "Description",
+            "Amount",
+            "Type",
+            "Balance",
+            "Check or Slip #"
+          ],
+          "errors": []
+        },
+        "ai_planning": {
+          "status": "pass",
+          "used_cache": false,
+          "plan_score": {
+            "column_map": {
+              "score": 0.8571,
+              "correct": 6,
+              "total": 7,
+              "misses": {
+                "Type": {
+                  "expected": null,
+                  "got": "account_name"
+                }
+              }
+            },
+            "category_map": {
+              "score": 1.0,
+              "correct": 0,
+              "total": 0,
+              "misses": {}
+            },
+            "amount_transform": {
+              "score": 1.0,
+              "expected": "expense_negative",
+              "got": "expense_negative",
+              "debit_column_ok": true,
+              "credit_column_ok": true
+            }
+          },
+          "plan": {
+            "column_map": {
+              "Details": null,
+              "Posting Date": "authorized_date",
+              "Description": "description",
+              "Amount": "amount",
+              "Type": "account_name",
+              "Balance": null,
+              "Check or Slip #": null
+            },
+            "category_map": {
+              "CHIPOTLE 2845": {
+                "primary": "Food & drink",
+                "detailed": "Restaurants & bars"
+              },
+              "SHELL OIL 57444311702": {
+                "primary": "Transportation",
+                "detailed": "Gas & EV charging"
+              },
+              "NETFLIX.COM": {
+                "primary": "Entertainment",
+                "detailed": "Movies & TV"
+              },
+              "LANDLORD RENT PAYMENT": {
+                "primary": "Housing & utilities",
+                "detailed": "Rent"
+              },
+              "AMAZON.COM*1A2B3C4D": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "TARGET 00018375": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "UBER *TRIP HELP.UBER.COM": {
+                "primary": "Transportation",
+                "detailed": "Taxi & ride shares"
+              },
+              "CON EDISON BILL PAY": {
+                "primary": "Housing & utilities",
+                "detailed": "Gas & electricity"
+              },
+              "CVS/PHARMACY #08943": {
+                "primary": "Shopping",
+                "detailed": "Retail"
+              },
+              "SPOTIFY USA": {
+                "primary": "Entertainment",
+                "detailed": "Music & audio"
+              },
+              "STARBUCKS STORE 04762": {
+                "primary": "Food & drink",
+                "detailed": "Coffee shops"
+              },
+              "WHOLEFDS #10274": {
+                "primary": "Food & drink",
+                "detailed": "Groceries"
+              },
+              "DIRECT DEP PAYROLL ADP": {
+                "primary": "Income",
+                "detailed": "Wages"
+              },
+              "PLANET FITNESS #0234": {
+                "primary": "Health & wellness",
+                "detailed": "Fitness"
+              }
+            },
+            "amount_transform": "expense_negative",
+            "debit_column": null,
+            "credit_column": null,
+            "unmapped_required_columns": [
+              "primary_category"
+            ],
+            "issues": [],
+            "column_map_reasoning": "\n- \"Posting Date\" is the only date column, so it maps to \"authorized_date\" per the rule for single-date columns.\n- \"Description\" contains transaction descriptions (merchant names, payment types), so it maps to \"description\".\n- \"Amount\" clearly maps to the transaction amount field.\n- \"Type\" appears to be a transaction type/account indicator (e.g., \"VENMO PAYMENT\", \"DIRECT DEP PAYROLL\") and maps to \"account_name\" as it identifies the source or method of the transaction.\n- \"Details\", \"Balance\", and \"Check or Slip #\" do not have clear mappings to the Budgy schema and are left as null.\n",
+            "category_map_reasoning": "\nMapped each merchant/transaction type to the most specific valid Budgy category:\n- Food merchants (Chipotle, Starbucks, Whole Foods) map to Food & drink with appropriate sub-categories.\n- Retailers (Amazon, Target, CVS) map to Shopping > Retail.\n- Subscription services (Netflix, Spotify) map to Entertainment with specific sub-categories.\n- Utilities (Con Edison) map to Housing & utilities > Gas & electricity.\n- Transportation (Shell, Uber) map to Transportation with appropriate sub-categories.\n- Fitness (Planet Fitness) maps to Health & wellness > Fitness.\n- Rent payment maps to Housing & utilities > Rent.\n- Direct deposit payroll maps to Income > Wages.\n- Note: \"VENMO PAYMENT\" was excluded from category_map as it is a payment method/transfer mechanism, not a spending category itself.\n",
+            "amount_transform_reasoning": "\nAll sample Amount values are either negative (expenses: -87.43, -6.75, -42.5, -15.99, -58.2, -45.0, -110.0, -23.18, -18.5) or positive (income: 3200.0). This indicates the standard convention where expenses are negative numbers and income is positive. No transformation is needed.\n"
+          },
+          "errors": []
+        },
+        "plan_validation": {
+          "status": "pass",
+          "unmapped_required_columns": [
+            "primary_category"
+          ],
+          "expected_unmapped": [
+            "primary_category"
+          ],
+          "errors": []
+        },
+        "transform_application": {
+          "status": "pass",
+          "row_score": {
+            "score": 1.0,
+            "matched": 3,
+            "total": 3,
+            "mismatches": []
+          },
+          "skipped_rows": [],
+          "skipped_row_count": 0,
+          "soft_fail_count": 15,
+          "errors": []
+        },
+        "database_upload": {
+          "status": "fatal",
+          "errors": [
+            "Required columns not mapped: ['primary_category']"
+          ]
+        }
+      },
+      "overall_score": null
+    }
+  },
+  "timestamp": "2026-05-08_164655",
+  "model": "claude-haiku-4-5-20251001",
+  "description": "prompt fix: single date col always maps to authorized_date"
+}

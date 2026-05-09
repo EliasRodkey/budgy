@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useAvailableYears } from "@/hooks/useSummary";
 import { useDateRangeStore } from "@/store/dateRange";
 import { RotateCcw } from "lucide-react";
+import { useEffect } from "react";
 
 const MONTHS = [
   { value: null, label: "Full Year" },
@@ -28,6 +29,12 @@ export function DateRangeSelector() {
 
   const currentYear = new Date().getFullYear();
   const years = availableYears.length > 0 ? availableYears : [currentYear];
+
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(year)) {
+      setYear(availableYears[availableYears.length - 1]);
+    }
+  }, [availableYears, year, setYear]);
 
   return (
     <div className="flex items-center gap-2">

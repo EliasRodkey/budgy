@@ -13,6 +13,8 @@ export function useBudgets() {
   return useQuery({
     queryKey: ["budgets"],
     queryFn: getBudgets,
+    retry: 1,
+    retryDelay: 500,
   });
 }
 
@@ -20,6 +22,8 @@ export function useBudgetAssignments() {
   return useQuery({
     queryKey: ["budgets", "assignments"],
     queryFn: getBudgetAssignments,
+    retry: 1,
+    retryDelay: 500,
   });
 }
 

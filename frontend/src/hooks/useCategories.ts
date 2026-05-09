@@ -26,6 +26,8 @@ export function useCategoryOverview(month: number | null, year: number) {
   return useQuery({
     queryKey: ["categories", "overview", month, year],
     queryFn: () => getCategoryOverview(month, year),
+    retry: 1,
+    retryDelay: 500,
   });
 }
 

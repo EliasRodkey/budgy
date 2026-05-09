@@ -35,11 +35,31 @@ const MOCK_PLAN: NormalizationPlan = {
   requires_manual_review: false,
 };
 
-export async function getAISummary(month: string): Promise<AISummary> {
-  // Hardcoded until the real summary endpoint is wired up
-  await new Promise((r) => setTimeout(r, 400));
-  void month;
-  return { ...mockAISummary };
+export async function getAISummary(month: string): Promise<AISummary | null> {
+  if (isMock()) {
+    await new Promise((r) => setTimeout(r, 400));
+    return { ...mockAISummary };
+  }
+
+  const res = await fetchWithRetry("/api/ai/summary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ month }),
+  });
+
+  if (res.status === 404) return null;
+
+  if (!res.ok) {
+    let detail = `AI summary failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch { /* ignore parse errors */ }
+    throw new Error(detail);
+  }
+
+  const json = await res.json();
+  return json.data as AISummary;
 }
 
 export async function planCSV(file: File): Promise<NormalizationPlan> {

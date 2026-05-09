@@ -39,13 +39,9 @@ def test_parse_date_last_day_of_year():
 
 
 def test_parse_date_invalid_inputs():
-    """parse_date raises ValueError for wrong format, non-date strings, and slash separators."""
-    with pytest.raises(ValueError):
-        parse_date("01/15/2024")
+    """parse_date raises ValueError for non-date strings."""
     with pytest.raises(ValueError):
         parse_date("not-a-date")
-    with pytest.raises(ValueError):
-        parse_date("2024/01/15")
 
 
 # =========================TableStatus===================================

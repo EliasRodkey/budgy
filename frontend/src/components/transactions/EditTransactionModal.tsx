@@ -132,7 +132,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function EditTransactionModal({ transaction, isPending, availableTags, onSave, onClose }: EditTransactionModalProps) {
+export function EditTransactionModal({ transaction, isPending, availableTags, onSave, onClose, onDelete }: EditTransactionModalProps) {
   const missingFields = computeMissingFields(transaction);
 
   const {
@@ -183,7 +183,7 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
             <h2 className="text-sm font-semibold">Edit Transaction</h2>
-            <StatusBadge status={transaction.status} />
+            {transaction.status && <StatusBadge status={transaction.status} />}
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
             <X size={16} />

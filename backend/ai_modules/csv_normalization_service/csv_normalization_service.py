@@ -1,26 +1,38 @@
 #!python3
+"""
+backend.ai_modules.csv_normalization_service
+AI service for CSV column/category normalization.
+Renamed from ai_client_service.py; inherits AnthropicClient.
+"""
 import json
-import os
 from typing import Optional
 
-import anthropic
-
-from backend.ai_modules.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
-from backend.utils.analysis_utils import DetailedCategories, PrimaryCategories
-
 from pleasant_loggers import get_logger
+
+from backend.ai_modules.clients.anthropic_client import AnthropicClient
+from backend.ai_modules.csv_normalization_service.normalization_plan import AmountTransform, CategoryMapping, NormalizationPlan
+from backend.database_modules.models.transactions import TransactionsTable
+from backend.utils.analysis_utils import PrimaryCategories
+
 logger = get_logger(__name__)
 
-_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
-
 # Schema fields the AI can map CSV columns to
-REQUIRED_SCHEMA_FIELDS = ["authorized_date", "description", "primary_category", "amount"]
+REQUIRED_SCHEMA_FIELDS = [
+    TransactionsTable.authorized_date.name,
+    TransactionsTable.description.name,
+    TransactionsTable.primary_category.name,
+    TransactionsTable.amount.name,
+]
 OPTIONAL_SCHEMA_FIELDS = [
-    "posted_date", "status", "account_name", "detailed_category", "notes", "tags"
+    TransactionsTable.posted_date.name,
+    TransactionsTable.status.name,
+    TransactionsTable.account_name.name,
+    TransactionsTable.detailed_category.name,
+    TransactionsTable.notes.name,
+    TransactionsTable.tags.name,
 ]
 ALL_SCHEMA_FIELDS = REQUIRED_SCHEMA_FIELDS + OPTIONAL_SCHEMA_FIELDS
 
-# Tool schema for Claude's structured output
 _NORMALIZATION_TOOL = {
     "name": "return_normalization_plan",
     "description": (
@@ -137,10 +149,6 @@ _DETAILED_ENUM_TEXT = "\n".join(
 
 
 def _build_system_prompt() -> list[dict]:
-    """
-    Build the system prompt as a list of content blocks.
-    The enum block uses cache_control so repeated calls hit the prompt cache.
-    """
     return [
         {
             "type": "text",
@@ -155,12 +163,15 @@ def _build_system_prompt() -> list[dict]:
                 "(e.g. 'MOP', 'Method of Payment', 'Account', 'Card', 'Institution'), map it to "
                 "'account_name' in column_map — these are valid schema fields even though their values "
                 "are not spending categories.\n"
+                "- If a CSV has only ONE date column, always map it to 'authorized_date' — even if the header says 'Posting Date', 'Settlement Date', or 'Cleared Date'. "
+                "Only use 'posted_date' when a SEPARATE authorized or transaction date column is also present.\n"
                 "CATEGORY MAPPING:\n"
                 "- Map raw category strings to the most specific valid primary+detailed category pair.\n"
                 "- Only include a value in category_map if it is clearly a spending or income category "
                 "(e.g. 'Groceries', 'Gas Station', 'Salary'). Do NOT map account names, bank names, "
                 "card names, institution identifiers, or any string that is not a transaction category — "
-                "simply omit those values from category_map entirely.\n"
+                "simply omit those values from category_map entirely. Never set a category_map entry to null — "
+                "if a value should not be mapped, leave it out of category_map altogether.\n"
                 "- For amount sign convention: check BOTH expense and income transactions. "
                 "If expenses are negative numbers and income is positive → use 'expense_negative'. "
                 "If expenses are positive numbers and income is negative → use 'expense_positive'. "
@@ -184,22 +195,13 @@ def _build_system_prompt() -> list[dict]:
     ]
 
 
-class AIClientService:
+class CSVNormalizationService(AnthropicClient):
     """
-    Abstraction layer over the Anthropic SDK for CSV normalization.
+    AI service for CSV column/category normalization.
 
-    Calls Claude with tool_use structured output to return a NormalizationPlan.
-    Model defaults to the AI_MODEL env var or claude-haiku-4-5-20251001.
-
-    Designed for future extension: user-supplied API keys and model selection
-    can be added by passing them at construction time.
+    Inherits AnthropicClient for provider access. Owns the normalization
+    prompt and tool schema; delegates the actual API call to complete_with_tool().
     """
-
-    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None):
-        self.model = model or os.environ.get("AI_MODEL", _DEFAULT_MODEL)
-        self._client = anthropic.Anthropic(
-            api_key=api_key or os.environ.get("ANTHROPIC_API_KEY")
-        )
 
     def plan_csv(
         self,
@@ -207,16 +209,6 @@ class AIClientService:
         unique_categories: list[str],
         sample_amount_values: dict[str, list[float]] | None = None,
     ) -> NormalizationPlan:
-        """
-        Analyze CSV headers and unique category values, return a NormalizationPlan.
-
-        Args:
-            headers: Raw column header strings from the CSV.
-            unique_categories: Unique values found in any category-like column.
-
-        Returns:
-            NormalizationPlan with column_map, category_map, amount_transform, and reasoning.
-        """
         user_parts = [
             f"CSV headers: {json.dumps(headers)}",
             f"Unique category values found in the CSV: {json.dumps(unique_categories)}",
@@ -226,26 +218,18 @@ class AIClientService:
                 f"Sample numeric values per column (use for sign convention detection): "
                 f"{json.dumps(sample_amount_values)}"
             )
-        user_text = "\n".join(user_parts)
 
         logger.info(
-            f"Calling Claude ({self.model}) to plan CSV normalization "
-            f"({len(headers)} headers, {len(unique_categories)} categories)"
+            "Planning CSV normalization (%d headers, %d categories)",
+            len(headers),
+            len(unique_categories),
         )
 
-        response = self._client.messages.create(
-            model=self.model,
-            max_tokens=2048,
-            system=_build_system_prompt(),
-            tools=[_NORMALIZATION_TOOL],
-            tool_choice={"type": "tool", "name": "return_normalization_plan"},
-            messages=[{"role": "user", "content": user_text}],
+        raw = self.complete_with_tool(
+            system_prompt=_build_system_prompt(),
+            messages=[{"role": "user", "content": "\n".join(user_parts)}],
+            tool_schema=_NORMALIZATION_TOOL,
         )
-
-        tool_use_block = next(
-            b for b in response.content if b.type == "tool_use"
-        )
-        raw: dict = tool_use_block.input
 
         column_map: dict[str, Optional[str]] = raw.get("column_map", {})
         category_map = {
@@ -254,8 +238,9 @@ class AIClientService:
         }
 
         logger.info(
-            f"Plan received: {len(column_map)} column mappings, "
-            f"{len(category_map)} category mappings"
+            "Plan received: %d column mappings, %d category mappings",
+            len(column_map),
+            len(category_map),
         )
 
         return NormalizationPlan(
