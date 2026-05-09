@@ -60,8 +60,13 @@ The data model and API architecture are designed to support these features. Summ
 budgy_2.0/
 ├── backend/           # FastAPI application
 │   ├── api/           # Route handlers (transactions, categories, summaries, analytics, budgets)
+│   ├── ai_modules/    # AI provider abstraction and services
+│   │   ├── clients/               # AIClient base + Anthropic/OpenAI implementations
+│   │   ├── csv_normalization_service/  # AI-driven CSV column mapping and transform
+│   │   └── summary_service/       # AI monthly summary generation
 │   ├── database_modules/  # SQLAlchemy models and query managers
-│   └── csv_modules/   # CSV ingestion and normalization pipeline
+│   ├── csv_modules/   # CSV ingestion and normalization pipeline
+│   └── utils/         # Shared backend utilities (summary, analysis, API helpers)
 │
 └── frontend/          # React + Vite SPA
     └── src/

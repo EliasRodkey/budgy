@@ -1,6 +1,6 @@
 # CSV Pipeline Integration Tests
 
-End-to-end AI integration tests for the CSV upload pipeline. Runs real Claude API calls against 8 fixture CSVs and scores each stage.
+End-to-end AI integration tests for the CSV upload pipeline. Runs real Claude API calls against 9 fixture CSVs and scores each stage.
 
 ## Running
 
@@ -25,6 +25,7 @@ Requires `ANTHROPIC_API_KEY` in the environment (loaded from `.env` via `pytest-
 | `adversarial_personal` | Personal/non-standard column names |
 | `adversarial_structural` | Structural quirks (extra rows, blank lines) |
 | `adversarial_encoding` | Encoding edge cases |
+| `adversarial_aggregator` | Aggregator-style export with many extra columns (Posted Date, Merchant, Type, Sub-category, Running Balance, Payment Method) — tests that the AI correctly maps only the relevant fields and ignores noise |
 
 Each fixture has a paired `.expected.json` sidecar that defines the ideal normalization plan and expected output rows used for scoring.
 
