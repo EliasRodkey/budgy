@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "budgy"
-version = "2.0.3"
+version = "2.0.4"
 description = "budget managing application"
 authors = [{name = "Elias Rodkey", email = "elias.rodkey@gmail.com"}]
 license = {text = "All Rights Reserved"}
