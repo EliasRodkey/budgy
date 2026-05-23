@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { getAISummary } from "../api/ai";
 import type { AISummary } from "../types";
 
-export function useAISummary(month: string) {
+export function useAISummary(month: string, enabled = false) {
   return useQuery<AISummary | null, Error>({
     queryKey: ["aiSummary", month],
     queryFn: () => getAISummary(month),
     staleTime: Infinity, // Don't auto-refetch; user triggers regenerate manually
+    enabled,
   });
 }

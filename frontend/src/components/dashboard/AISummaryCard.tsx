@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/formatters";
 import type { AISummary } from "@/types";
-import { AlertTriangle, Lightbulb, RefreshCw } from "lucide-react";
+import { AlertTriangle, Lightbulb, RefreshCw, Sparkles } from "lucide-react";
 
 interface AISummaryCardProps {
   summary: AISummary | undefined;
   isLoading: boolean;
   isError: boolean;
   onRegenerate: () => void;
+  onSummarize?: () => void;
 }
 
 function AISkeleton() {
@@ -36,7 +37,7 @@ function AISkeleton() {
   );
 }
 
-export function AISummaryCard({ summary, isLoading, isError, onRegenerate }: AISummaryCardProps) {
+export function AISummaryCard({ summary, isLoading, isError, onRegenerate, onSummarize }: AISummaryCardProps) {
   if (isLoading) return <AISkeleton />;
 
   if (isError) {
@@ -52,7 +53,27 @@ export function AISummaryCard({ summary, isLoading, isError, onRegenerate }: AIS
     );
   }
 
-  if (!summary) return null;
+  if (!summary) {
+    if (onSummarize) {
+      return (
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center space-y-4">
+          <div className="flex justify-center">
+            <Sparkles size={32} className="text-muted-foreground/50" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">AI Summary</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Get an AI-powered recap of your spending this month.
+            </p>
+          </div>
+          <Button size="sm" onClick={onSummarize}>
+            Summarize
+          </Button>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
