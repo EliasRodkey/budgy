@@ -29,6 +29,7 @@ export default function Dashboard() {
   const recomputeStarted = useRef(false);
   const [editTarget, setEditTarget] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [aiEnabled, setAiEnabled] = useState(false);
 
   const { data: dirtyData } = useDirtyMonths();
 
@@ -57,7 +58,7 @@ export default function Dashboard() {
     isLoading: aiLoading,
     isError: aiError,
     refetch: refetchAI,
-  } = useAISummary(MONTH);
+  } = useAISummary(MONTH, aiEnabled);
 
   const {
     data: flagged,
@@ -149,44 +150,49 @@ export default function Dashboard() {
         </div>
       )}
 
-      {recomputing && (
+      {(summaryLoading || summary) && recomputing && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <RefreshCw size={11} className="animate-spin" />
           Updating summaries…
         </p>
       )}
 
-      {/* Financial snapshot cards */}
-      <SummaryCards summary={summary} isLoading={summaryLoading} />
+      {(summaryLoading || summary) && (
+        <>
+          {/* Financial snapshot cards */}
+          <SummaryCards summary={summary} isLoading={summaryLoading} />
 
-      {/* Budget gauge + donut chart */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <BudgetGauge byCategory={summary?.byCategory ?? []} isLoading={summaryLoading} />
-        <CategoryDonut
-          categories={summary?.byCategory ?? []}
-          isLoading={summaryLoading}
-          onCategoryClick={(name) => navigate(`/categories/${encodeURIComponent(name)}`)}
-          height={260}
-          innerRadius={60}
-          outerRadius={100}
-        />
-      </div>
+          {/* Budget gauge + donut chart */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <BudgetGauge byCategory={summary?.byCategory ?? []} isLoading={summaryLoading} />
+            <CategoryDonut
+              categories={summary?.byCategory ?? []}
+              isLoading={summaryLoading}
+              onCategoryClick={(name) => navigate(`/categories/${encodeURIComponent(name)}`)}
+              height={260}
+              innerRadius={60}
+              outerRadius={100}
+            />
+          </div>
 
-      {/* AI Summary */}
-      <AISummaryCard
-        summary={aiSummary}
-        isLoading={aiLoading}
-        isError={aiError}
-        onRegenerate={handleRegenerate}
-      />
+          {/* AI Summary */}
+          <AISummaryCard
+            summary={aiSummary}
+            isLoading={aiLoading}
+            isError={aiError}
+            onRegenerate={handleRegenerate}
+            onSummarize={!aiEnabled ? () => setAiEnabled(true) : undefined}
+          />
 
-      {/* Flagged transactions */}
-      <FlaggedTransactionsList
-        transactions={flagged}
-        isLoading={flaggedLoading}
-        isError={flaggedError}
-        onEdit={setEditTarget}
-      />
+          {/* Flagged transactions */}
+          <FlaggedTransactionsList
+            transactions={flagged}
+            isLoading={flaggedLoading}
+            isError={flaggedError}
+            onEdit={setEditTarget}
+          />
+        </>
+      )}
 
       {/* Edit modal — opened from flagged list */}
       {editTarget && (

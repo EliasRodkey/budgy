@@ -92,7 +92,7 @@ def _build_user_message(summary: MonthlySummaryResponse) -> str:
         if cat.amount == 0:
             continue
         line = f"  {cat.category_name}: ${cat.amount:,.2f}"
-        if cat.monthly_limit is not None:
+        if cat.monthly_limit is not None and cat.percent_of_limit is not None:
             line += f" (budget: ${cat.monthly_limit:,.2f}, {cat.percent_of_limit:.0f}%)"
             if cat.is_over_budget:
                 line += " ⚠ over budget"

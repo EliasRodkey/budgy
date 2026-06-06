@@ -92,24 +92,28 @@ export default function Categories() {
         </div>
       )}
 
-      <CategoryDonut
-        categories={categories ?? []}
-        isLoading={isLoading}
-        onCategoryClick={handleCategoryClick}
-      />
+      {!isNoData && (
+        <CategoryDonut
+          categories={categories ?? []}
+          isLoading={isLoading}
+          onCategoryClick={handleCategoryClick}
+        />
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading
-          ? Array.from({ length: 9 }).map((_, i) => <CategoryCardSkeleton key={i} />)
-          : spending.map((spend) => (
-              <CategoryCard
-                key={spend.categoryId}
-                spend={spend}
-                color={CATEGORY_COLORS[spend.categoryName]}
-                onClick={() => handleCategoryClick(spend.categoryName)}
-              />
-            ))}
-      </div>
+      {!isNoData && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoading
+            ? Array.from({ length: 9 }).map((_, i) => <CategoryCardSkeleton key={i} />)
+            : spending.map((spend) => (
+                <CategoryCard
+                  key={spend.categoryId}
+                  spend={spend}
+                  color={CATEGORY_COLORS[spend.categoryName]}
+                  onClick={() => handleCategoryClick(spend.categoryName)}
+                />
+              ))}
+        </div>
+      )}
 
       {!isLoading && !isError && nonSpending.length > 0 && (
         <div className="space-y-4">

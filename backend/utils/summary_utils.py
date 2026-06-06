@@ -59,7 +59,7 @@ def build_monthly_summary(row, month_str: str, session: DatabaseSession) -> Mont
         amount = abs(getattr(row, f"sum_{snake}", 0.0) or 0.0)
         count = getattr(row, f"count_{snake}", 0) or 0
         mean = getattr(row, f"mean_{snake}", 0.0) or 0.0
-        limit = budget_limits.get(cat.value)
+        limit = budget_limits.get(cat.value) or None
         pct = (amount / limit * 100) if limit else None
         by_category.append(CategorySpendResponse(
             category_id=cat.value,
@@ -106,7 +106,7 @@ def build_yearly_summary(rows: list, year_str: str, session: DatabaseSession) ->
         amount = sum(abs(getattr(r, f"sum_{snake}", 0.0) or 0.0) for r in rows)
         count = sum(getattr(r, f"count_{snake}", 0) or 0 for r in rows)
         mean = amount / count if count > 0 else 0.0
-        limit = budget_limits.get(cat.value)
+        limit = budget_limits.get(cat.value) or None
         pct = (amount / limit * 100) if limit else None
         by_category.append(CategorySpendResponse(
             category_id=cat.value,
