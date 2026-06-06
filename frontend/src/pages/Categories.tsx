@@ -6,11 +6,15 @@ import { useCategoryOverview } from "@/hooks/useCategories";
 import { CATEGORY_COLORS, NON_SPENDING_CATEGORIES } from "@/lib/categoryColors";
 import { formatMonth } from "@/lib/formatters";
 import { useDateRangeStore } from "@/store/dateRange";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, Upload, PlusCircle, FlaskConical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useMockMode } from "@/store/mockMode";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Categories() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toggleMockMode } = useMockMode();
   const { month, year } = useDateRangeStore();
   const { data: categories, isLoading, isError, error, refetch } = useCategoryOverview(month, year);
   const isNoData = isError && (error as (Error & { status?: number }) | null)?.status === 404;
@@ -42,8 +46,38 @@ export default function Categories() {
       </div>
 
       {isNoData && (
-        <div className="rounded-xl border border-border bg-muted/30 p-5 text-center">
-          <p className="text-sm text-muted-foreground">No data available for this period — try selecting a different month.</p>
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center space-y-4">
+          <div className="flex justify-center">
+            <Upload size={32} className="text-muted-foreground/50" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">No transactions yet</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Upload a CSV export from your bank to get started, or try Demo Mode to explore with sample data.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3">
+            <Button size="sm" onClick={() => navigate("/transactions")}>
+              <Upload size={13} className="mr-1.5" />
+              Upload CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/transactions?add=1")}
+            >
+              <PlusCircle size={13} className="mr-1.5" />
+              Add Transaction
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { toggleMockMode(); queryClient.invalidateQueries(); }}
+            >
+              <FlaskConical size={13} className="mr-1.5" />
+              Try Demo Mode
+            </Button>
+          </div>
         </div>
       )}
 

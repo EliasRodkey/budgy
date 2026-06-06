@@ -515,6 +515,14 @@ export default function Transactions() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setShowAdd(true)}
+            >
+              <PlusCircle size={13} className="mr-1.5" />
+              Add Transaction
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => { toggleMockMode(); queryClient.invalidateQueries(); }}
             >
               <FlaskConical size={13} className="mr-1.5" />
