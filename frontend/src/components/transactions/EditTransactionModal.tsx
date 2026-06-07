@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useCategoryMapping } from "@/hooks/useCategories";
+import { getFlagReasons } from "@/lib/transactionFlags";
 import type { Transaction } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
@@ -100,25 +101,6 @@ function InputClass(invalid: boolean) {
   return `w-full h-8 rounded-md border px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring ${invalid ? "border-destructive" : "border-input"}`;
 }
 
-const MISSING_FIELD_LABELS: Record<string, string> = {
-  description: "Description",
-  amount: "Amount",
-  authorizedDate: "Date",
-  primaryCategory: "Category",
-  detailedCategory: "Detailed category",
-};
-
-function computeMissingFields(tx: Transaction): string[] {
-  const checks: Array<[string, boolean]> = [
-    ["description", !tx.description],
-    ["amount", tx.amount == null],
-    ["authorizedDate", !tx.authorizedDate],
-    ["primaryCategory", !tx.primaryCategory],
-    ["detailedCategory", !tx.detailedCategory],
-  ];
-  return checks.filter(([, missing]) => missing).map(([key]) => MISSING_FIELD_LABELS[key]);
-}
-
 function StatusBadge({ status }: { status: string }) {
   const isUnchecked = status === "Unchecked";
   return (
@@ -133,8 +115,6 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function EditTransactionModal({ transaction, isPending, availableTags, onSave, onClose, onDelete }: EditTransactionModalProps) {
-  const missingFields = computeMissingFields(transaction);
-
   const {
     register,
     handleSubmit,
@@ -162,6 +142,7 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
   const watchedPrimary = watch("primaryCategory");
   const watchedNotes = watch("notes") ?? "";
   const detailedOptions = (categoryData?.categoryMapping ?? {})[watchedPrimary] ?? [];
+  const flagReasons = getFlagReasons(transaction, categoryData?.categoryMapping);
 
   function onSubmit(values: FormValues) {
     onSave(transaction!.id, {
@@ -190,14 +171,14 @@ export function EditTransactionModal({ transaction, isPending, availableTags, on
           </button>
         </div>
 
-        {/* Missing fields banner */}
-        {missingFields.length > 0 && (
+        {/* Flag reasons banner */}
+        {flagReasons.length > 0 && (
           <div className="mx-5 mt-4 rounded-lg border border-yellow-400/40 bg-yellow-400/5 px-3 py-2.5">
             <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
-              Missing required fields: {missingFields.join(", ")}
+              This transaction needs attention: {flagReasons.join("; ")}
             </p>
             <p className="text-xs text-yellow-600/80 dark:text-yellow-400/70 mt-0.5">
-              Fill in the fields above to clear this flag.
+              Fix the fields above and save to clear this flag.
             </p>
           </div>
         )}
