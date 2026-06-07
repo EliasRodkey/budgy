@@ -36,6 +36,7 @@ from backend.api.analytics.analytics_router import router as analytics_router
 from backend.api.budgets.budgets_router import router as budgets_router
 from backend.api.categories.categories_router import router as categories_router
 from backend.api.summaries.summaries_router import router as summaries_router
+from backend.api.templates.templates_router import router as templates_router
 from backend.api.transactions.transactions_router import router as transactions_router
 
 app = FastAPI()
@@ -54,3 +55,4 @@ app.include_router(transactions_router)
 app.include_router(summaries_router)
 app.include_router(analytics_router)
 app.include_router(budgets_router)
+app.include_router(templates_router)

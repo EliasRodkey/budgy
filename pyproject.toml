@@ -19,7 +19,8 @@ dependencies = [
     "pleasant_loggers",
     "pleasant_database",
     "anthropic",
-    "python-dotenv"
+    "python-dotenv",
+    "openpyxl"
 ]
 
 [project.optional-dependencies]

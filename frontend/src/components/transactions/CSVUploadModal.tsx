@@ -3,7 +3,7 @@ import { importTransactions, pollJobUntilDone, type ImportResult, type UploadJob
 import { planCSV } from "@/api/ai";
 import type { NormalizationPlan } from "@/types";
 import { MappingReviewPanel } from "./MappingReviewPanel";
-import { CheckCircle, ChevronDown, Upload, X, XCircle } from "lucide-react";
+import { CheckCircle, ChevronDown, Download, Upload, X, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -249,6 +249,15 @@ export function CSVUploadModal({ onClose }: CSVUploadModalProps) {
                 className="hidden"
                 onChange={handleFileChange}
               />
+
+              <a
+                href="/api/templates/csv-import"
+                download
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Download size={13} />
+                Download Excel template with category dropdowns
+              </a>
 
               {/* Expected Format collapsible */}
               <div className="rounded-lg border border-border overflow-hidden">
