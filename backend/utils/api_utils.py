@@ -16,3 +16,4 @@ class RouterPrefixes(Enum):
     SUMMARIES = "/summaries"
     ANALYTICS = "/analytics"
     AI = "/ai"
+    TEMPLATES = "/templates"
