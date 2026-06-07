@@ -44,6 +44,7 @@ from backend.api.transactions.transactions_models import (
 )
 from backend.database_modules.db_session import DatabaseSession
 from backend.database_modules.models.transactions import TransactionsTable
+from backend.utils.analysis_utils import DetailedCategories, PrimaryCategories
 from backend.utils.api_utils import RouterPrefixes
 from backend.utils.file_utils import EDirectories
 
@@ -54,6 +55,30 @@ SORT_BY_COLUMN = {
     "date": TransactionsTable.authorized_date.name,
     "amount": TransactionsTable.amount.name,
 }
+
+# Required for a transaction to be considered "Verified" rather than "Unchecked"
+_REQUIRED_FOR_VERIFY = (
+    TransactionsTable.description.name,
+    TransactionsTable.amount.name,
+    TransactionsTable.authorized_date.name,
+    TransactionsTable.primary_category.name,
+    TransactionsTable.detailed_category.name,
+)
+
+
+def _resolve_status(row: dict) -> str:
+    """
+    Determines whether a transaction row should be "Verified" or "Unchecked":
+    Verified requires every required field to be populated AND the primary/detailed
+    category values to be recognised members of the category enums.
+    """
+    if any(row.get(field) in (None, "") for field in _REQUIRED_FOR_VERIFY):
+        return "Unchecked"
+    if row.get(TransactionsTable.primary_category.name) not in (e.value for e in PrimaryCategories):
+        return "Unchecked"
+    if row.get(TransactionsTable.detailed_category.name) not in (e.value for e in DetailedCategories):
+        return "Unchecked"
+    return "Verified"
 
 
 def get_db():
@@ -182,10 +207,20 @@ async def create_transaction(
     count = len(existing)
     uq_hash = hashlib.sha256(f"{base_hash}:{count}".encode()).hexdigest()
 
+    initial_status = _resolve_status(
+        {
+            TransactionsTable.description.name: body.description,
+            TransactionsTable.amount.name: body.amount,
+            TransactionsTable.authorized_date.name: authorized_date,
+            TransactionsTable.primary_category.name: body.primary_category,
+            TransactionsTable.detailed_category.name: body.detailed_category,
+        }
+    )
+
     db.transactions.add_item(
         **{
             TransactionsTable.authorized_date.name: authorized_date,
-            TransactionsTable.status.name: "Unchecked",
+            TransactionsTable.status.name: initial_status,
             TransactionsTable.account_name.name: body.account_name,
             TransactionsTable.description.name: body.description,
             TransactionsTable.primary_category.name: body.primary_category,
@@ -311,18 +346,14 @@ async def update_transaction(
 
     row = result.data.to_dict(orient="records")[0]
 
-    # Auto-promote: if the transaction was Unchecked and all required fields are now populated,
-    # set status to "Verified" so it drops off the flagged list automatically.
-    _REQUIRED_FOR_VERIFY = (
-        TransactionsTable.description.name,
-        TransactionsTable.amount.name,
-        TransactionsTable.authorized_date.name,
-        TransactionsTable.primary_category.name,
-        TransactionsTable.detailed_category.name,
-    )
-    if row.get(TransactionsTable.status.name) == "Unchecked" and all(row.get(f) not in (None, "") for f in _REQUIRED_FOR_VERIFY):
-        db.transactions.update_item(transaction_id, status="Verified")
-        row[TransactionsTable.status.name] = "Verified"
+    # Re-resolve status: a flagged transaction whose fields are now complete and valid is
+    # promoted to "Verified" so it drops off the flagged list automatically; one that still
+    # has missing/invalid fields stays "Unchecked" so its flag (and message) persists.
+    if row.get(TransactionsTable.status.name) == "Unchecked":
+        resolved_status = _resolve_status(row)
+        if resolved_status != row.get(TransactionsTable.status.name):
+            db.transactions.update_item(transaction_id, status=resolved_status)
+            row[TransactionsTable.status.name] = resolved_status
 
     return row
 
