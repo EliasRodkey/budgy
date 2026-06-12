@@ -84,6 +84,23 @@ export interface AISummary {
   suggestions: string[];
 }
 
+export interface Rule {
+  id: number;
+  matchDescription: string;
+  matchAccountName: string;
+  primaryCategory: string | null;
+  detailedCategory: string | null;
+  tags: string[];
+  exclude: boolean | null;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
+export interface RuleMatchesResult {
+  matchCount: number;
+  transactions: Transaction[];
+}
+
 export interface NormalizationPlan {
   column_map: Record<string, string | null>; // rawHeader → budgyField | null
   category_map: Record<string, { primary: string; detailed: string }>;

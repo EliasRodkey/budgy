@@ -7,6 +7,7 @@ import CategoryDetail from '@/pages/CategoryDetail'
 import SubcategoryDetail from '@/pages/SubcategoryDetail'
 import Analytics from '@/pages/Analytics'
 import Budgets from '@/pages/Budgets'
+import Rules from '@/pages/Rules'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="categories/:primaryCategory/:detailedCategory" element={<SubcategoryDetail />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="budgets" element={<Budgets />} />
+          <Route path="rules" element={<Rules />} />
         </Route>
       </Routes>
     </BrowserRouter>
