@@ -20,6 +20,8 @@ interface BulkApplyDialogProps {
   similarTransactions: Transaction[];
   /** What was changed. */
   change: BulkApplyChange;
+  /** Whether a rule already exists for this transaction's (description, accountName). */
+  hasExistingRule?: boolean;
   isPending: boolean;
   onConfirm: (scope: BulkApplyScope, selectedIds: number[], saveAsRule: boolean) => void;
   onClose: () => void;
@@ -29,6 +31,7 @@ export function BulkApplyDialog({
   transaction,
   similarTransactions,
   change,
+  hasExistingRule = false,
   isPending,
   onConfirm,
   onClose,
@@ -42,6 +45,7 @@ export function BulkApplyDialog({
   const hasTags = change.newTags.length > 0;
   const hasCategory = !!(change.primaryCategory || change.detailedCategory);
   const hasExcluded = change.isExcluded !== undefined;
+  const hasSimilar = similarTransactions.length > 0;
 
   function toggleId(id: number) {
     setSelectedIds((prev) => {
@@ -56,6 +60,10 @@ export function BulkApplyDialog({
     onConfirm(scope, [...selectedIds], saveAsRule);
   }
 
+  function handleSaveRule() {
+    onConfirm(scope, [], true);
+  }
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
@@ -64,7 +72,9 @@ export function BulkApplyDialog({
       <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
-          <h2 className="text-sm font-semibold">Apply to similar transactions?</h2>
+          <h2 className="text-sm font-semibold">
+            {hasSimilar ? "Apply to similar transactions?" : "Save as a rule?"}
+          </h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
             <X size={16} />
           </button>
@@ -102,74 +112,87 @@ export function BulkApplyDialog({
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Found <strong>{similarTransactions.length}</strong> other transaction
-            {similarTransactions.length !== 1 ? "s" : ""} from{" "}
-            <strong className="text-foreground">&ldquo;{transaction.description}&rdquo;</strong>{" "}
-            on <strong className="text-foreground">{transaction.accountName}</strong>.
-          </p>
+          {hasSimilar ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Found <strong>{similarTransactions.length}</strong> other transaction
+                {similarTransactions.length !== 1 ? "s" : ""} from{" "}
+                <strong className="text-foreground">&ldquo;{transaction.description}&rdquo;</strong>{" "}
+                on <strong className="text-foreground">{transaction.accountName}</strong>.
+              </p>
 
-          {/* Scope radio options */}
-          <div className="space-y-2">
-            {(
-              [
-                ["all", "Apply to all matching transactions"],
-                ["no_existing", hasTags ? "Apply only to those with no tags yet" : hasExcluded ? "Apply only to those not already excluded" : "Apply only to those with no category yet"],
-                ["only_this", "Only this transaction (already saved)"],
-                ["select", "Select specific transactions"],
-              ] as [BulkApplyScope, string][]
-            ).map(([value, label]) => (
-              <label key={value} className="flex items-start gap-2.5 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="bulk-scope"
-                  value={value}
-                  checked={scope === value}
-                  onChange={() => setScope(value)}
-                  className="mt-0.5 shrink-0"
-                />
-                <span className="text-sm group-hover:text-foreground transition-colors">{label}</span>
-              </label>
-            ))}
-          </div>
-
-          {/* Select list */}
-          {scope === "select" && (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <ul className="max-h-48 overflow-y-auto divide-y divide-border">
-                {similarTransactions.map((tx) => (
-                  <li key={tx.id}>
-                    <label className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(Number(tx.id))}
-                        onChange={() => toggleId(Number(tx.id))}
-                        className="shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">{tx.description}</p>
-                        <p className="text-xs text-muted-foreground">{tx.authorizedDate}</p>
-                      </div>
-                    </label>
-                  </li>
+              {/* Scope radio options */}
+              <div className="space-y-2">
+                {(
+                  [
+                    ["all", "Apply to all matching transactions"],
+                    ["no_existing", hasTags ? "Apply only to those with no tags yet" : hasExcluded ? "Apply only to those not already excluded" : "Apply only to those with no category yet"],
+                    ["only_this", "Only this transaction (already saved)"],
+                    ["select", "Select specific transactions"],
+                  ] as [BulkApplyScope, string][]
+                ).map(([value, label]) => (
+                  <label key={value} className="flex items-start gap-2.5 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="bulk-scope"
+                      value={value}
+                      checked={scope === value}
+                      onChange={() => setScope(value)}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span className="text-sm group-hover:text-foreground transition-colors">{label}</span>
+                  </label>
                 ))}
-              </ul>
-            </div>
-          )}
+              </div>
 
-          {/* Save as rule */}
-          {scope !== "only_this" && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={saveAsRule}
-                onChange={(e) => setSaveAsRule(e.target.checked)}
-                className="rounded border-input"
-              />
-              <span className="text-xs text-muted-foreground">
-                Remember this rule for future imports
-              </span>
-            </label>
+              {/* Select list */}
+              {scope === "select" && (
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <ul className="max-h-48 overflow-y-auto divide-y divide-border">
+                    {similarTransactions.map((tx) => (
+                      <li key={tx.id}>
+                        <label className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(Number(tx.id))}
+                            onChange={() => toggleId(Number(tx.id))}
+                            className="shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium truncate">{tx.description}</p>
+                            <p className="text-xs text-muted-foreground">{tx.authorizedDate}</p>
+                          </div>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Save as rule */}
+              {scope !== "only_this" && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={saveAsRule}
+                    onChange={(e) => setSaveAsRule(e.target.checked)}
+                    className="rounded border-input"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {hasExistingRule ? "Update the existing rule for future imports" : "Remember this rule for future imports"}
+                  </span>
+                </label>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No other transactions currently match{" "}
+              <strong className="text-foreground">&ldquo;{transaction.description}&rdquo;</strong>{" "}
+              on <strong className="text-foreground">{transaction.accountName}</strong>.{" "}
+              {hasExistingRule
+                ? "Update the existing rule so future imports are categorized the same way?"
+                : "Save this as a rule so future imports are categorized the same way?"}
+            </p>
           )}
         </div>
 
@@ -178,9 +201,15 @@ export function BulkApplyDialog({
           <Button variant="outline" onClick={onClose} disabled={isPending}>
             Skip
           </Button>
-          <Button onClick={handleConfirm} disabled={isPending || (scope === "select" && selectedIds.size === 0)}>
-            {isPending ? "Applying…" : scope === "only_this" ? "Done" : "Apply"}
-          </Button>
+          {hasSimilar ? (
+            <Button onClick={handleConfirm} disabled={isPending || (scope === "select" && selectedIds.size === 0)}>
+              {isPending ? "Applying…" : scope === "only_this" ? "Done" : "Apply"}
+            </Button>
+          ) : (
+            <Button onClick={handleSaveRule} disabled={isPending}>
+              {isPending ? "Saving…" : hasExistingRule ? "Update rule" : "Save rule"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
