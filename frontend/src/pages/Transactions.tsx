@@ -14,6 +14,7 @@ import {
   useTransactions,
   useUpdateTransaction,
 } from "@/hooks/useTransactions";
+import { useRules } from "@/hooks/useRules";
 import { useMockMode } from "@/store/mockMode";
 import { tagPillStyle } from "@/lib/tagColors";
 import type { Transaction } from "@/types";
@@ -250,6 +251,7 @@ export default function Transactions() {
   const { mutate: updateTx, isPending: updatePending } = useUpdateTransaction();
   const { mutate: deleteTx, isPending: deletePending } = useDeleteTransaction();
   const { mutate: bulkUpdate, isPending: bulkPending } = useBulkUpdateTransactions();
+  const { data: rules = [] } = useRules();
 
   const { isMockMode, toggleMockMode } = useMockMode();
   const queryClient = useQueryClient();
@@ -290,7 +292,6 @@ export default function Transactions() {
           original.accountName,
           Number(id),
         );
-        if (similar.length === 0) return;
 
         const change: BulkApplyChange = {
           newTags: addedTags,
@@ -308,6 +309,25 @@ export default function Transactions() {
 
   function handleBulkConfirm(scope: BulkApplyScope, selectedIds: number[], saveAsRule: boolean) {
     if (!bulkChange || !savedTx) return;
+
+    if (similarTxs.length === 0) {
+      if (!saveAsRule) { setBulkChange(null); return; }
+      bulkUpdate(
+        {
+          transactionIds: [Number(savedTx.id)],
+          primaryCategory: bulkChange.primaryCategory,
+          detailedCategory: bulkChange.detailedCategory,
+          tags: bulkChange.newTags.length > 0 ? bulkChange.newTags : undefined,
+          exclude: bulkChange.isExcluded,
+          saveAsRule: true,
+          matchDescription: savedTx.description,
+          matchAccountName: savedTx.accountName,
+        },
+        { onSuccess: () => setBulkChange(null) },
+      );
+      return;
+    }
+
     if (scope === "only_this") { setBulkChange(null); return; }
 
     let ids = scope === "all"
@@ -583,6 +603,9 @@ export default function Transactions() {
           transaction={savedTx}
           similarTransactions={similarTxs}
           change={bulkChange}
+          hasExistingRule={rules.some(
+            (r) => r.matchDescription === savedTx.description && r.matchAccountName === savedTx.accountName,
+          )}
           isPending={bulkPending}
           onConfirm={handleBulkConfirm}
           onClose={() => setBulkChange(null)}

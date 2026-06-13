@@ -5,6 +5,7 @@ import {
   Tag,
   BarChart2,
   Wallet,
+  ListFilter,
   ChevronLeft,
   ChevronRight,
   FlaskConical,
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/categories', label: 'Categories', Icon: Tag },
   { to: '/analytics', label: 'Analytics', Icon: BarChart2 },
   { to: '/budgets', label: 'Budgets', Icon: Wallet },
+  { to: '/rules', label: 'Rules', Icon: ListFilter },
 ]
 
 export default function Sidebar() {

@@ -6,6 +6,7 @@ import type {
   BudgetAssignment,
   AISummary,
   AnalyticsSeries,
+  Rule,
 } from "../../types";
 
 // ─── Categories ──────────────────────────────────────────────────────────────
@@ -1183,6 +1184,33 @@ export const mockBudgetAssignments: BudgetAssignment[] = [
     budgetId: "budget-001",
     effectiveFrom: "2024-12",
     note: "December override — reuse base budget for holiday month",
+  },
+];
+
+// ─── Rules ─────────────────────────────────────────────────────────────────────
+
+export const mockRules: Rule[] = [
+  {
+    id: 1,
+    matchDescription: "TRADER JOES",
+    matchAccountName: "Chase Sapphire",
+    primaryCategory: "Food & drink",
+    detailedCategory: "Groceries",
+    tags: [],
+    exclude: null,
+    createdAt: "2024-10-01T12:00:00Z",
+    updatedAt: "2024-10-01T12:00:00Z",
+  },
+  {
+    id: 2,
+    matchDescription: "VENMO PAYMENT",
+    matchAccountName: "SoFi Checking",
+    primaryCategory: null,
+    detailedCategory: null,
+    tags: [],
+    exclude: true,
+    createdAt: "2024-11-15T09:30:00Z",
+    updatedAt: "2024-11-15T09:30:00Z",
   },
 ];
 
