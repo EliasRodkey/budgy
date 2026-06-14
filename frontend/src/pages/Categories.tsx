@@ -1,6 +1,6 @@
 import { CategoryCard, CategoryCardSkeleton } from "@/components/categories/CategoryCard";
 import { CategoryDonut } from "@/components/categories/CategoryDonut";
-import { DateRangeSelector } from "@/components/categories/DateRangeSelector";
+import { DateRangeSelector } from "@/components/shared/DateRangeSelector";
 import { Button } from "@/components/ui/button";
 import { useCategoryOverview } from "@/hooks/useCategories";
 import { CATEGORY_COLORS, NON_SPENDING_CATEGORIES } from "@/lib/categoryColors";

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { pollJobUntilDone } from "../api/transactions";
 
+// pollJobUntilDone exercises the real-fetch branch — keep mock mode off so it
+// doesn't short-circuit to the hardcoded mock job response.
+vi.mock("../store/mockMode", () => ({
+  useMockMode: { getState: () => ({ isMockMode: false, setMockMode: () => {} }) },
+}));
+
 // Mock fetch globally — use real timers since intervalMs=0 makes polls synchronous
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);

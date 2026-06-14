@@ -3,23 +3,23 @@ import { BudgetGauge } from "@/components/dashboard/BudgetGauge";
 import { FlaggedTransactionsList } from "@/components/dashboard/FlaggedTransactionsList";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { CategoryDonut } from "@/components/categories/CategoryDonut";
+import { DateRangeSelector } from "@/components/shared/DateRangeSelector";
 import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDialog";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";
 import { Button } from "@/components/ui/button";
 import { useAISummary } from "@/hooks/useAISummary";
 import { useFlaggedTransactions } from "@/hooks/useFlaggedTransactions";
 import { useUpdateTransaction, useDeleteTransaction, useAvailableTags } from "@/hooks/useTransactions";
-import { useSummary, useDirtyMonths } from "@/hooks/useSummary";
-import { currentMonth, formatMonth } from "@/lib/formatters";
+import { usePeriodSummary, useAvailableYears, useDirtyMonths } from "@/hooks/useSummary";
+import { formatMonth } from "@/lib/formatters";
 import { recomputeSummaries } from "@/api/summary";
+import { useDateRangeStore } from "@/store/dateRange";
 import { useMockMode } from "@/store/mockMode";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, FlaskConical, PlusCircle, RefreshCw, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Transaction } from "@/types";
-
-const MONTH = currentMonth();
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -31,14 +31,18 @@ export default function Dashboard() {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
 
+  const { month, year } = useDateRangeStore();
+  const period = month !== null ? `${year}-${String(month).padStart(2, "0")}` : String(year);
+
   const { data: dirtyData } = useDirtyMonths();
+  const { data: availableYears = [] } = useAvailableYears();
 
   const {
     data: summary,
     isLoading: summaryLoading,
     isError: summaryError,
     refetch: refetchSummary,
-  } = useSummary(MONTH);
+  } = usePeriodSummary(month, year);
 
   useEffect(() => {
     if (dirtyData?.dirty && !recomputeStarted.current) {
@@ -58,7 +62,7 @@ export default function Dashboard() {
     isLoading: aiLoading,
     isError: aiError,
     refetch: refetchAI,
-  } = useAISummary(MONTH, aiEnabled);
+  } = useAISummary(period, aiEnabled);
 
   const {
     data: flagged,
@@ -71,7 +75,7 @@ export default function Dashboard() {
   const { data: availableTags = [] } = useAvailableTags();
 
   function handleRegenerate() {
-    queryClient.removeQueries({ queryKey: ["aiSummary", MONTH] });
+    queryClient.removeQueries({ queryKey: ["aiSummary", period] });
     refetchAI();
   }
 
@@ -96,13 +100,18 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{formatMonth(MONTH)}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {month !== null ? formatMonth(period) : String(year)}
+          </p>
+        </div>
+        <DateRangeSelector />
       </div>
 
-      {/* Empty state — no data and not in demo mode */}
-      {!summaryLoading && !summaryError && !isMockMode && !summary && (
+      {/* Empty state — no data anywhere and not in demo mode */}
+      {!summaryLoading && !summaryError && !isMockMode && !summary && availableYears.length === 0 && (
         <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center space-y-4">
           <div className="flex justify-center">
             <Upload size={32} className="text-muted-foreground/50" />
@@ -135,6 +144,13 @@ export default function Dashboard() {
               Try Demo Mode
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Empty state — no data for the selected period, but data exists elsewhere */}
+      {!summaryLoading && !summaryError && !summary && (isMockMode || availableYears.length > 0) && (
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
+          <p className="text-sm text-muted-foreground">No data for this period.</p>
         </div>
       )}
 
