@@ -1,4 +1,4 @@
-import { DateRangeSelector } from "@/components/categories/DateRangeSelector";
+import { DateRangeSelector } from "@/components/shared/DateRangeSelector";
 import { DetailCategoryDonut } from "@/components/categories/DetailCategoryDonut";
 import { DeleteConfirmDialog } from "@/components/transactions/DeleteConfirmDialog";
 import { EditTransactionModal } from "@/components/transactions/EditTransactionModal";

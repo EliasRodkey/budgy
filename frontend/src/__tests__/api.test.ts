@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getAISummary } from "../api/ai";
-import { getMonthlySummary } from "../api/summary";
+import { getMonthlySummary, getPeriodSummary, getYearlySummary } from "../api/summary";
 import { assignCategory, getFlaggedTransactions } from "../api/transactions";
 import { mockAISummary, mockMonthlySummaries } from "./fixtures";
 
@@ -30,6 +30,40 @@ describe("getMonthlySummary", () => {
   it("net equals totalIncome minus totalExpenses", async () => {
     const result = await getMonthlySummary("2025-03");
     expect(result.net).toBeCloseTo(result.totalIncome - result.totalExpenses, 2);
+  });
+});
+
+describe("getYearlySummary", () => {
+  it("sums income and expenses across all mock months in a given year", async () => {
+    const yearRows = mockMonthlySummaries.filter((s) => s.month.startsWith("2025"));
+    const expectedIncome = yearRows.reduce((sum, r) => sum + r.totalIncome, 0);
+    const expectedExpenses = yearRows.reduce((sum, r) => sum + r.totalExpenses, 0);
+
+    const result = await getYearlySummary(2025);
+    expect(result).not.toBeNull();
+    expect(result!.month).toBe("2025");
+    expect(result!.totalIncome).toBe(expectedIncome);
+    expect(result!.totalExpenses).toBe(expectedExpenses);
+    expect(result!.net).toBeCloseTo(result!.totalIncome - result!.totalExpenses, 2);
+  });
+
+  it("returns null for a year with no mock data", async () => {
+    const result = await getYearlySummary(2099);
+    expect(result).toBeNull();
+  });
+});
+
+describe("getPeriodSummary", () => {
+  it("dispatches to yearly aggregation when month is null", async () => {
+    const result = await getPeriodSummary(null, 2025);
+    const expected = await getYearlySummary(2025);
+    expect(result).toEqual(expected);
+  });
+
+  it("dispatches to monthly summary when month is provided", async () => {
+    const result = await getPeriodSummary(1, 2025);
+    const expected = await getMonthlySummary("2025-01");
+    expect(result).toEqual(expected);
   });
 });
 

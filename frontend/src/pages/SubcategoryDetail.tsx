@@ -1,4 +1,4 @@
-import { DateRangeSelector } from "@/components/categories/DateRangeSelector";
+import { DateRangeSelector } from "@/components/shared/DateRangeSelector";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSubcategoryDetail } from "@/hooks/useCategories";
