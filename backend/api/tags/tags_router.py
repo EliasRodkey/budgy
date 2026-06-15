@@ -49,7 +49,7 @@ def _parse_tags(raw) -> list[str]:
 def _orm_row_to_transaction_item(row: dict) -> TransactionItem:
     """Convert a transactions DataFrame row (dict) to a TransactionItem."""
     def _fmt_date(val) -> str:
-        if val is None:
+        if val is None or pd.isna(val):
             return ""
         if hasattr(val, "strftime"):
             return val.strftime("%Y-%m-%d")

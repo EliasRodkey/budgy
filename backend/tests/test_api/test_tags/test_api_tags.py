@@ -128,6 +128,12 @@ class TestGetTagDetail:
         assert "categoryBreakdown" in data
         assert "transactions" in data
 
+    def test_missing_posted_date_does_not_error(self):
+        rows = [_row(1, -50.0, "Food & drink", tags="trip", posted_date=pd.NaT)]
+        db = _make_mock_db(rows)
+        result = asyncio.run(get_tag_detail("trip", db=db))
+        assert result["data"]["transactions"][0]["postedDate"] == ""
+
     def test_total_spend_and_transaction_count(self):
         rows = [
             _row(1, -50.0, "Food & drink", tags="trip", authorized_date="2025-01-10"),
