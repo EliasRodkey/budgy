@@ -18,3 +18,4 @@ class RouterPrefixes(Enum):
     AI = "/ai"
     TEMPLATES = "/templates"
     RULES = "/rules"
+    TAGS = "/tags"
